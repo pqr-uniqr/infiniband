@@ -1,7 +1,5 @@
 pseudocode for basic network bandwidth test
 
-
-
 1. modify rdma_rc_example to send any string using SEND and RDMA WRITE, (depending on flag)
 
 2. Write the equivalnet code to be shared by IP over IB and ETHERNET
