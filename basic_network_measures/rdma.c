@@ -49,7 +49,7 @@ int main ( int argc, char *argv[] )
 
     int i;
     struct resources res;
-    size_t data_len_bytes; //FIXME your naming sucks
+    size_t data_len_bytes = 0; //FIXME your naming sucks
 
     /* PROCESS CL ARGUMENTS */
 
@@ -118,8 +118,8 @@ int main ( int argc, char *argv[] )
     }
 
     /* GENERATE DATA IF REQUESTED */
-    if( data_len_bytes ){
-        printf("Generating %d bytes to send...\n", data_len_bytes);
+    if( data_len_bytes > 0 ){
+        printf("Generating %zd bytes to send...\n", data_len_bytes);
         msg = (char *) malloc(data_len_bytes);
         msg_size = data_len_bytes;
         FILE *fp = fopen("/dev/urandom", "r");
