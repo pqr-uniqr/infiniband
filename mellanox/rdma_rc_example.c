@@ -38,6 +38,8 @@
 #define RDMAMSGR "RDMA read operation "
 #define RDMAMSGW "RDMA write operation"
 #define MSG_SIZE (strlen(MSG) + 1)
+
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     static inline uint64_t
 htonll (uint64_t x)
@@ -100,6 +102,8 @@ struct resources
                            ops */
     int sock;			/* TCP socket file descriptor */
 };
+
+
 struct config_t config = {
     NULL,				/* dev_name */
     NULL,				/* server_name */
