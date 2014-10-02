@@ -47,6 +47,7 @@ char *msg;
 int main ( int argc, char *argv[] )
 {
 
+    int rc = 1;
     int i;
     struct resources res;
     size_t data_len_bytes = 0; //FIXME your naming sucks
@@ -152,6 +153,9 @@ int main ( int argc, char *argv[] )
     /* SET UP RESOURCES  */
     if( resources_create(&res) ){
         fprintf(stderr, RED "resources_create() failed\n" RESET);
+        rc = 1;
+        goto main_exit;
+
     }
 #ifdef DEBUG
     printf(GRN "resources_create() successful\n" RESET);
@@ -160,16 +164,73 @@ int main ( int argc, char *argv[] )
     /* CONNECT QUEUE PAIRS */
     if( connect_qp(&res) ){
         fprintf(stderr, RED "connect_qp() failed\n" RESET);
+        rc = 1;
+        goto main_exit;
     }
 #ifdef DEBUG
     printf(GRN "connect_qp() successful\n" RESET);
 #endif
-    
 
-    return EXIT_SUCCESS;
+
+    rc = 0;
+
+main_exit:
+    if (resources_destroy (&res)){
+        fprintf (stderr, "failed to destroy resources\n");
+        rc = 1;
+    }
+    if (config.dev_name) free ((char *) config.dev_name);
+
+    fprintf (stdout, "\ntest result is %d\n", rc);
+    free( msg );
+    return rc;
+
 }				/* ----------  end of function main  ---------- */
 
 
+static int resources_destroy (struct resources *res)
+{
+    int rc = 0;
+    if (res->qp)
+        if (ibv_destroy_qp (res->qp))
+        {
+            fprintf (stderr, "failed to destroy QP\n");
+            rc = 1;
+        }
+    if (res->mr)
+        if (ibv_dereg_mr (res->mr))
+        {
+            fprintf (stderr, "failed to deregister MR\n");
+            rc = 1;
+        }
+    if (res->buf)
+        free (res->buf);
+    if (res->cq)
+        if (ibv_destroy_cq (res->cq))
+        {
+            fprintf (stderr, "failed to destroy CQ\n");
+            rc = 1;
+        }
+    if (res->pd)
+        if (ibv_dealloc_pd (res->pd))
+        {
+            fprintf (stderr, "failed to deallocate PD\n");
+            rc = 1;
+        }
+    if (res->ib_ctx)
+        if (ibv_close_device (res->ib_ctx))
+        {
+            fprintf (stderr, "failed to close device context\n");
+            rc = 1;
+        }
+    if (res->sock >= 0)
+        if (close (res->sock))
+        {
+            fprintf (stderr, "failed to close socket\n");
+            rc = 1;
+        }
+    return rc;
+}
 
 static int modify_qp_to_init (struct ibv_qp *qp)
 {

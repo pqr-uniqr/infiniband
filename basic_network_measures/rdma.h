@@ -75,6 +75,7 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 /* resources functions */
 static void resources_init( struct resources *res);
 static int resources_create(struct resources *res);
+static int resources_destroy( struct resources *res);
 
 /* util functions */
 static void usage(const char *argv0);
