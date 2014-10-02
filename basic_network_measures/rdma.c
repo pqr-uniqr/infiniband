@@ -146,23 +146,23 @@ int main ( int argc, char *argv[] )
     /* INITIATE RESOURCES  */
     resources_init(&res);
 #ifdef DEBUG
-    printf(GRN "resources_init() successful" RESET);
+    printf(GRN "resources_init() successful\n" RESET);
 #endif
 
     /* SET UP RESOURCES  */
     if( resources_create(&res) ){
-        fprintf(stderr, RED "resources_create() failed" RESET);
+        fprintf(stderr, RED "resources_create() failed\n" RESET);
     }
 #ifdef DEBUG
-    printf(GRN "resources_create() successful" RESET);
+    printf(GRN "resources_create() successful\n" RESET);
 #endif
 
     /* CONNECT QUEUE PAIRS */
     if( connect_qp(&res) ){
-        fprintf(stderr, RED "connect_qp() failed" RESET);
+        fprintf(stderr, RED "connect_qp() failed\n" RESET);
     }
 #ifdef DEBUG
-    printf(GRN "connect_qp() successful" RESET);
+    printf(GRN "connect_qp() successful\n" RESET);
 #endif
     
 
@@ -644,8 +644,9 @@ static int sock_connect (const char *servername, int port)
     };
     if (sprintf (service, "%d", port) < 0)
         goto sock_connect_exit;
-    /* Resolve DNS address, use sockfd as temp storage */
+
     sockfd = getaddrinfo (servername, service, &hints, &resolved_addr);
+
     if (sockfd < 0)
     {
         fprintf (stderr, "%s for %s:%d\n", gai_strerror (sockfd), servername,
