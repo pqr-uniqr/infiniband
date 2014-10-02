@@ -390,6 +390,8 @@ static int connect_qp (struct resources *res)
 connect_qp_exit:
     return rc;
 }
+
+
 static int resources_create (struct resources *res)
 {
     struct ibv_device **dev_list = NULL;
@@ -520,6 +522,7 @@ static int resources_create (struct resources *res)
     /* REGISTER MEMORY BUFFER */
     mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ |
         IBV_ACCESS_REMOTE_WRITE;
+    res->mr = ibv_reg_mr (res->pd, res->buf, size, mr_flags);
     if (!res->mr)
     {
         fprintf (stderr, "ibv_reg_mr failed with mr_flags=0x%x\n", mr_flags);
