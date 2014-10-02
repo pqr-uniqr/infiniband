@@ -143,11 +143,28 @@ int main ( int argc, char *argv[] )
     /* SUM UP CONFIG */
     print_config();
 
+    /* INITIATE RESOURCES  */
     resources_init(&res);
+#ifdef DEBUG
+    printf(GRN "resources_init() successful" RESET);
+#endif
 
-    resources_create(&res); //TODO error checking
+    /* SET UP RESOURCES  */
+    if( resources_create(&res) ){
+        fprintf(stderr, RED "resources_create() failed" RESET);
+    }
+#ifdef DEBUG
+    printf(GRN "resources_create() successful" RESET);
+#endif
 
-    connect_qp(&res); //TODO error checking
+    /* CONNECT QUEUE PAIRS */
+    if( connect_qp(&res) ){
+        fprintf(stderr, RED "connect_qp() failed" RESET);
+    }
+#ifdef DEBUG
+    printf(GRN "connect_qp() successful" RESET);
+#endif
+    
 
     return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */
