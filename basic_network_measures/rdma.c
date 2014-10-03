@@ -211,7 +211,7 @@ int main ( int argc, char *argv[] )
             gettimeofday(&cur_time, NULL);
             cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             printf("post_send() to poll_completion() (usec): %ld\n", cur_time_usec - start_time_usec);
-            average = cur_time_usec - start_time_usec;
+            average += cur_time_usec - start_time_usec;
         } 
        
         //TODO once this is both ways, this is not gonna work like this
@@ -244,7 +244,7 @@ main_exit:
     }
     if (config.dev_name) free ((char *) config.dev_name);
 
-    fprintf(stdout, CYN "average time/trial is %ld microseconds\n", average / trials);
+    fprintf(stdout, CYN "average time/trial is %ld microseconds\n", (float) average / (float) trials);
     fprintf (stdout, "\ntest result is %d\n", rc);
     free( msg );
     return rc;
