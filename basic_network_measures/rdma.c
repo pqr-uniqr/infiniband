@@ -188,6 +188,11 @@ int main ( int argc, char *argv[] )
         if( config.opcode == IBV_WR_RDMA_READ || 
                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
             /* POST REQUEST */
+            struct timeval cur_time;
+            unsigned long start_time_usec;
+            unsigned long cur_time_usec;
+            gettimeofday(&cur_time, NULL);
+            start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             if (post_send (&res, config.opcode)){
                 fprintf (stderr, "failed to post SR 2\n");
                 rc = 1;
@@ -200,6 +205,9 @@ int main ( int argc, char *argv[] )
                 rc = 1;
                 goto main_exit;
             }
+            gettimeofday(&cur_time, NULL);
+            cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
+            printf("post_send() to poll_completion() (usec): %ld\n", cur_time_usec - start_time_usec);
         } 
        
         //TODO once this is both ways, this is not gonna work like this
@@ -218,7 +226,7 @@ int main ( int argc, char *argv[] )
 
         csum = checksum(res.buf, config.xfer_unit);
         fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
-        fprintf(stdout, YEL "------------------------\n" RESET);
+        fprintf(stdout, YEL "------------------------\n\n" RESET);
     }
 
     fprintf(stdout, GRN "data operation finished\n" RESET );
