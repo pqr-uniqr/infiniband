@@ -30,7 +30,7 @@
 #define WHT  "\x1B[37m"
 #define RESET "\033[0m"
 
-#define MSG_SIZE 30
+#define MAX_POLL_CQ_TIMEOUT 2000
 
 
 // store configuration fed through command line
@@ -74,6 +74,10 @@ struct resources
     int sock;			/* TCP socket file descriptor */
 };
 
+
+/* IB OPERATIONS */
+static int post_send(struct resources *res, int opcode);
+static int poll_completion(struct resources *res);
 
 /* QUEUE PAIR STATE MODIFICATION */
 static int modify_qp_to_init(struct ibv_qp *qp);

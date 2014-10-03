@@ -30,6 +30,7 @@ int main ( int argc, char *argv[] )
     int i;
     struct resources res;
     size_t data_len_bytes; //FIXME your naming sucks
+        char temp_char;
     int trials;
 
     /* PROCESS CL ARGUMENTS */
@@ -106,7 +107,7 @@ int main ( int argc, char *argv[] )
         }
     }
 
-    
+
     /* PARSE SERVER NAME IF GIVEN*/
     if (optind == argc - 1)
     {
@@ -118,30 +119,6 @@ int main ( int argc, char *argv[] )
         return 1;
     }
 
-
-    /* GENERATE DATA IF REQUESTED */
-/*     if( data_len_bytes > 0 ){
- *         printf("Generating %zd bytes to send...\n", data_len_bytes);
- *         msg = (char *) malloc(data_len_bytes);
- *         msg_size = data_len_bytes;
- *         FILE *fp = fopen("/dev/urandom", "r");
- *         fread(msg, 1, msg_size, fp);
- *         fclose(fp);
- * 
- *         if(!config.server_name){
- *             printf("This is the server: will use SEND/RECV\n");
- *         } else {
- *             printf("This is the client: will use RDMA RW\n");
- *         }
- * #ifdef DEBUG
- *         printf("data to be sent:\n" RED);
- *         for(i=0; i< data_len_bytes; i++){
- *             printf("%0x",msg[i]);
- *         }
- *         printf("\n" RESET );
- * #endif
- *     }
- */
 
     /* SUM UP CONFIG */
     print_config();
@@ -173,10 +150,51 @@ int main ( int argc, char *argv[] )
     printf(GRN "connect_qp() successful\n" RESET);
 #endif
     rc = 0;
-    
+
 
     /* DATA TRANSFER */
     if( config.opcode == IBV_WR_RDMA_READ ){
+
+        /* GENERATE DATA TO BE READ */
+        if( !config.server_name ){
+            printf("Generating %zd bytes to send...\n", config.xfer_unit_demanded);
+            FILE *random = fopen("/dev/urandom", "r");
+            fread(res.buf, 1, config.xfer_unit_demanded, random);
+            fclose(random);
+#ifdef DEBUG
+            printf("data to be sent:\n" RED);
+            for(i=0; i< data_len_bytes; i++){
+                printf("%0x",msg[i]);
+            }
+            printf("\n" RESET );
+#endif
+        }
+
+        /* SYNC UP BEFORE STARTING RDMA READ */
+        if (sock_sync_data (res.sock, 1, "R", &temp_char))  
+        {
+            fprintf (stderr, "sync error before RDMA ops\n");
+            rc = 1;
+            goto main_exit;
+        }
+
+        /* START RDMA READ */
+        if (post_send (&res, IBV_WR_RDMA_READ))
+        {
+            fprintf (stderr, "failed to post SR 2\n");
+            rc = 1;
+            goto main_exit;
+        }
+
+        /* POLL FOR COMPLETION */
+        if (poll_completion (&res))
+        {
+            fprintf (stderr, "poll completion failed 2\n");
+            rc = 1;
+            goto main_exit;
+        }
+
+        fprintf (stdout, "Contents of server's buffer: '%s'\n", res.buf);
 
     } else if ( config.opcode == IBV_WR_RDMA_WRITE ){
 
@@ -198,6 +216,104 @@ main_exit:
 
 }				/* ----------  end of function main  ---------- */
 
+
+/* IB OPERATIONS */
+static int post_send (struct resources *res, int opcode)
+{
+    struct ibv_send_wr sr;
+    struct ibv_sge sge;
+    struct ibv_send_wr *bad_wr = NULL;
+    int rc;
+    /* prepare the scatter/gather entry */
+    memset (&sge, 0, sizeof (sge));
+    sge.addr = (uintptr_t) res->buf;
+    sge.length = config.xfer_unit;
+    sge.lkey = res->mr->lkey;
+
+    /* prepare the send work request */
+    memset (&sr, 0, sizeof (sr));
+    sr.next = NULL;
+    sr.wr_id = 0;
+    sr.sg_list = &sge;
+    sr.num_sge = 1;
+    sr.opcode = opcode;
+    sr.send_flags = IBV_SEND_SIGNALED;
+    if (opcode != IBV_WR_SEND)
+    {
+        sr.wr.rdma.remote_addr = res->remote_props.addr;
+        sr.wr.rdma.rkey = res->remote_props.rkey;
+    }
+    /* there is a Receive Request in the responder side, so we won't get any into RNR flow */
+    rc = ibv_post_send (res->qp, &sr, &bad_wr);
+    if (rc)
+        fprintf (stderr, "failed to post SR\n");
+    else
+    {
+        switch (opcode)
+        {
+            case IBV_WR_SEND:
+                fprintf (stdout, "Send Request was posted\n");
+                break;
+            case IBV_WR_RDMA_READ:
+                fprintf (stdout, "RDMA Read Request was posted\n");
+                break;
+            case IBV_WR_RDMA_WRITE:
+                fprintf (stdout, "RDMA Write Request was posted\n");
+                break;
+            default:
+                fprintf (stdout, "Unknown Request was posted\n");
+                break;
+        }
+    }
+    return rc;
+}
+static int poll_completion (struct resources *res)
+{
+    struct ibv_wc wc;
+    unsigned long start_time_msec;
+    unsigned long cur_time_msec;
+    struct timeval cur_time;
+    int poll_result;
+    int rc = 0;
+    /* poll the completion for a while before giving up of doing it .. */
+    gettimeofday (&cur_time, NULL);
+    start_time_msec = (cur_time.tv_sec * 1000) + (cur_time.tv_usec / 1000);
+    do
+    {
+        poll_result = ibv_poll_cq (res->cq, 1, &wc);
+        gettimeofday (&cur_time, NULL);
+        cur_time_msec = (cur_time.tv_sec * 1000) + (cur_time.tv_usec / 1000);
+    }
+    while ((poll_result == 0)
+            && ((cur_time_msec - start_time_msec) < MAX_POLL_CQ_TIMEOUT));
+    if (poll_result < 0)
+    {
+        /* poll CQ failed */
+        fprintf (stderr, "poll CQ failed\n");
+        rc = 1;
+    }
+    else if (poll_result == 0)
+    {
+        /* the CQ is empty */
+        fprintf (stderr, "completion wasn't found in the CQ after timeout\n");
+        rc = 1;
+    }
+    else
+    {
+        /* CQE found */
+        fprintf (stdout, "completion was found in CQ with status 0x%x\n",
+                wc.status);
+        /* check the completion status (here we don't care about the completion opcode */
+        if (wc.status != IBV_WC_SUCCESS)
+        {
+            fprintf (stderr,
+                    "got bad completion with status: 0x%x, vendor syndrome: 0x%x\n",
+                    wc.status, wc.vendor_err);
+            rc = 1;
+        }
+    }
+    return rc;
+}
 
 /* QUEUE PAIR STATE MODIFICATION */
 
@@ -351,15 +467,15 @@ static int connect_qp (struct resources *res)
     }
 
     /* 
-    if (config.server_name)
-    {
-        rc = post_receive (res);
-        if (rc)
-        {
-            fprintf (stderr, "failed to post RR\n");
-            goto connect_qp_exit;
-        }
-    } */
+       if (config.server_name)
+       {
+       rc = post_receive (res);
+       if (rc)
+       {
+       fprintf (stderr, "failed to post RR\n");
+       goto connect_qp_exit;
+       }
+       } */
 
 
     /* modify the QP to RTR */
@@ -400,7 +516,7 @@ static int post_receive (struct resources *res)
     /* prepare the scatter/gather entry */
     memset (&sge, 0, sizeof (sge));
     sge.addr = (uintptr_t) res->buf;
-    sge.length = MSG_SIZE;
+    sge.length = config.xfer_unit_demanded;
     sge.lkey = res->mr->lkey;
     /* prepare the receive work request */
     memset (&rr, 0, sizeof (rr));
@@ -462,17 +578,17 @@ static int resources_create (struct resources *res)
         }
     }
     fprintf (stdout, "TCP connection was established\n");
-   
+
     /* EXCHANGE DEMANDED BUFFER SIZE */
     size_t buf_size_demand = config.xfer_unit;
     size_t tmp_buf_size;
     if( sock_sync_data( res->sock, sizeof(size_t), (char *) &buf_size_demand, (char *) &tmp_buf_size) < 0 )
     {
-        fprintf(stderr, "failed to communicate demanded buffer size");
+        fprintf(stderr, "failed to communicate demanded buffer size\n");
         rc = -1;
         goto resources_create_exit;
     }
-    fprintf(stdout,"demanded buffer size is %d bytes", tmp_buf_size);
+    fprintf(stdout,"demanded buffer size is %zd bytes\n", tmp_buf_size);
     config.xfer_unit_demanded = tmp_buf_size;
 
     /* GET IB DEVICES AND SELECT ONE */
@@ -842,7 +958,7 @@ static void print_config (void)
         fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
     else
         fprintf(stdout, "%d trials, each %d bytes\n", config.trials, config.xfer_unit );
-    
+
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
