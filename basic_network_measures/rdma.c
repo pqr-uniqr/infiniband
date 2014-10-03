@@ -15,7 +15,6 @@ struct config_t config =
     1,              /* ib_port */
     -1,              /* gid_idx */
     0,              /* xfer_unit */
-    0,              /* xfer_unit_demanded */
     0,              /* trials*/
     -1,             /* opcode */
 };
@@ -28,6 +27,7 @@ int main ( int argc, char *argv[] )
 {
     int rc = 1;
     int i;
+    uint16_t csum;
     struct resources res;
     char temp_char;
 
@@ -151,39 +151,20 @@ int main ( int argc, char *argv[] )
     rc = 0;
 
 
-    /* FILL UP BUFFER WITH DEMANDED DATA */
-    if( config.xfer_unit_demanded ){
-        printf("Generating %zd bytes to send...\n", config.xfer_unit_demanded);
-        FILE *random = fopen("/dev/urandom", "r");
-        fread(res.buf, 1, config.xfer_unit_demanded, random);
-        fclose(random);
-#ifdef DEBUG
-        /*  
-            printf("data in my buffer:\n" RED);
-            for(i=0; i< config.xfer_unit_demanded ; i++){
-            printf("%0x", res.buf[i]);
-            }
-            printf("\n" RESET );*/
-
-        uint16_t csum = checksum(res.buf, config.xfer_unit_demanded);
-        printf("checksum of data generated (for the other to read): %0x\n", csum);
-#endif
-    }
-    if( config.opcode == IBV_WR_RDMA_WRITE ){
-        printf("Generating %zd bytes to send...\n", config.xfer_unit);
+    /* generate data */
+    if( config.config_other->opcode == IBV_WR_RDMA_READ || config.opcode == IBV_WR_RDMA_WRITE){
+        printf("Generating %zd bytes...\n", config.xfer_unit);
         FILE *random = fopen("/dev/urandom", "r");
         fread(res.buf, 1, config.xfer_unit, random);
         fclose(random);
 #ifdef DEBUG
-        uint16_t csum = checksum(res.buf, config.xfer_unit);
-        printf("checksum of data generated %0x (for me to write): \n", csum);
+        csum = checksum(res.buf, config.xfer_unit);
+        printf("checksum of data in my buffer: %0x\n", csum);
 #endif
     }
 
-
     /* WAIT TILL BOTH ARE ON THE SAME PAGE */
-    if (sock_sync_data (res.sock, 1, "R", &temp_char))  
-    {
+    if (sock_sync_data (res.sock, 1, "R", &temp_char)){
         fprintf (stderr, "sync error before RDMA ops\n");
         rc = 1;
         goto main_exit;
@@ -192,10 +173,10 @@ int main ( int argc, char *argv[] )
     fprintf(stdout, GRN "sync finished--beginning operation\n" RESET );
 
     /* DATA OPERATION */
-    if( config.opcode == IBV_WR_RDMA_READ ){
 
-        /* START RDMA READ */
-        if (post_send (&res, IBV_WR_RDMA_READ)){
+    if( config.opcode == IBV_WR_RDMA_READ || config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
+        /* POST REQUEST */
+        if (post_send (&res, config.opcode)){
             fprintf (stderr, "failed to post SR 2\n");
             rc = 1;
             goto main_exit;
@@ -207,30 +188,16 @@ int main ( int argc, char *argv[] )
             rc = 1;
             goto main_exit;
         }
-
-#ifdef DEBUG
-        uint16_t csum = checksum(res.buf, MAX(config.xfer_unit_demanded, config.xfer_unit));
-        printf("checksum of data inside server's buffer: %0x\n", csum);
-#endif
-
-    } else if ( config.opcode == IBV_WR_RDMA_WRITE ){
-        //TODO share code with RDMA READ
-        if(post_send(&res, IBV_WR_RDMA_WRITE)){
-            fprintf(stderr, "failed to post SR 2\n");
-            rc = 1;
+    } 
+   
+    //TODO once this is both ways, this is not gonna work like this
+    if( config.config_other->opcode == IBV_WR_SEND ){
+        /* IF OTHER SENDS, WE WILL BE NOTIFIED AS WELL */
+        if (poll_completion (&res)){
+            fprintf (stderr, "poll completion failed\n");
             goto main_exit;
         }
-
-        if(poll_completion(&res)){
-            fprintf (stderr, "poll completion failed 2\n");
-            rc = 1;
-            goto main_exit;
-        }
-
-    } else if ( config.opcode == IBV_WR_SEND ){
-
     }
-
 
     if (sock_sync_data (res.sock, 1, "D", &temp_char)){
         fprintf (stderr, "sync error after RDMA ops\n");
@@ -238,9 +205,10 @@ int main ( int argc, char *argv[] )
         goto main_exit;
     }
 
-
-    uint16_t csum = checksum(res.buf, MAX(config.xfer_unit_demanded, config.xfer_unit));
+#ifdef DEBUG
+    csum = checksum(res.buf, config.xfer_unit);
     fprintf(stdout, "final checksum inside my buffer : %0x\n", csum);
+#endif
 
 
 main_exit:
@@ -515,7 +483,7 @@ static int connect_qp (struct resources *res)
     /* POST RECEIVE IF THE OTHER HAS PLANS TO DO SEND */
     if (config.config_other->opcode == IBV_WR_SEND )
     {
-        fprintf(stdout,"it seems that the other has plans to do a send!");
+        fprintf(stdout,"SEND intetion detected!\n");
         rc = post_receive (res);
         if (rc)
         {
@@ -563,7 +531,7 @@ static int post_receive (struct resources *res)
     /* prepare the scatter/gather entry */
     memset (&sge, 0, sizeof (sge));
     sge.addr = (uintptr_t) res->buf;
-    sge.length = config.xfer_unit_demanded;
+    sge.length = config.xfer_unit;
     sge.lkey = res->mr->lkey;
     /* prepare the receive work request */
     memset (&rr, 0, sizeof (rr));
@@ -626,28 +594,29 @@ static int resources_create (struct resources *res)
 
 
     /* EXCHANGE CONFIG INFO */
-    struct config_t *config_other= (struct config_t *) malloc( sizeof(struct config_t) );
+    struct config_t *config_other = (struct config_t *) malloc( sizeof(struct config_t) );
+
     if( sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config, (char *) config_other) < 0){
         fprintf(stderr, "failed to communicate demanded buffer size\n");
         rc = -1;
         goto resources_create_exit;
     }
     fprintf(stdout,"demanded buffer size is %zd bytes\n", config_other->xfer_unit);
-    config.xfer_unit_demanded = config_other->xfer_unit;
+    config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
     config.config_other = config_other;
 
     /* EXCHANGE DEMANDED BUFFER SIZE */
     /*  
-    size_t buf_size_demand = config.xfer_unit;
-    size_t tmp_buf_size;
-    if( sock_sync_data( res->sock, sizeof(size_t), (char *) &buf_size_demand, (char *) &tmp_buf_size) < 0 )
-    {
+        size_t buf_size_demand = config.xfer_unit;
+        size_t tmp_buf_size;
+        if( sock_sync_data( res->sock, sizeof(size_t), (char *) &buf_size_demand, (char *) &tmp_buf_size) < 0 )
+        {
         fprintf(stderr, "failed to communicate demanded buffer size\n");
         rc = -1;
         goto resources_create_exit;
-    }
-    fprintf(stdout,"demanded buffer size is %zd bytes\n", tmp_buf_size);
-    config.xfer_unit_demanded = tmp_buf_size;*/
+        }
+        fprintf(stdout,"demanded buffer size is %zd bytes\n", tmp_buf_size);
+        config.xfer_unit_demanded = tmp_buf_size;*/
 
     /* GET IB DEVICES AND SELECT ONE */
     fprintf (stdout, "searching for IB devices in host\n");
@@ -726,7 +695,7 @@ static int resources_create (struct resources *res)
     }
 
     /* CREATE MEMORY BUFFER */
-    size = MAX(config.xfer_unit_demanded, config.xfer_unit);
+    size = config.xfer_unit;
     res->buf = (char *) malloc (size);
     if (!res->buf)
     {

@@ -43,7 +43,6 @@ struct config_t
     int ib_port;			/* local IB port to work with */
     int gid_idx;			/* gid index to use */
     size_t xfer_unit;       /* how big is each transfer going to be (bytes) */
-    size_t xfer_unit_demanded; /* how big is the incoming transfers are going to be (bytes) */
     int trials;             /* number of times we are going to transfer */
     enum ibv_wr_opcode opcode;     /* requested op */
     struct config_t *config_other;
