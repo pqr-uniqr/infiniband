@@ -151,59 +151,68 @@ int main ( int argc, char *argv[] )
     rc = 0;
 
 
-    /* GENERATE DATA */
-    if( config.config_other->opcode == IBV_WR_RDMA_READ || config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
-        printf("Generating %zd bytes...\n", config.xfer_unit);
-        FILE *random = fopen("/dev/urandom", "r");
-        fread(res.buf, 1, config.xfer_unit, random);
-        fclose(random);
+    for( i=0; i < config.trials; i++){
+        fprintf(stdout, "trial no. %d\n", i);
+
+        /* GENERATE DATA */
+        if( config.config_other->opcode == IBV_WR_RDMA_READ || 
+                config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
+            printf("Generating %zd bytes...\n", config.xfer_unit);
+            FILE *random = fopen("/dev/urandom", "r");
+            fread(res.buf, 1, config.xfer_unit, random);
+            fclose(random);
 #ifdef DEBUG
-        csum = checksum(res.buf, config.xfer_unit);
-        printf("checksum of data in my buffer: %0x\n", csum);
+            csum = checksum(res.buf, config.xfer_unit);
+            printf("checksum of data in my buffer: %0x\n", csum);
 #endif
-    }
+        }
 
-    /* WAIT TILL BOTH ARE ON THE SAME PAGE */
-    if (sock_sync_data (res.sock, 1, "R", &temp_char)){
-        fprintf (stderr, "sync error before RDMA ops\n");
-        rc = 1;
-        goto main_exit;
-    }
-
-    fprintf(stdout, GRN "sync finished--beginning operation\n" RESET );
-
-    /* DATA OPERATION */
-
-    if( config.opcode == IBV_WR_RDMA_READ || config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
-        /* POST REQUEST */
-        if (post_send (&res, config.opcode)){
-            fprintf (stderr, "failed to post SR 2\n");
+        /* WAIT TILL BOTH ARE ON THE SAME PAGE */
+        if (sock_sync_data (res.sock, 1, "R", &temp_char)){
+            fprintf (stderr, "sync error before RDMA ops\n");
             rc = 1;
             goto main_exit;
         }
 
-        /* POLL FOR COMPLETION */
-        if (poll_completion(&res)){
-            fprintf (stderr, "poll completion failed 2\n");
-            rc = 1;
-            goto main_exit;
-        }
-    } 
-   
-    //TODO once this is both ways, this is not gonna work like this
-    if( config.config_other->opcode == IBV_WR_SEND ){
-        /* IF OTHER SENDS, WE WILL BE NOTIFIED AS WELL */
-        if (poll_completion (&res)){
-            fprintf (stderr, "poll completion failed\n");
-            goto main_exit;
+        fprintf(stdout, GRN "sync finished--beginning operation\n" RESET );
+
+        /* DATA OPERATION */
+        if( config.opcode == IBV_WR_RDMA_READ || 
+                config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
+            /* POST REQUEST */
+            if (post_send (&res, config.opcode)){
+                fprintf (stderr, "failed to post SR 2\n");
+                rc = 1;
+                goto main_exit;
+            }
+
+            /* POLL FOR COMPLETION */
+            if ( poll_completion(&res) ){
+                fprintf (stderr, "poll completion failed 2\n");
+                rc = 1;
+                goto main_exit;
+            }
+        } 
+       
+        //TODO once this is both ways, this is not gonna work like this
+        if( config.config_other->opcode == IBV_WR_SEND ){
+            /* IF OTHER SENDS, WE WILL BE NOTIFIED AS WELL */
+            if (poll_completion (&res)){
+                fprintf (stderr, "poll completion failed\n");
+                goto main_exit;
+            }
         }
     }
 
+    fprintf(stdout, GRN "data operation finished\n" RESET );
+
+    /* WAIT */
+    /*  I don't think we need this...
     if (sock_sync_data (res.sock, 1, "D", &temp_char)){
         fprintf (stderr, "sync error after RDMA ops\n");
         rc = 1;
         goto main_exit;
-    }
+    }*/
 
 #ifdef DEBUG
     csum = checksum(res.buf, config.xfer_unit);
