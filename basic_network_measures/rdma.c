@@ -32,9 +32,9 @@ int main ( int argc, char *argv[] )
     struct resources res;
     char temp_char;
     struct timeval cur_time;
-    unsigned long start_time_usec;
-    unsigned long cur_time_usec;
-    unsigned long average = 0;
+    long start_time_usec;
+    long cur_time_usec;
+    long average = 0;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -244,7 +244,7 @@ main_exit:
     }
     if (config.dev_name) free ((char *) config.dev_name);
 
-    fprintf(stdout, CYN "average time/trial is %ld microseconds\n" RESET, (float) average / (float) trials);
+    fprintf(stdout, CYN "average time/trial is %f microseconds\n" RESET, (float) average / (float) trials);
     fprintf (stdout, "\ntest result is %d\n", rc);
     free( msg );
     return rc;
