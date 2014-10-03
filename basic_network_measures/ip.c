@@ -124,39 +124,33 @@ static int sock_connect (const char *servername, int port)
         void *addr;
         char *ipver;
         char ipstr[INET6_ADDRSTRLEN];
+        if (iterator->ai_family == AF_INET) { // IPv4
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *)iterator->ai_addr;
+            addr = &(ipv4->sin_addr);
+            ipver = "IPv4";
+        } else { // IPv6
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)iterator->ai_addr;
+            addr = &(ipv6->sin6_addr);
+            ipver = "IPv6";
+        }
+        // convert the IP to a string and print it:
+        inet_ntop(iterator->ai_family, addr, ipstr, sizeof ipstr);
+        printf("%s: %s\n", ipver, ipstr); 
+
 
         sockfd = socket(iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
         setsockopt(sockfd, SOL_SOCKET ,SO_REUSEADDR, &so_reuseaddr, sizeof(so_reuseaddr));
 
-        if (sockfd >= 0)
-        {
-            if (servername)
-            {
-                /* Client mode. Initiate connection to remote */
-                if (( tmp = connect (sockfd, iterator->ai_addr, iterator->ai_addrlen) ))
-                {
+        if (sockfd >= 0){
+            if (servername){
+                // Client mode. Initiate connection to remote
+                if (( tmp = connect (sockfd, iterator->ai_addr, iterator->ai_addrlen) )){
                     fprintf (stderr, "failed connect \n");
                     close (sockfd);
                     sockfd = -1;
                 }
-            }
-            else
-            {
-                /* Server mode. Set up listening socket an accept a connection */
-
-                if (iterator->ai_family == AF_INET) { // IPv4
-                    struct sockaddr_in *ipv4 = (struct sockaddr_in *)iterator->ai_addr;
-                    addr = &(ipv4->sin_addr);
-                    ipver = "IPv4";
-                } else { // IPv6
-                    struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)iterator->ai_addr;
-                    addr = &(ipv6->sin6_addr);
-                    ipver = "IPv6";
-                }
-
-                // convert the IP to a string and print it:
-                inet_ntop(iterator->ai_family, addr, ipstr, sizeof ipstr);
-                printf("%s: %s\n", ipver, ipstr); 
+            } else {
+                // Server mode. Set up listening socket an accept a connection
 
                 listenfd = sockfd;
                 sockfd = -1;
