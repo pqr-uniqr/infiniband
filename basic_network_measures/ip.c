@@ -98,9 +98,10 @@ int main ( int argc, char *argv[] )
         }
     }
 
+
     //exchange config info 
     struct config_t *config_other = (struct config_t *) malloc( sizeof(struct config_t) );
-    sock_sync_data(sock, sizeof(struct config_t), (char *) &config, (char *)&config_other);
+    sock_sync_data(sock, sizeof(struct config_t), (char *) &config, (char *) config_other);
     config.xfer_unit= MAX(config.xfer_unit, config_other->xfer_unit);
     config.config_other = config_other;
 
