@@ -166,7 +166,7 @@ int main ( int argc, char *argv[] )
         printf("\n" RESET );*/
 
         uint16_t csum = checksum(res.buf, config.xfer_unit_demanded);
-        printf("checksum of data generated (for the other to read)%0x\n", csum);
+        printf("checksum of data generated (for the other to read): %0x\n", csum);
 #endif
     }
 
@@ -176,8 +176,8 @@ int main ( int argc, char *argv[] )
         fread(res.buf, 1, config.xfer_unit, random);
         fclose(random);
 #ifdef DEBUG
-        uint16_t csum = checksum(res.buf, config.xfer_unit_demanded);
-        printf("checksum of data generated %0x (for me to write)\n", csum);
+        uint16_t csum = checksum(res.buf, config.xfer_unit);
+        printf("checksum of data generated %0x (for me to write): \n", csum);
 #endif
     }
 
@@ -226,11 +226,6 @@ int main ( int argc, char *argv[] )
             rc = 1;
             goto main_exit;
         }
-
-#ifdef DEBUG
-        uint16_t csum = checksum(res.buf, MAX(config.xfer_unit_demanded, config.xfer_unit));
-        printf("checksum of data inside server's buffer: %0x\n", csum);
-#endif
 
     } else if ( config.opcode == IBV_WR_SEND ){
 
