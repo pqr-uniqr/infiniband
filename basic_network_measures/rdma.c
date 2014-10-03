@@ -519,9 +519,6 @@ static int connect_qp (struct resources *res)
 #endif
     }
 
-
-
-
     /* MODIFY QP STATE TO INIT */
     rc = modify_qp_to_init (res->qp);
     if (rc)
@@ -529,8 +526,6 @@ static int connect_qp (struct resources *res)
         fprintf (stderr, "change QP state to INIT failed\n");
         goto connect_qp_exit;
     }
-
-
 
 
     /* modify the QP to RTR */
@@ -542,7 +537,11 @@ static int connect_qp (struct resources *res)
         fprintf (stderr, "failed to modify QP state to RTR\n");
         goto connect_qp_exit;
     }
+
+#ifdef DEBUG
     fprintf (stdout, "Modified QP state to RTR\n");
+#endif
+
     rc = modify_qp_to_rts (res->qp);
     if (rc)
     {
