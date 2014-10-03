@@ -181,16 +181,14 @@ int main ( int argc, char *argv[] )
     if( config.opcode == IBV_WR_RDMA_READ ){
 
         /* START RDMA READ */
-        if (post_send (&res, IBV_WR_RDMA_READ))
-        {
+        if (post_send (&res, IBV_WR_RDMA_READ)){
             fprintf (stderr, "failed to post SR 2\n");
             rc = 1;
             goto main_exit;
         }
 
         /* POLL FOR COMPLETION */
-        if (poll_completion (&res))
-        {
+        if (poll_completion(&res)){
             fprintf (stderr, "poll completion failed 2\n");
             rc = 1;
             goto main_exit;
@@ -205,8 +203,7 @@ int main ( int argc, char *argv[] )
     }
 
 
-    if (sock_sync_data (res.sock, 1, "R", &temp_char))  
-    {
+    if (sock_sync_data (res.sock, 1, "D", &temp_char)){
         fprintf (stderr, "sync error after RDMA ops\n");
         rc = 1;
         goto main_exit;
@@ -907,6 +904,7 @@ int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data
 
     while (!rc && total_read_bytes < xfer_size)
     {
+        printf("data read for sock_sync_data\n"); //FIXME 
         read_bytes = read (sock, remote_data, xfer_size);
         if (read_bytes > 0)
             total_read_bytes += read_bytes;
