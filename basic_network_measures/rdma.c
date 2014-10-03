@@ -136,9 +136,6 @@ int main ( int argc, char *argv[] )
     fprintf(stderr, GRN "resources_init() successful\n" RESET);
 #endif
 
-    get_usage(getpid(),&b);
-
-
     /* SET UP RESOURCES  */
     if( resources_create(&res) ){
         fprintf(stderr, RED "resources_create() failed\n" RESET);
@@ -215,9 +212,11 @@ int main ( int argc, char *argv[] )
                 rc = 1;
                 goto main_exit;
             }
+
             get_usage(getpid(),&b);
             calc_cpu_usage(&a, &b, &ucpu, &scpu);
             printf("%lu / %lu\n", ucpu, scpu);
+
             gettimeofday(&cur_time, NULL);
             cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             printf("post_send() to poll_completion() (usec): %ld\n", cur_time_usec - start_time_usec);
