@@ -127,7 +127,9 @@ int main ( int argc, char *argv[] )
 
 
     /* SUM UP CONFIG */
+#ifdef DEBUG
     print_config();
+#endif
 
     /* INITIATE RESOURCES  */
     resources_init(&res);
@@ -160,7 +162,9 @@ int main ( int argc, char *argv[] )
     trials = MAX(config.trials, config.config_other->trials);
     average = 0;
     for( i=0; i < trials; i++){
+#ifdef DEBUG
         fprintf(stdout, YEL "trial no. %d ------------\n" RESET , i);
+#endif
 
         /* GENERATE DATA */
         if( config.config_other->opcode == IBV_WR_RDMA_READ || 
@@ -190,7 +194,9 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
+#ifdef DEBUG
         fprintf(stdout, GRN "sync finished--beginning operation\n" RESET );
+#endif
 
         /* DATA OPERATION */
         if( config.opcode == IBV_WR_RDMA_READ || 
@@ -236,12 +242,16 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
+#ifdef DEBUG
         csum = checksum( res.buf, config.xfer_unit );
         fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
         fprintf(stdout, YEL "------------------------\n\n" RESET);
+#endif
     }
 
+#ifdef DEBUG
     fprintf(stdout, GRN "data operation finished\n" RESET );
+#endif
 
     /* WAIT */
 
@@ -252,6 +262,7 @@ main_exit:
     }
     if (config.dev_name) free ((char *) config.dev_name);
 
+    /* REPORT ON EXPERIMENT TO STDOUT */
     fprintf(stdout, CYN "average time/trial is %f microseconds\n" RESET, (float) average / (float) trials);
     fprintf (stdout, "\ntest result is %d\n", rc);
     free( msg );
@@ -292,6 +303,7 @@ static int post_send (struct resources *res, int opcode)
         fprintf (stderr, "failed to post SR\n");
     else
     {
+#ifdef DEBUG
         switch (opcode)
         {
             case IBV_WR_SEND:
@@ -307,6 +319,7 @@ static int post_send (struct resources *res, int opcode)
                 fprintf (stdout, "Unknown Request was posted\n");
                 break;
         }
+#endif
     }
     return rc;
 }
@@ -344,8 +357,10 @@ static int poll_completion (struct resources *res)
     else
     {
         /* CQE found */
+#ifdef DEBUG
         fprintf (stdout, "completion was found in CQ with status 0x%x\n",
                 wc.status);
+#endif
 
         check_wc_status(wc.status);
 
@@ -469,7 +484,9 @@ static int connect_qp (struct resources *res)
     local_con_data.qp_num = htonl (res->qp->qp_num);
     local_con_data.lid = htons (res->port_attr.lid);
     memcpy (local_con_data.gid, &my_gid, 16);
+#ifdef DEBUG
     fprintf (stdout, "\nLocal LID = 0x%x\n", res->port_attr.lid);
+#endif
 
     if (sock_sync_data
             (res->sock, sizeof (struct cm_con_data_t), (char *) &local_con_data,
@@ -488,18 +505,22 @@ static int connect_qp (struct resources *res)
     remote_con_data.lid = ntohs (tmp_con_data.lid);
     memcpy (remote_con_data.gid, tmp_con_data.gid, 16);
     res->remote_props = remote_con_data;
+#ifdef DEBUG
     fprintf (stdout, "Remote address = 0x%" PRIx64 "\n", remote_con_data.addr);
     fprintf (stdout, "Remote rkey = 0x%x\n", remote_con_data.rkey);
     fprintf (stdout, "Remote QP number = 0x%x\n", remote_con_data.qp_num);
     fprintf (stdout, "Remote LID = 0x%x\n", remote_con_data.lid);
+#endif
 
     if (config.gid_idx >= 0)
     {
         uint8_t *p = remote_con_data.gid;
+#ifdef DEBUG
         fprintf (stdout,
                 "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
                 p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
                 p[10], p[11], p[12], p[13], p[14], p[15]);
+#endif
     }
 
 
@@ -532,7 +553,9 @@ static int connect_qp (struct resources *res)
         fprintf (stderr, "failed to modify QP state to RTR\n");
         goto connect_qp_exit;
     }
+#ifdef DEBUG
     fprintf (stdout, "QP state was change to RTS\n");
+#endif
 
 
     /* sync to make sure that both sides are in states that they can connect to prevent packet loose */
@@ -564,10 +587,13 @@ static int post_receive (struct resources *res)
     rr.num_sge = 1;
     /* post the Receive Request to the RQ */
     rc = ibv_post_recv (res->qp, &rr, &bad_wr);
-    if (rc)
+    if (rc){
         fprintf (stderr, "failed to post RR\n");
-    else
+    } else {
+#ifdef DEBUG
         fprintf (stdout, "Receive Request was posted\n");
+#endif
+    }
     return rc;
 }
 
@@ -602,8 +628,10 @@ static int resources_create (struct resources *res)
             goto resources_create_exit;
         }
     } else {
+#ifdef DEBUG
         fprintf (stdout, "waiting on port %d for TCP connection\n",
                 config.tcp_port);
+#endif
         res->sock = sock_connect (NULL, config.tcp_port);
         if (res->sock < 0){
             fprintf (stderr,
@@ -613,7 +641,9 @@ static int resources_create (struct resources *res)
             goto resources_create_exit;
         }
     }
+#ifdef DEBUG
     fprintf (stdout, "TCP connection was established\n");
+#endif
 
 
     /* EXCHANGE CONFIG INFO */
@@ -624,25 +654,16 @@ static int resources_create (struct resources *res)
         rc = -1;
         goto resources_create_exit;
     }
+#ifdef DEBUG
     fprintf(stdout,"demanded buffer size is %zd bytes\n", config_other->xfer_unit);
+#endif
     config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
     config.config_other = config_other;
 
-    /* EXCHANGE DEMANDED BUFFER SIZE */
-    /*  
-        size_t buf_size_demand = config.xfer_unit;
-        size_t tmp_buf_size;
-        if( sock_sync_data( res->sock, sizeof(size_t), (char *) &buf_size_demand, (char *) &tmp_buf_size) < 0 )
-        {
-        fprintf(stderr, "failed to communicate demanded buffer size\n");
-        rc = -1;
-        goto resources_create_exit;
-        }
-        fprintf(stdout,"demanded buffer size is %zd bytes\n", tmp_buf_size);
-        config.xfer_unit_demanded = tmp_buf_size;*/
-
     /* GET IB DEVICES AND SELECT ONE */
+#ifdef DEBUG
     fprintf (stdout, "searching for IB devices in host\n");
+#endif
     dev_list = ibv_get_device_list (&num_devices);
     if (!dev_list)
     {
@@ -656,15 +677,19 @@ static int resources_create (struct resources *res)
         rc = 1;
         goto resources_create_exit;
     }
+#ifdef DEBUG
     fprintf (stdout, "found %d device(s)\n", num_devices);
+#endif
     for (i = 0; i < num_devices; i++)
     {
         if (!config.dev_name)
         {
             config.dev_name = strdup (ibv_get_device_name (dev_list[i]));
+#ifdef DEBUG
             fprintf (stdout,
                     "device not specified, using first one found: %s\n",
                     config.dev_name);
+#endif
         }
         if (!strcmp (ibv_get_device_name (dev_list[i]), config.dev_name))
         {
@@ -738,9 +763,11 @@ static int resources_create (struct resources *res)
         rc = 1;
         goto resources_create_exit;
     }
+#ifdef DEBUG
     fprintf (stdout,
             "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
             res->buf, res->mr->lkey, res->mr->rkey, mr_flags);
+#endif
 
 
     /* CREATE QUEUE PAIR */
@@ -760,7 +787,9 @@ static int resources_create (struct resources *res)
         rc = 1;
         goto resources_create_exit;
     }
+#ifdef DEBUG
     fprintf (stdout, "QP was created, QP number=0x%x\n", res->qp->qp_num);
+#endif
 
     /* FOR WHEN THINGS GO WRONG */
 resources_create_exit:
@@ -899,7 +928,7 @@ static int sock_connect (const char *servername, int port)
                 if ((tmp =
                             connect (sockfd, iterator->ai_addr, iterator->ai_addrlen)))
                 {
-                    fprintf (stdout, "failed connect \n");
+                    fprintf (stderr, "failed connect \n");
                     close (sockfd);
                     sockfd = -1;
                 }
