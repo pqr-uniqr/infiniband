@@ -244,7 +244,7 @@ main_exit:
     }
     if (config.dev_name) free ((char *) config.dev_name);
 
-    fprintf(stdout, CYN "average time/trial is %ld microseconds\n", (float) average / (float) trials);
+    fprintf(stdout, CYN "average time/trial is %ld microseconds\n" RESET, (float) average / (float) trials);
     fprintf (stdout, "\ntest result is %d\n", rc);
     free( msg );
     return rc;
