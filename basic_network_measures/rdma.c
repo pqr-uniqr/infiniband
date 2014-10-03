@@ -169,7 +169,6 @@ int main ( int argc, char *argv[] )
         /* GENERATE DATA */
         if( config.config_other->opcode == IBV_WR_RDMA_READ || 
                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
-            printf("Generating %zd bytes...\n", config.xfer_unit);
             FILE *random = fopen("/dev/urandom", "r");
             fread(res.buf, 1, config.xfer_unit, random);
             fclose(random);
@@ -204,7 +203,7 @@ int main ( int argc, char *argv[] )
             /* POST REQUEST */
             gettimeofday(&cur_time, NULL);
             start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
-            get_usage(getpid(),&a);
+            //get_usage(getpid(),&a);
             if (post_send (&res, config.opcode)){
                 fprintf (stderr, "failed to post SR 2\n");
                 rc = 1;
@@ -218,13 +217,11 @@ int main ( int argc, char *argv[] )
                 goto main_exit;
             }
 
-            get_usage(getpid(),&b);
-            calc_cpu_usage(&a, &b, &ucpu, &scpu);
-            printf("%lu / %lu\n", ucpu, scpu);
+            //get_usage(getpid(),&b);
+            //calc_cpu_usage(&a, &b, &ucpu, &scpu);
 
             gettimeofday(&cur_time, NULL);
             cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
-            printf("post_send() to poll_completion() (usec): %ld\n", cur_time_usec - start_time_usec);
             average += cur_time_usec - start_time_usec;
         } 
        
@@ -360,9 +357,8 @@ static int poll_completion (struct resources *res)
 #ifdef DEBUG
         fprintf (stdout, "completion was found in CQ with status 0x%x\n",
                 wc.status);
-#endif
-
         check_wc_status(wc.status);
+#endif
 
         /* check the completion status (here we don't care about the completion opcode */
         if (wc.status != IBV_WC_SUCCESS)
