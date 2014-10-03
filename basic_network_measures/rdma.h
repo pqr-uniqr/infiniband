@@ -104,3 +104,7 @@ static void print_config(void);
 static inline uint64_t htonll(uint64_t x);
 static inline uint64_t ntohll(uint64_t x);
 static void check_wc_status(enum ibv_wc_status status);
+static uint16_t checksum(void *vdata, size_t length);
+
+
+

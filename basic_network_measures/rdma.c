@@ -158,11 +158,15 @@ int main ( int argc, char *argv[] )
         fread(res.buf, 1, config.xfer_unit_demanded, random);
         fclose(random);
 #ifdef DEBUG
+        /*  
         printf("data in my buffer:\n" RED);
         for(i=0; i< config.xfer_unit_demanded ; i++){
             printf("%0x", res.buf[i]);
         }
-        printf("\n" RESET );
+        printf("\n" RESET );*/
+
+        uint16_t csum = checksum(res.buf, MAX(config.xfer_unit_demanded, config.xfer_unit));
+        printf("checksum for data in my buffer %0x\n", csum);
 #endif
     }
 
@@ -193,7 +197,10 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
-        fprintf (stdout, "Contents of server's buffer: '%s'\n", res.buf);
+#ifdef DEBUG
+        uint16_t csum = checksum(res.buf, MAX(config.xfer_unit_demanded, config.xfer_unit));
+        printf("checksum for data in my buffer %0x\n", csum);
+#endif
 
     } else if ( config.opcode == IBV_WR_RDMA_WRITE ){
 
@@ -1047,7 +1054,38 @@ static void check_wc_status(enum ibv_wc_status status)
     }
 }
 
+static uint16_t checksum(void *vdata, size_t length)
+{
+    // Cast the data pointer to one that can be indexed.
+    char* data = (char*)vdata;
 
+    // Initialise the accumulator.
+    uint32_t acc=0xffff;
+
+    // Handle complete 16-bit blocks.
+    size_t i;
+    for (i=0;i+1<length;i+=2) {
+        uint16_t word;
+        memcpy(&word,data+i,2);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Handle any partial block at the end of the data.
+    if (length&1) {
+        uint16_t word=0;
+        memcpy(&word,data+length-1,1);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Return the checksum in network byte order.
+    return htons(~acc);
+}
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll (uint64_t x)
