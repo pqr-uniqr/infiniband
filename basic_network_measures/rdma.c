@@ -627,7 +627,7 @@ static int resources_create (struct resources *res)
 
     /* EXCHANGE CONFIG INFO */
     struct config_t *config_other= (struct config_t *) malloc( sizeof(struct config_t) );
-    if( sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config, (char *) &config_other) < 0){
+    if( sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config, (char *) config_other) < 0){
         fprintf(stderr, "failed to communicate demanded buffer size\n");
         rc = -1;
         goto resources_create_exit;
@@ -636,8 +636,8 @@ static int resources_create (struct resources *res)
     config.xfer_unit_demanded = config_other->xfer_unit;
     config.config_other = config_other;
 
-
     /* EXCHANGE DEMANDED BUFFER SIZE */
+    /*  
     size_t buf_size_demand = config.xfer_unit;
     size_t tmp_buf_size;
     if( sock_sync_data( res->sock, sizeof(size_t), (char *) &buf_size_demand, (char *) &tmp_buf_size) < 0 )
@@ -647,7 +647,7 @@ static int resources_create (struct resources *res)
         goto resources_create_exit;
     }
     fprintf(stdout,"demanded buffer size is %zd bytes\n", tmp_buf_size);
-    config.xfer_unit_demanded = tmp_buf_size;
+    config.xfer_unit_demanded = tmp_buf_size;*/
 
     /* GET IB DEVICES AND SELECT ONE */
     fprintf (stdout, "searching for IB devices in host\n");
