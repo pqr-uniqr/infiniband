@@ -239,6 +239,10 @@ int main ( int argc, char *argv[] )
     }
 
 
+    uint16_t csum = checksum(res.buf, MAX(config.xfer_unit_demanded, config.xfer_unit));
+    fprintf(stdout, "final checksum inside my buffer : %0x\n", csum);
+
+
 main_exit:
     if (resources_destroy (&res)){
         fprintf (stderr, "failed to destroy resources\n");
