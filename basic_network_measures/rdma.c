@@ -515,7 +515,7 @@ static int connect_qp (struct resources *res)
     /* POST RECEIVE IF THE OTHER HAS PLANS TO DO SEND */
     if (config.config_other->opcode == IBV_WR_SEND )
     {
-        fpritnf(stdout,"it seems that the other has plans to do a send!");
+        fprintf(stdout,"it seems that the other has plans to do a send!");
         rc = post_receive (res);
         if (rc)
         {
@@ -627,7 +627,7 @@ static int resources_create (struct resources *res)
 
     /* EXCHANGE CONFIG INFO */
     struct config_t *config_other= (struct config_t *) malloc( sizeof(struct config_t) );
-    if( sock_sync_dat( res->sock, sizeof(struct config_t), (char *) &config, (char *) &config_other) < 0){
+    if( sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config, (char *) &config_other) < 0){
         fprintf(stderr, "failed to communicate demanded buffer size\n");
         rc = -1;
         goto resources_create_exit;
