@@ -174,7 +174,6 @@ int main ( int argc, char *argv[] )
         goto main_exit;
     }
 
-
     fprintf(stdout, GRN "sync finished--beginning operation\n" RESET );
 
     /* DATA TRANSFER */
@@ -310,9 +309,13 @@ static int poll_completion (struct resources *res)
         /* CQE found */
         fprintf (stdout, "completion was found in CQ with status 0x%x\n",
                 wc.status);
+
+        check_wc_status(wc.status);
+
         /* check the completion status (here we don't care about the completion opcode */
         if (wc.status != IBV_WC_SUCCESS)
         {
+
             fprintf (stderr,
                     "got bad completion with status: 0x%x, vendor syndrome: 0x%x\n",
                     wc.status, wc.vendor_err);
@@ -904,7 +907,6 @@ int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data
 
     while (!rc && total_read_bytes < xfer_size)
     {
-        printf("data read for sock_sync_data\n"); //FIXME 
         read_bytes = read (sock, remote_data, xfer_size);
         if (read_bytes > 0)
             total_read_bytes += read_bytes;
@@ -969,6 +971,82 @@ static void print_config (void)
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
+
+static void check_wc_status(enum ibv_wc_status status)
+{
+    switch(status){
+        case IBV_WC_SUCCESS:
+            fprintf(stderr,"success\n");
+            break;
+        case IBV_WC_LOC_LEN_ERR:
+            fprintf(stderr,"loc len err\n");
+            break;
+        case IBV_WC_LOC_QP_OP_ERR:
+            fprintf(stderr,"loc qp op err\n");
+            break;
+        case IBV_WC_LOC_EEC_OP_ERR:
+            fprintf(stderr,"loc eec op err\n");
+            break;
+        case IBV_WC_LOC_PROT_ERR:
+            fprintf(stderr,"loc prot err\n");
+            break;
+        case IBV_WC_WR_FLUSH_ERR:
+            fprintf(stderr,"wc wr flush err\n");
+            break;
+        case IBV_WC_MW_BIND_ERR:
+            fprintf(stderr,"mw bind err\n");
+            break;
+        case IBV_WC_BAD_RESP_ERR:
+            fprintf(stderr,"bad resp err\n");
+            break;
+        case IBV_WC_LOC_ACCESS_ERR:
+            fprintf(stderr,"loc access err\n");
+            break;
+        case IBV_WC_REM_INV_REQ_ERR:
+            fprintf(stderr,"rem inv req err\n");
+            break;
+        case IBV_WC_REM_ACCESS_ERR:
+            fprintf(stderr,"rem access err\n");
+            break;
+        case IBV_WC_REM_OP_ERR:
+            fprintf(stderr,"rem op err\n");
+            break;
+        case IBV_WC_RETRY_EXC_ERR:
+            fprintf(stderr,"retry exc err\n");
+            break;
+        case IBV_WC_RNR_RETRY_EXC_ERR:
+            fprintf(stderr,"rnr retry exc err\n");
+            break;
+        case IBV_WC_LOC_RDD_VIOL_ERR:
+            fprintf(stderr,"loc rdd viol err\n");
+            break;
+        case IBV_WC_REM_INV_RD_REQ_ERR:
+            fprintf(stderr,"inv rd req\n");
+            break;
+        case IBV_WC_REM_ABORT_ERR:
+            fprintf(stderr,"rem abort\n");
+            break;
+        case IBV_WC_INV_EECN_ERR:
+            fprintf(stderr,"inv eecn\n");
+            break;
+        case IBV_WC_INV_EEC_STATE_ERR:
+            fprintf(stderr,"inv eec state\n");
+            break;
+        case IBV_WC_FATAL_ERR:
+            fprintf(stderr,"fatal err\n");
+            break;
+        case IBV_WC_RESP_TIMEOUT_ERR:
+            fprintf(stderr,"resp timeout err\n");
+            break;
+        case IBV_WC_GENERAL_ERR:
+            fprintf(stderr,"general err\n");
+            break;
+        default:
+            fprintf(stderr, "no matching status code found\n");
+            return;
+    }
+}
+
 
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
