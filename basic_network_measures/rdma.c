@@ -151,8 +151,8 @@ int main ( int argc, char *argv[] )
     rc = 0;
 
 
-    /* generate data */
-    if( config.config_other->opcode == IBV_WR_RDMA_READ || config.opcode == IBV_WR_RDMA_WRITE){
+    /* GENERATE DATA */
+    if( config.config_other->opcode == IBV_WR_RDMA_READ || config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
         printf("Generating %zd bytes...\n", config.xfer_unit);
         FILE *random = fopen("/dev/urandom", "r");
         fread(res.buf, 1, config.xfer_unit, random);
