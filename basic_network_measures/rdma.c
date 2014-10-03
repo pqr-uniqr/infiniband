@@ -153,7 +153,7 @@ int main ( int argc, char *argv[] )
 
     int trials = MAX(config.trials, config.config_other->trials);
     for( i=0; i < trials; i++){
-        fprintf(stdout, YEL "trial no. %d\n" RESET , i);
+        fprintf(stdout, YEL "trial no. %d ------------\n" RESET , i);
 
         /* GENERATE DATA */
         if( config.config_other->opcode == IBV_WR_RDMA_READ || 
@@ -167,6 +167,14 @@ int main ( int argc, char *argv[] )
             printf("checksum of data in my buffer: %0x\n", csum);
 #endif
         }
+
+        /* POST RECEIVE IF THE OTHER HAS PLANS TO DO SEND */
+        if (config.config_other->opcode == IBV_WR_SEND ){
+            if( (rc = post_receive(&res)) ){
+                fprintf(stderr, "failed to post RR\n");
+                goto main_exit;
+            }
+        } 
 
         /* WAIT TILL BOTH ARE ON THE SAME PAGE */
         if (sock_sync_data (res.sock, 1, "R", &temp_char)){
@@ -203,21 +211,22 @@ int main ( int argc, char *argv[] )
                 goto main_exit;
             }
         }
+        if (sock_sync_data (res.sock, 1, "D", &temp_char)){
+            fprintf (stderr, "sync error after RDMA ops\n");
+            rc = 1;
+            goto main_exit;
+        }
+
 #ifdef DEBUG
         csum = checksum(res.buf, config.xfer_unit);
         fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
+        fprintf(stdout, YEL "------------\n" RESET);
 #endif
     }
 
     fprintf(stdout, GRN "data operation finished\n" RESET );
 
     /* WAIT */
-    /*  I don't think we need this...
-    if (sock_sync_data (res.sock, 1, "D", &temp_char)){
-        fprintf (stderr, "sync error after RDMA ops\n");
-        rc = 1;
-        goto main_exit;
-    }*/
 
 
 
@@ -489,18 +498,6 @@ static int connect_qp (struct resources *res)
     }
 
 
-
-    /* POST RECEIVE IF THE OTHER HAS PLANS TO DO SEND */
-    if (config.config_other->opcode == IBV_WR_SEND )
-    {
-        fprintf(stdout,"SEND intetion detected!\n");
-        rc = post_receive (res);
-        if (rc)
-        {
-            fprintf (stderr, "failed to post RR\n");
-            goto connect_qp_exit;
-        }
-    } 
 
 
     /* modify the QP to RTR */
