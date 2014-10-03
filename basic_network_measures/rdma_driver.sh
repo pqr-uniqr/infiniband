@@ -1,4 +1,4 @@
-#!/usr/bin
+#!/bin/bash
 
 # run RDMA READ
 
