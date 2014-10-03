@@ -150,7 +150,6 @@ int main ( int argc, char *argv[] )
 #endif
     rc = 0;
 
-
     int trials = MAX(config.trials, config.config_other->trials);
     for( i=0; i < trials; i++){
         fprintf(stdout, YEL "trial no. %d ------------\n" RESET , i);
@@ -164,7 +163,7 @@ int main ( int argc, char *argv[] )
             fclose(random);
 #ifdef DEBUG
             csum = checksum(res.buf, config.xfer_unit);
-            printf("checksum of data in my buffer: %0x\n", csum);
+            printf(WHT "checksum of data in my buffer: %0x\n" RESET, csum);
 #endif
         }
 
@@ -217,11 +216,9 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
-#ifdef DEBUG
         csum = checksum(res.buf, config.xfer_unit);
         fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
-        fprintf(stdout, YEL "------------\n" RESET);
-#endif
+        fprintf(stdout, YEL "------------------------\n" RESET);
     }
 
     fprintf(stdout, GRN "data operation finished\n" RESET );
