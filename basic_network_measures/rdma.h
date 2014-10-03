@@ -32,6 +32,7 @@
 
 #define MAX_POLL_CQ_TIMEOUT 2000
 
+#define MAX(X,Y) ((X) < (Y) ? (Y) : (X))
 
 // store configuration fed through command line
 struct config_t

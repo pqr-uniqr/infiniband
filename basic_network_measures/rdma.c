@@ -678,7 +678,7 @@ static int resources_create (struct resources *res)
     }
 
     /* CREATE MEMORY BUFFER */
-    size = config.xfer_unit_demanded;
+    size = MAX(config.xfer_unit_demanded, config.xfer_unit);
     res->buf = (char *) malloc (size);
     if (!res->buf)
     {
