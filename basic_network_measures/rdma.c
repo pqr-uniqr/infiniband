@@ -27,9 +27,14 @@ int main ( int argc, char *argv[] )
 {
     int rc = 1;
     int i;
+    int trials;
     uint16_t csum;
     struct resources res;
     char temp_char;
+    struct timeval cur_time;
+    unsigned long start_time_usec;
+    unsigned long cur_time_usec;
+    unsigned long average = 0;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -150,7 +155,8 @@ int main ( int argc, char *argv[] )
 #endif
     rc = 0;
 
-    int trials = MAX(config.trials, config.config_other->trials);
+    trials = MAX(config.trials, config.config_other->trials);
+    average = 0;
     for( i=0; i < trials; i++){
         fprintf(stdout, YEL "trial no. %d ------------\n" RESET , i);
 
@@ -188,9 +194,6 @@ int main ( int argc, char *argv[] )
         if( config.opcode == IBV_WR_RDMA_READ || 
                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
             /* POST REQUEST */
-            struct timeval cur_time;
-            unsigned long start_time_usec;
-            unsigned long cur_time_usec;
             gettimeofday(&cur_time, NULL);
             start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             if (post_send (&res, config.opcode)){
@@ -208,6 +211,7 @@ int main ( int argc, char *argv[] )
             gettimeofday(&cur_time, NULL);
             cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             printf("post_send() to poll_completion() (usec): %ld\n", cur_time_usec - start_time_usec);
+            average = cur_time_usec - start_time_usec;
         } 
        
         //TODO once this is both ways, this is not gonna work like this
@@ -218,13 +222,13 @@ int main ( int argc, char *argv[] )
                 goto main_exit;
             }
         }
-        if (sock_sync_data (res.sock, 1, "D", &temp_char)){
+        if ( sock_sync_data (res.sock, 1, "D", &temp_char) ){
             fprintf (stderr, "sync error after RDMA ops\n");
             rc = 1;
             goto main_exit;
         }
 
-        csum = checksum(res.buf, config.xfer_unit);
+        csum = checksum( res.buf, config.xfer_unit );
         fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
         fprintf(stdout, YEL "------------------------\n\n" RESET);
     }
@@ -240,6 +244,7 @@ main_exit:
     }
     if (config.dev_name) free ((char *) config.dev_name);
 
+    fprintf(stdout, CYN "average time/trial is %ld microseconds\n", average / trials);
     fprintf (stdout, "\ntest result is %d\n", rc);
     free( msg );
     return rc;
