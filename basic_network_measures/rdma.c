@@ -15,6 +15,7 @@ struct config_t config =
     1,              /* ib_port */
     -1,              /* gid_idx */
     0,              /* xfer_unit */
+    0,              /* xfer_unit_demanded */
     0,              /* trials*/
     -1,             /* opcode */
 };
@@ -94,6 +95,7 @@ int main ( int argc, char *argv[] )
                 } else if( 's' == optarg[0] ){
                     config.opcode = IBV_WR_SEND; 
                 } else {
+                    //TODO operation wrongly specified
                     usage(argv[0]);
                     return 1;
                 }
@@ -158,7 +160,7 @@ int main ( int argc, char *argv[] )
 #ifdef DEBUG
         printf("data to be sent:\n" RED);
         for(i=0; i< config.xfer_unit_demanded ; i++){
-            printf("%0x",msg[i]);
+            printf("%0x", res.buf[i]);
         }
         printf("\n" RESET );
 #endif
