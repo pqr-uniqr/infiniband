@@ -158,7 +158,7 @@ int main ( int argc, char *argv[] )
         fread(res.buf, 1, config.xfer_unit_demanded, random);
         fclose(random);
 #ifdef DEBUG
-        printf("data to be sent:\n" RED);
+        printf("data in my buffer:\n" RED);
         for(i=0; i< config.xfer_unit_demanded ; i++){
             printf("%0x", res.buf[i]);
         }
@@ -173,6 +173,9 @@ int main ( int argc, char *argv[] )
         rc = 1;
         goto main_exit;
     }
+
+
+    fprintf(stdout, GRN "sync finished--beginning operation\n" RESET );
 
     /* DATA TRANSFER */
     if( config.opcode == IBV_WR_RDMA_READ ){
@@ -199,6 +202,14 @@ int main ( int argc, char *argv[] )
 
     } else if ( config.opcode == IBV_WR_SEND ){
 
+    }
+
+
+    if (sock_sync_data (res.sock, 1, "R", &temp_char))  
+    {
+        fprintf (stderr, "sync error after RDMA ops\n");
+        rc = 1;
+        goto main_exit;
     }
 
 
