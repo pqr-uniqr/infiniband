@@ -233,8 +233,6 @@ int main ( int argc, char *argv[] )
 
     /* WAIT */
 
-
-
 main_exit:
     if (resources_destroy (&res)){
         fprintf (stderr, "failed to destroy resources\n");
@@ -875,9 +873,11 @@ static int sock_connect (const char *servername, int port)
     /* Search through results and find the one we want */
     for (iterator = resolved_addr; iterator; iterator = iterator->ai_next)
     {
-        sockfd =
-            socket (iterator->ai_family, iterator->ai_socktype,
-                    iterator->ai_protocol);
+        sockfd = socket (iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
+
+        int so_reuseaddr = 1;
+        setsockopt(sockfd, SOL_SOCKET ,SO_REUSEADDR, &so_reuseaddr, sizeof(so_reuseaddr));
+
         if (sockfd >= 0)
         {
             if (servername)
