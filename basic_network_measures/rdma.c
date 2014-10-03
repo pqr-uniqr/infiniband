@@ -22,7 +22,6 @@ int msg_size;
 char *msg;
 
 /* MAIN */
-
 int main ( int argc, char *argv[] )
 {
     int rc = 1;
@@ -868,6 +867,7 @@ static int sock_connect (const char *servername, int port)
     int sockfd = -1;
     int listenfd = 0;
     int tmp;
+    int so_reuseaddr = 1;
     struct addrinfo hints = {
         .ai_flags = AI_PASSIVE,
         .ai_family = AF_INET,
@@ -887,9 +887,8 @@ static int sock_connect (const char *servername, int port)
     /* Search through results and find the one we want */
     for (iterator = resolved_addr; iterator; iterator = iterator->ai_next)
     {
-        sockfd = socket (iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
+        sockfd = socket(iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
 
-        int so_reuseaddr = 1;
         setsockopt(sockfd, SOL_SOCKET ,SO_REUSEADDR, &so_reuseaddr, sizeof(so_reuseaddr));
 
         if (sockfd >= 0)
