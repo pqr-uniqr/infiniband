@@ -35,6 +35,10 @@ int main ( int argc, char *argv[] )
     long start_time_usec;
     long cur_time_usec;
     long average = 0;
+    long unsigned int ucpu;
+    long unsigned int scpu;
+    struct pstat a;
+    struct pstat b;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -111,7 +115,6 @@ int main ( int argc, char *argv[] )
         }
     }
 
-
     /* PARSE SERVER NAME IF GIVEN*/
     if (optind == argc - 1)
     {
@@ -132,6 +135,9 @@ int main ( int argc, char *argv[] )
 #ifdef DEBUG
     fprintf(stderr, GRN "resources_init() successful\n" RESET);
 #endif
+
+    get_usage(getpid(),&b);
+
 
     /* SET UP RESOURCES  */
     if( resources_create(&res) ){
@@ -196,6 +202,7 @@ int main ( int argc, char *argv[] )
             /* POST REQUEST */
             gettimeofday(&cur_time, NULL);
             start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
+            get_usage(getpid(),&a);
             if (post_send (&res, config.opcode)){
                 fprintf (stderr, "failed to post SR 2\n");
                 rc = 1;
@@ -208,6 +215,9 @@ int main ( int argc, char *argv[] )
                 rc = 1;
                 goto main_exit;
             }
+            get_usage(getpid(),&b);
+            calc_cpu_usage(&a, &b, &ucpu, &scpu);
+            printf("%lu / %lu\n", ucpu, scpu);
             gettimeofday(&cur_time, NULL);
             cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             printf("post_send() to poll_completion() (usec): %ld\n", cur_time_usec - start_time_usec);

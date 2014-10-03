@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <math.h>
+#include "getusage.c"
 
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
