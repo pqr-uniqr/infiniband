@@ -31,6 +31,8 @@
 #define WHT  "\x1B[37m"
 #define RESET "\033[0m"
 
+#define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
+
 struct config_t
 {
     char *server_name;
@@ -42,3 +44,6 @@ struct config_t
 };
 
 static int sock_connect (const char *servername, int port);
+int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
+static void report_result(float average);
+static uint16_t checksum(void *vdata, size_t length);

@@ -205,7 +205,7 @@ int main ( int argc, char *argv[] )
             gettimeofday(&cur_time, NULL);
             start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             //get_usage(getpid(),&a);
-            if (post_send (&res, config.opcode)){
+            if ( post_send(&res, config.opcode) ){
                 fprintf (stderr, "failed to post SR 2\n");
                 rc = 1;
                 goto main_exit;
@@ -974,8 +974,7 @@ int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data
     else
         rc = 0;
 
-    while (!rc && total_read_bytes < xfer_size)
-    {
+    while (!rc && total_read_bytes < xfer_size){
         read_bytes = read (sock, remote_data, xfer_size);
         if (read_bytes > 0)
             total_read_bytes += read_bytes;
