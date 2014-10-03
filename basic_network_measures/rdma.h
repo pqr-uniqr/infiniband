@@ -46,6 +46,7 @@ struct config_t
     size_t xfer_unit_demanded; /* how big is the incoming transfers are going to be (bytes) */
     int trials;             /* number of times we are going to transfer */
     enum ibv_wr_opcode opcode;     /* requested op */
+    struct config_t *config_other;
 };
 
 // data for connecting queue pairs

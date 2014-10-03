@@ -159,17 +159,16 @@ int main ( int argc, char *argv[] )
         fclose(random);
 #ifdef DEBUG
         /*  
-        printf("data in my buffer:\n" RED);
-        for(i=0; i< config.xfer_unit_demanded ; i++){
+            printf("data in my buffer:\n" RED);
+            for(i=0; i< config.xfer_unit_demanded ; i++){
             printf("%0x", res.buf[i]);
-        }
-        printf("\n" RESET );*/
+            }
+            printf("\n" RESET );*/
 
         uint16_t csum = checksum(res.buf, config.xfer_unit_demanded);
         printf("checksum of data generated (for the other to read): %0x\n", csum);
 #endif
     }
-
     if( config.opcode == IBV_WR_RDMA_WRITE ){
         printf("Generating %zd bytes to send...\n", config.xfer_unit);
         FILE *random = fopen("/dev/urandom", "r");
@@ -180,6 +179,7 @@ int main ( int argc, char *argv[] )
         printf("checksum of data generated %0x (for me to write): \n", csum);
 #endif
     }
+
 
     /* WAIT TILL BOTH ARE ON THE SAME PAGE */
     if (sock_sync_data (res.sock, 1, "R", &temp_char))  
@@ -510,16 +510,19 @@ static int connect_qp (struct resources *res)
         goto connect_qp_exit;
     }
 
-    /* 
-       if (config.server_name)
-       {
-       rc = post_receive (res);
-       if (rc)
-       {
-       fprintf (stderr, "failed to post RR\n");
-       goto connect_qp_exit;
-       }
-       } */
+
+
+    /* POST RECEIVE IF THE OTHER HAS PLANS TO DO SEND */
+    if (config.config_other->opcode == IBV_WR_SEND )
+    {
+        fpritnf(stdout,"it seems that the other has plans to do a send!");
+        rc = post_receive (res);
+        if (rc)
+        {
+            fprintf (stderr, "failed to post RR\n");
+            goto connect_qp_exit;
+        }
+    } 
 
 
     /* modify the QP to RTR */
@@ -600,8 +603,7 @@ static int resources_create (struct resources *res)
     /* ESTABLISH TCP CONNECTION */
     if (config.server_name) {
         res->sock = sock_connect(config.server_name, config.tcp_port);
-        if (res->sock < 0)
-        {
+        if (res->sock < 0){
             fprintf (stderr,
                     "failed to establish TCP connection to server %s, port %d\n",
                     config.server_name, config.tcp_port);
@@ -612,8 +614,7 @@ static int resources_create (struct resources *res)
         fprintf (stdout, "waiting on port %d for TCP connection\n",
                 config.tcp_port);
         res->sock = sock_connect (NULL, config.tcp_port);
-        if (res->sock < 0)
-        {
+        if (res->sock < 0){
             fprintf (stderr,
                     "failed to establish TCP connection with client on port %d\n",
                     config.tcp_port);
@@ -622,6 +623,19 @@ static int resources_create (struct resources *res)
         }
     }
     fprintf (stdout, "TCP connection was established\n");
+
+
+    /* EXCHANGE CONFIG INFO */
+    struct config_t *config_other= (struct config_t *) malloc( sizeof(struct config_t) );
+    if( sock_sync_dat( res->sock, sizeof(struct config_t), (char *) &config, (char *) &config_other) < 0){
+        fprintf(stderr, "failed to communicate demanded buffer size\n");
+        rc = -1;
+        goto resources_create_exit;
+    }
+    fprintf(stdout,"demanded buffer size is %zd bytes\n", config_other->xfer_unit);
+    config.xfer_unit_demanded = config_other->xfer_unit;
+    config.config_other = config_other;
+
 
     /* EXCHANGE DEMANDED BUFFER SIZE */
     size_t buf_size_demand = config.xfer_unit;
