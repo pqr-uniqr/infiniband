@@ -151,7 +151,8 @@ int main ( int argc, char *argv[] )
     rc = 0;
 
 
-    for( i=0; i < config.trials; i++){
+    int trials = MAX(config.trials, config.config_other->trials);
+    for( i=0; i < trials; i++){
         fprintf(stdout, "trial no. %d\n", i);
 
         /* GENERATE DATA */
