@@ -1,5 +1,5 @@
 CFLAGS= -O6 
-CFLAGS= -g
+CFLAGS= -g -Wall
 CC=gcc
 LD=gcc 
 NAME=rdma

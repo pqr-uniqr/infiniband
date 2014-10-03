@@ -25,13 +25,10 @@ char *msg;
 
 int main ( int argc, char *argv[] )
 {
-
     int rc = 1;
     int i;
     struct resources res;
-    size_t data_len_bytes; //FIXME your naming sucks
-        char temp_char;
-    int trials;
+    char temp_char;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -79,12 +76,12 @@ int main ( int argc, char *argv[] )
                 config.xfer_unit = pow(2,strtoul(optarg,NULL,0));
                 if(config.xfer_unit < 0){
                     usage(argv[0]);
-                    return;
+                    return 1;
                 }
                 break;
             case 't':
                 config.trials = strtoul(optarg, NULL, 0);
-                if(trials < 0){
+                if(config.trials < 0){
                     usage(argv[0]);
                     return 1;
                 }
@@ -152,31 +149,31 @@ int main ( int argc, char *argv[] )
     rc = 0;
 
 
+    /* FILL UP BUFFER WITH DEMANDED DATA */
+    if( config.xfer_unit_demanded ){
+        printf("Generating %zd bytes to send...\n", config.xfer_unit_demanded);
+        FILE *random = fopen("/dev/urandom", "r");
+        fread(res.buf, 1, config.xfer_unit_demanded, random);
+        fclose(random);
+#ifdef DEBUG
+        printf("data to be sent:\n" RED);
+        for(i=0; i< config.xfer_unit_demanded ; i++){
+            printf("%0x",msg[i]);
+        }
+        printf("\n" RESET );
+#endif
+    }
+
+    /* WAIT TILL BOTH ARE ON THE SAME PAGE */
+    if (sock_sync_data (res.sock, 1, "R", &temp_char))  
+    {
+        fprintf (stderr, "sync error before RDMA ops\n");
+        rc = 1;
+        goto main_exit;
+    }
+
     /* DATA TRANSFER */
     if( config.opcode == IBV_WR_RDMA_READ ){
-
-        /* GENERATE DATA TO BE READ */
-        if( !config.server_name ){
-            printf("Generating %zd bytes to send...\n", config.xfer_unit_demanded);
-            FILE *random = fopen("/dev/urandom", "r");
-            fread(res.buf, 1, config.xfer_unit_demanded, random);
-            fclose(random);
-#ifdef DEBUG
-            printf("data to be sent:\n" RED);
-            for(i=0; i< data_len_bytes; i++){
-                printf("%0x",msg[i]);
-            }
-            printf("\n" RESET );
-#endif
-        }
-
-        /* SYNC UP BEFORE STARTING RDMA READ */
-        if (sock_sync_data (res.sock, 1, "R", &temp_char))  
-        {
-            fprintf (stderr, "sync error before RDMA ops\n");
-            rc = 1;
-            goto main_exit;
-        }
 
         /* START RDMA READ */
         if (post_send (&res, IBV_WR_RDMA_READ))
@@ -957,8 +954,7 @@ static void print_config (void)
     if ( !config.trials || !config.xfer_unit )
         fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
     else
-        fprintf(stdout, "%d trials, each %d bytes\n", config.trials, config.xfer_unit );
-
+        fprintf(stdout, "%d trials, each %zd bytes\n", config.trials, config.xfer_unit );
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
