@@ -260,8 +260,8 @@ main_exit:
     if (config.dev_name) free ((char *) config.dev_name);
 
     /* REPORT ON EXPERIMENT TO STDOUT */
-    fprintf(stdout, CYN "average time/trial is %f microseconds\n" RESET, (float) average / (float) trials);
-    fprintf (stdout, "\ntest result is %d\n", rc);
+    /* CONDITIONS and VARIABLES of the EXPERIMENT, RESULTS */
+    fprintf(stdout, "average time/trial is %f microseconds\n" , (float) average / (float) trials);
     free( msg );
     return rc;
 
@@ -542,7 +542,7 @@ static int connect_qp (struct resources *res)
         fprintf (stderr, "failed to modify QP state to RTR\n");
         goto connect_qp_exit;
     }
-    fprintf (stderr, "Modified QP state to RTR\n");
+    fprintf (stdout, "Modified QP state to RTR\n");
     rc = modify_qp_to_rts (res->qp);
     if (rc)
     {
