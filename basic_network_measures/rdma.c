@@ -173,11 +173,11 @@ int main ( int argc, char *argv[] )
     printf(GRN "connect_qp() successful\n" RESET);
 #endif
     rc = 0;
+    
 
     /* DATA TRANSFER */
-
     if( config.opcode == IBV_WR_RDMA_READ ){
-    
+
     } else if ( config.opcode == IBV_WR_RDMA_WRITE ){
 
     } else if ( config.opcode == IBV_WR_SEND ){
@@ -305,7 +305,6 @@ static int connect_qp (struct resources *res)
     local_con_data.rkey = htonl (res->mr->rkey);
     local_con_data.qp_num = htonl (res->qp->qp_num);
     local_con_data.lid = htons (res->port_attr.lid);
-    local_con_data.xfer_size = htonl(config.xfer_unit); //FIXME htonl right size?
     memcpy (local_con_data.gid, &my_gid, 16);
     fprintf (stdout, "\nLocal LID = 0x%x\n", res->port_attr.lid);
 
@@ -324,14 +323,12 @@ static int connect_qp (struct resources *res)
     remote_con_data.rkey = ntohl (tmp_con_data.rkey);
     remote_con_data.qp_num = ntohl (tmp_con_data.qp_num);
     remote_con_data.lid = ntohs (tmp_con_data.lid);
-    remote_con_data.xfer_size = ntohl(tmp_con_data.xfer_size);
     memcpy (remote_con_data.gid, tmp_con_data.gid, 16);
     res->remote_props = remote_con_data;
     fprintf (stdout, "Remote address = 0x%" PRIx64 "\n", remote_con_data.addr);
     fprintf (stdout, "Remote rkey = 0x%x\n", remote_con_data.rkey);
     fprintf (stdout, "Remote QP number = 0x%x\n", remote_con_data.qp_num);
     fprintf (stdout, "Remote LID = 0x%x\n", remote_con_data.lid);
-    fprintf (stdout, "Demanded buffer size = %d\n", remote_con_data.xfer_size);
 
     if (config.gid_idx >= 0)
     {
@@ -353,7 +350,7 @@ static int connect_qp (struct resources *res)
         goto connect_qp_exit;
     }
 
-    /* */
+    /* 
     if (config.server_name)
     {
         rc = post_receive (res);
@@ -362,7 +359,7 @@ static int connect_qp (struct resources *res)
             fprintf (stderr, "failed to post RR\n");
             goto connect_qp_exit;
         }
-    }
+    } */
 
 
     /* modify the QP to RTR */
@@ -465,8 +462,18 @@ static int resources_create (struct resources *res)
         }
     }
     fprintf (stdout, "TCP connection was established\n");
-
-
+   
+    /* EXCHANGE DEMANDED BUFFER SIZE */
+    size_t buf_size_demand = config.xfer_unit;
+    size_t tmp_buf_size;
+    if( sock_sync_data( res->sock, sizeof(size_t), (char *) &buf_size_demand, (char *) &tmp_buf_size) < 0 )
+    {
+        fprintf(stderr, "failed to communicate demanded buffer size");
+        rc = -1;
+        goto resources_create_exit;
+    }
+    fprintf(stdout,"demanded buffer size is %d bytes", tmp_buf_size);
+    config.xfer_unit_demanded = tmp_buf_size;
 
     /* GET IB DEVICES AND SELECT ONE */
     fprintf (stdout, "searching for IB devices in host\n");
@@ -545,8 +552,8 @@ static int resources_create (struct resources *res)
     }
 
     /* CREATE MEMORY BUFFER */
-    size = msg_size;
-    res->buf = (char *) malloc (msg_size);
+    size = config.xfer_unit_demanded;
+    res->buf = (char *) malloc (size);
     if (!res->buf)
     {
         fprintf (stderr, "failed to malloc %Zu bytes to memory buffer\n", size);
