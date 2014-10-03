@@ -41,6 +41,9 @@ struct config_t
     u_int32_t tcp_port;		/* server TCP port */
     int ib_port;			/* local IB port to work with */
     int gid_idx;			/* gid index to use */
+    size_t xfer_unit;       /* how big is each transfer going to be (bytes) */
+    int trials;             /* number of times we are going to transfer */
+    enum ibv_wr_opcode opcode;     /* requested op */
 };
 
 // data for connecting queue pairs
@@ -51,6 +54,7 @@ struct cm_con_data_t
     uint32_t qp_num;		/* QP number */
     uint16_t lid;			/* LID of the IB port */
     uint8_t gid[16];		/* gid */
+    uint32_t xfer_size;     /* size of buffer demanded on the other side (can be up to 2^31 bytes) */
 } __attribute__ ((packed));
 
 // store all resources: device, port, remote connection data, context, protection domain, queue pair, memory registration, data buffer, tcp socket for connection establishment

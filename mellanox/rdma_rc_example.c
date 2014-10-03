@@ -355,6 +355,7 @@ post_send (struct resources *res, int opcode)
     sge.addr = (uintptr_t) res->buf;
     sge.length = MSG_SIZE;
     sge.lkey = res->mr->lkey;
+
     /* prepare the send work request */
     memset (&sr, 0, sizeof (sr));
     sr.next = NULL;
@@ -1158,20 +1159,21 @@ main (int argc, char *argv[])
         goto main_exit;
         }*/
     /* after polling the completion we have the message in the client buffer too */
-    if (config.server_name)
-        fprintf (stdout, "Message is: '%s'\n", res.buf);
-    else
-    {
+
+    if (! config.server_name){
         /* setup server buffer with read message */
         strcpy (res.buf, RDMAMSGR);
     }
-    /* Sync so we are sure server side has data ready before client tries to read it */
+
+    /* !!!!! Sync so we are sure server side has data ready before client tries to read it */
     if (sock_sync_data (res.sock, 1, "R", &temp_char))	/* just send a dummy char back and forth */
     {
         fprintf (stderr, "sync error before RDMA ops\n");
         rc = 1;
         goto main_exit;
     }
+
+
     /* Now the client performs an RDMA read and then write on server.
        Note that the server has no idea these events have occured */
     if (config.server_name)
@@ -1206,6 +1208,8 @@ main (int argc, char *argv[])
             goto main_exit;
         }
     }
+
+
     /* Sync so server will know that client is done mucking with its memory */
     if (sock_sync_data (res.sock, 1, "W", &temp_char))	/* just send a dummy char back and forth */
     {

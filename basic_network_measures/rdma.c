@@ -5,8 +5,6 @@
 
 #include "rdma.h"
 
-
-
 /* GLOBALS */
 
 struct config_t config = 
@@ -15,11 +13,15 @@ struct config_t config =
     NULL,               /* server_name */
     19875,          /* tcp_port */
     1,              /* ib_port */
-    -1              /* gid_idx */
+    -1,              /* gid_idx */
+    0,              /* xfer_unit */
+    0,              /* trials*/
+    -1,             /* opcode */
 };
 int msg_size;
 char *msg;
 
+/* MAIN */
 
 int main ( int argc, char *argv[] )
 {
@@ -27,7 +29,8 @@ int main ( int argc, char *argv[] )
     int rc = 1;
     int i;
     struct resources res;
-    size_t data_len_bytes = 0; //FIXME your naming sucks
+    size_t data_len_bytes; //FIXME your naming sucks
+    int trials;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -39,11 +42,13 @@ int main ( int argc, char *argv[] )
             {.name = "ib-dev",.has_arg = 1,.val = 'd'},
             {.name = "ib-port",.has_arg = 1,.val = 'i'},
             {.name = "gid-idx",.has_arg = 1,.val = 'g'},
-            {.name = "bytes", .has_arg = 1, .val = 'b'},
+            {.name = "xfer-unit", .has_arg = 1, .val = 'b'},
+            {.name = "trials", .has_arg = 1, .val = 't'},
+            {.name = "verb", .has_arg=1, .val= 'v'},
             {.name = NULL,.has_arg = 0,.val = '\0'}
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:i:g:b:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:i:g:b:t:v:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -70,9 +75,27 @@ int main ( int argc, char *argv[] )
                 }
                 break;
             case 'b':
-                data_len_bytes = (int) pow( (double) 2, (double) strtoul(optarg, NULL, 0));
-                if( data_len_bytes < 0)
-                {
+                config.xfer_unit = pow(2,strtoul(optarg,NULL,0));
+                if(config.xfer_unit < 0){
+                    usage(argv[0]);
+                    return;
+                }
+                break;
+            case 't':
+                config.trials = strtoul(optarg, NULL, 0);
+                if(trials < 0){
+                    usage(argv[0]);
+                    return 1;
+                }
+                break;
+            case 'v':
+                if( 'r' == optarg[0] ){
+                    config.opcode = IBV_WR_RDMA_READ;
+                } else if( 'w' == optarg[0] ){
+                    config.opcode = IBV_WR_RDMA_WRITE;
+                } else if( 's' == optarg[0] ){
+                    config.opcode = IBV_WR_SEND; 
+                } else {
                     usage(argv[0]);
                     return 1;
                 }
@@ -95,28 +118,30 @@ int main ( int argc, char *argv[] )
         return 1;
     }
 
-    /* GENERATE DATA IF REQUESTED */
-    if( data_len_bytes > 0 ){
-        printf("Generating %zd bytes to send...\n", data_len_bytes);
-        msg = (char *) malloc(data_len_bytes);
-        msg_size = data_len_bytes;
-        FILE *fp = fopen("/dev/urandom", "r");
-        fread(msg, 1, msg_size, fp);
-        fclose(fp);
 
-        if(!config.server_name){
-            printf("This is the server: will use SEND/RECV\n");
-        } else {
-            printf("This is the client: will use RDMA RW\n");
-        }
-#ifdef DEBUG
-        printf("data to be sent:\n" RED);
-        for(i=0; i< data_len_bytes; i++){
-            printf("%0x",msg[i]);
-        }
-        printf("\n" RESET );
-#endif
-    }
+    /* GENERATE DATA IF REQUESTED */
+/*     if( data_len_bytes > 0 ){
+ *         printf("Generating %zd bytes to send...\n", data_len_bytes);
+ *         msg = (char *) malloc(data_len_bytes);
+ *         msg_size = data_len_bytes;
+ *         FILE *fp = fopen("/dev/urandom", "r");
+ *         fread(msg, 1, msg_size, fp);
+ *         fclose(fp);
+ * 
+ *         if(!config.server_name){
+ *             printf("This is the server: will use SEND/RECV\n");
+ *         } else {
+ *             printf("This is the client: will use RDMA RW\n");
+ *         }
+ * #ifdef DEBUG
+ *         printf("data to be sent:\n" RED);
+ *         for(i=0; i< data_len_bytes; i++){
+ *             printf("%0x",msg[i]);
+ *         }
+ *         printf("\n" RESET );
+ * #endif
+ *     }
+ */
 
     /* SUM UP CONFIG */
     print_config();
@@ -124,7 +149,7 @@ int main ( int argc, char *argv[] )
     /* INITIATE RESOURCES  */
     resources_init(&res);
 #ifdef DEBUG
-    printf(GRN "resources_init() successful\n" RESET);
+    fprintf(stderr, GRN "resources_init() successful\n" RESET);
 #endif
 
     /* SET UP RESOURCES  */
@@ -147,9 +172,18 @@ int main ( int argc, char *argv[] )
 #ifdef DEBUG
     printf(GRN "connect_qp() successful\n" RESET);
 #endif
-
-
     rc = 0;
+
+    /* DATA TRANSFER */
+
+    if( config.opcode == IBV_WR_RDMA_READ ){
+    
+    } else if ( config.opcode == IBV_WR_RDMA_WRITE ){
+
+    } else if ( config.opcode == IBV_WR_SEND ){
+
+    }
+
 
 main_exit:
     if (resources_destroy (&res)){
@@ -271,6 +305,7 @@ static int connect_qp (struct resources *res)
     local_con_data.rkey = htonl (res->mr->rkey);
     local_con_data.qp_num = htonl (res->qp->qp_num);
     local_con_data.lid = htons (res->port_attr.lid);
+    local_con_data.xfer_size = htonl(config.xfer_unit); //FIXME htonl right size?
     memcpy (local_con_data.gid, &my_gid, 16);
     fprintf (stdout, "\nLocal LID = 0x%x\n", res->port_attr.lid);
 
@@ -289,12 +324,15 @@ static int connect_qp (struct resources *res)
     remote_con_data.rkey = ntohl (tmp_con_data.rkey);
     remote_con_data.qp_num = ntohl (tmp_con_data.qp_num);
     remote_con_data.lid = ntohs (tmp_con_data.lid);
+    remote_con_data.xfer_size = ntohl(tmp_con_data.xfer_size);
     memcpy (remote_con_data.gid, tmp_con_data.gid, 16);
     res->remote_props = remote_con_data;
     fprintf (stdout, "Remote address = 0x%" PRIx64 "\n", remote_con_data.addr);
     fprintf (stdout, "Remote rkey = 0x%x\n", remote_con_data.rkey);
     fprintf (stdout, "Remote QP number = 0x%x\n", remote_con_data.qp_num);
     fprintf (stdout, "Remote LID = 0x%x\n", remote_con_data.lid);
+    fprintf (stdout, "Demanded buffer size = %d\n", remote_con_data.xfer_size);
+
     if (config.gid_idx >= 0)
     {
         uint8_t *p = remote_con_data.gid;
@@ -344,6 +382,8 @@ static int connect_qp (struct resources *res)
         goto connect_qp_exit;
     }
     fprintf (stdout, "QP state was change to RTS\n");
+
+
     /* sync to make sure that both sides are in states that they can connect to prevent packet loose */
     if (sock_sync_data (res->sock, 1, "Q", &temp_char))	/* just send a dummy char back and forth */
     {
@@ -773,6 +813,30 @@ static void print_config (void)
     fprintf (stdout, "TCP port : %u\n", config.tcp_port);
     if (config.gid_idx >= 0)
         fprintf (stdout, "GID index : %u\n", config.gid_idx);
+
+    char *op;
+    switch(config.opcode){
+        case IBV_WR_RDMA_READ:
+            op = "RDMA READ";
+            break;
+        case IBV_WR_RDMA_WRITE:
+            op = "RDMA WRITE";
+            break;
+        case IBV_WR_SEND:
+            op = "SEND";
+            break;
+        default:
+            op = "no";
+    }
+
+    fprintf(stdout, "%s operation requested\n", op);
+
+    if ( !config.trials || !config.xfer_unit )
+        fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
+    else
+        fprintf(stdout, "%d trials, each %d bytes\n", config.trials, config.xfer_unit );
+    
+
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
 
