@@ -3,6 +3,7 @@ CFLAGS= -g -Wall
 CC=gcc
 LD=gcc 
 NAME=rdma
+IPNAME=ip
 LIB=-libverbs -lm
 
 all: rdma
@@ -15,7 +16,10 @@ debug: rdma.c
 	${CC} ${CFLAGS} -m64 -c ${NAME}.c -DDEBUG
 	${LD} ${NAME}.o ${LIB} -o ${NAME} 
 
+ip: ip.c
+	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c -DDEBUG
+	${LD} ${IPNAME}.o ${LIB} -o ${IPNAME} 
 
 clean:
-	rm -f ${NAME} ${NAME}.o
+	rm -f ${NAME} ${NAME}.o ${IPNAME} ${IPNAME}.o
 

@@ -17,6 +17,7 @@ struct config_t config =
     0,              /* xfer_unit */
     0,              /* trials*/
     -1,             /* opcode */
+    NULL,
 };
 int msg_size;
 char *msg;
