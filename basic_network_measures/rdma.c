@@ -153,7 +153,7 @@ int main ( int argc, char *argv[] )
 
     int trials = MAX(config.trials, config.config_other->trials);
     for( i=0; i < trials; i++){
-        fprintf(stdout, "trial no. %d\n", i);
+        fprintf(stdout, YEL "trial no. %d\n" RESET , i);
 
         /* GENERATE DATA */
         if( config.config_other->opcode == IBV_WR_RDMA_READ || 
@@ -203,6 +203,10 @@ int main ( int argc, char *argv[] )
                 goto main_exit;
             }
         }
+#ifdef DEBUG
+        csum = checksum(res.buf, config.xfer_unit);
+        fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
+#endif
     }
 
     fprintf(stdout, GRN "data operation finished\n" RESET );
@@ -215,10 +219,6 @@ int main ( int argc, char *argv[] )
         goto main_exit;
     }*/
 
-#ifdef DEBUG
-    csum = checksum(res.buf, config.xfer_unit);
-    fprintf(stdout, "final checksum inside my buffer : %0x\n", csum);
-#endif
 
 
 main_exit:
