@@ -102,6 +102,7 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 /* UTIL */
 static void usage(const char *argv0);
 static void print_config(void);
+static void report_result(float time_average);
 static inline uint64_t htonll(uint64_t x);
 static inline uint64_t ntohll(uint64_t x);
 static void check_wc_status(enum ibv_wc_status status);

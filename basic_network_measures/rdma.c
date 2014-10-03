@@ -261,7 +261,9 @@ main_exit:
 
     /* REPORT ON EXPERIMENT TO STDOUT */
     /* CONDITIONS and VARIABLES of the EXPERIMENT, RESULTS */
-    fprintf(stdout, "average time/trial is %f microseconds\n" , (float) average / (float) trials);
+   
+    report_result( (float) average / (float) trials);
+    //fprintf(stdout, "average time/trial is %f microseconds\n" , (float) average / (float) trials);
     free( msg );
     return rc;
 
@@ -1037,6 +1039,29 @@ static void print_config (void)
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
+
+static void report_result(float time_average)
+{
+    char *op;
+    switch(config.opcode){
+        case IBV_WR_RDMA_READ:
+            op = "RDMA READ";
+            break;
+        case IBV_WR_RDMA_WRITE:
+            op = "RDMA WRITE";
+            break;
+        case IBV_WR_SEND:
+            op = "SEND";
+            break;
+        default:
+            op = "no";
+    }
+
+    fprintf(stdout, "Report:\n");
+    fprintf(stdout, "Op: %s, Trials: %d, Transfer Unit: %d bytes\n", op, config.trials, config.xfer_unit);
+    fprintf(stdout, "Average time/trial: %f microseconds\n" , time_average);
+}
+
 
 static void check_wc_status(enum ibv_wc_status status)
 {
