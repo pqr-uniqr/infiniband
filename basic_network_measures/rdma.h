@@ -33,7 +33,9 @@
 #define MSG_SIZE 30
 
 
-struct config_t{
+// store configuration fed through command line
+struct config_t
+{
     const char *dev_name;		/* IB device name */
     char *server_name;		/* server host name */
     u_int32_t tcp_port;		/* server TCP port */
@@ -41,8 +43,9 @@ struct config_t{
     int gid_idx;			/* gid index to use */
 };
 
-/* structure to exchange data which is needed to connect the QPs */
-struct cm_con_data_t{
+// data for connecting queue pairs
+struct cm_con_data_t
+{
     uint64_t addr;		/* Buffer address */
     uint32_t rkey;		/* Remote key */
     uint32_t qp_num;		/* QP number */
@@ -50,7 +53,9 @@ struct cm_con_data_t{
     uint8_t gid[16];		/* gid */
 } __attribute__ ((packed));
 
-struct resources {
+// store all resources: device, port, remote connection data, context, protection domain, queue pair, memory registration, data buffer, tcp socket for connection establishment
+struct resources 
+{
     struct ibv_device_attr device_attr;
     /* Device attributes */
     struct ibv_port_attr port_attr;	/* IB port attributes */
@@ -65,21 +70,27 @@ struct resources {
     int sock;			/* TCP socket file descriptor */
 };
 
-/*  */
-static int connect_qp(struct resources *res);
+
+/* QUEUE PAIR STATE MODIFICATION */
 static int modify_qp_to_init(struct ibv_qp *qp);
 static int modify_qp_to_rtr(struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t *dgid);
-static int post_receive(struct resources *res);
-int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
+static int modify_qp_to_rts(struct ibv_qp *qp);
 
-/* resources functions */
+/* QUEUE PAIR OPERATIONS */
+static int connect_qp(struct resources *res);
+static int post_receive(struct resources *res);
+
+/* RESOURCE MANAGEMENT */
 static void resources_init( struct resources *res);
 static int resources_create(struct resources *res);
 static int resources_destroy( struct resources *res);
 
-/* util functions */
+/* SOCKET OPERATION WRAPPERS (TCP) */
+static int sock_connect(const char *servername, int port);
+int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
+
+/* UTIL */
 static void usage(const char *argv0);
 static void print_config(void);
-static int sock_connect(const char *servername, int port);
-
-
+static inline uint64_t htonll(uint64_t x);
+static inline uint64_t ntohll(uint64_t x);

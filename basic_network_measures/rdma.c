@@ -4,33 +4,10 @@
  * */
 
 #include "rdma.h"
-#include <math.h>
 
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-static inline uint64_t htonll (uint64_t x)
-{
-    return bswap_64 (x);
-}
 
-static inline uint64_t ntohll (uint64_t x)
-{
-    return bswap_64 (x);
-}
-#elif __BYTE_ORDER == __BIG_ENDIAN
-
-static inline uint64_t htonll (uint64_t x)
-{
-    return x;
-}
-
-static inline uint64_t ntohll (uint64_t x)
-{
-    return x;
-}
-#else
-#error __BYTE_ORDER is neithr __LITTLE_ENDIAN nor __BIG_ENDIAN
-#endif 
+/* GLOBALS */
 
 struct config_t config = 
 {
@@ -188,49 +165,7 @@ main_exit:
 }				/* ----------  end of function main  ---------- */
 
 
-static int resources_destroy (struct resources *res)
-{
-    int rc = 0;
-    if (res->qp)
-        if (ibv_destroy_qp (res->qp))
-        {
-            fprintf (stderr, "failed to destroy QP\n");
-            rc = 1;
-        }
-    if (res->mr)
-        if (ibv_dereg_mr (res->mr))
-        {
-            fprintf (stderr, "failed to deregister MR\n");
-            rc = 1;
-        }
-    if (res->buf)
-        free (res->buf);
-    if (res->cq)
-        if (ibv_destroy_cq (res->cq))
-        {
-            fprintf (stderr, "failed to destroy CQ\n");
-            rc = 1;
-        }
-    if (res->pd)
-        if (ibv_dealloc_pd (res->pd))
-        {
-            fprintf (stderr, "failed to deallocate PD\n");
-            rc = 1;
-        }
-    if (res->ib_ctx)
-        if (ibv_close_device (res->ib_ctx))
-        {
-            fprintf (stderr, "failed to close device context\n");
-            rc = 1;
-        }
-    if (res->sock >= 0)
-        if (close (res->sock))
-        {
-            fprintf (stderr, "failed to close socket\n");
-            rc = 1;
-        }
-    return rc;
-}
+/* QUEUE PAIR STATE MODIFICATION */
 
 static int modify_qp_to_init (struct ibv_qp *qp)
 {
@@ -251,56 +186,7 @@ static int modify_qp_to_init (struct ibv_qp *qp)
     return rc;
 }
 
-int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data)
-{
-    int rc;
-    int read_bytes = 0;
-    int total_read_bytes = 0;
-    rc = write (sock, local_data, xfer_size);
-    if (rc < xfer_size)
-        fprintf (stderr, "Failed writing data during sock_sync_data\n");
-    else
-        rc = 0;
-    while (!rc && total_read_bytes < xfer_size)
-    {
-        read_bytes = read (sock, remote_data, xfer_size);
-        if (read_bytes > 0)
-            total_read_bytes += read_bytes;
-        else
-            rc = read_bytes;
-    }
-    return rc;
-}
-
-static int post_receive (struct resources *res)
-{
-    struct ibv_recv_wr rr;
-    struct ibv_sge sge;
-    struct ibv_recv_wr *bad_wr;
-    int rc;
-    /* prepare the scatter/gather entry */
-    memset (&sge, 0, sizeof (sge));
-    sge.addr = (uintptr_t) res->buf;
-    sge.length = MSG_SIZE;
-    sge.lkey = res->mr->lkey;
-    /* prepare the receive work request */
-    memset (&rr, 0, sizeof (rr));
-    rr.next = NULL;
-    rr.wr_id = 0;
-    rr.sg_list = &sge;
-    rr.num_sge = 1;
-    /* post the Receive Request to the RQ */
-    rc = ibv_post_recv (res->qp, &rr, &bad_wr);
-    if (rc)
-        fprintf (stderr, "failed to post RR\n");
-    else
-        fprintf (stdout, "Receive Request was posted\n");
-    return rc;
-}
-
-
-static int modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid,
-        uint8_t * dgid)
+static int modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t * dgid)
 {
     struct ibv_qp_attr attr;
     int flags;
@@ -354,7 +240,6 @@ static int modify_qp_to_rts (struct ibv_qp *qp)
         fprintf (stderr, "failed to modify QP state to RTS\n");
     return rc;
 }
-
 
 static int connect_qp (struct resources *res)
 {
@@ -469,6 +354,39 @@ connect_qp_exit:
     return rc;
 }
 
+static int post_receive (struct resources *res)
+{
+    struct ibv_recv_wr rr;
+    struct ibv_sge sge;
+    struct ibv_recv_wr *bad_wr;
+    int rc;
+    /* prepare the scatter/gather entry */
+    memset (&sge, 0, sizeof (sge));
+    sge.addr = (uintptr_t) res->buf;
+    sge.length = MSG_SIZE;
+    sge.lkey = res->mr->lkey;
+    /* prepare the receive work request */
+    memset (&rr, 0, sizeof (rr));
+    rr.next = NULL;
+    rr.wr_id = 0;
+    rr.sg_list = &sge;
+    rr.num_sge = 1;
+    /* post the Receive Request to the RQ */
+    rc = ibv_post_recv (res->qp, &rr, &bad_wr);
+    if (rc)
+        fprintf (stderr, "failed to post RR\n");
+    else
+        fprintf (stdout, "Receive Request was posted\n");
+    return rc;
+}
+
+/* RESOURCE MANAGEMENT */
+
+static void resources_init (struct resources *res)                                         
+{
+    memset (res, 0, sizeof *res);                                              
+    res->sock = -1; 
+}   
 
 static int resources_create (struct resources *res)
 {
@@ -682,13 +600,51 @@ resources_create_exit:
     return rc;
 }
 
-
-static void resources_init (struct resources *res)                                         
+static int resources_destroy (struct resources *res)
 {
-    memset (res, 0, sizeof *res);                                              
-    res->sock = -1; 
-}   
+    int rc = 0;
+    if (res->qp)
+        if (ibv_destroy_qp (res->qp))
+        {
+            fprintf (stderr, "failed to destroy QP\n");
+            rc = 1;
+        }
+    if (res->mr)
+        if (ibv_dereg_mr (res->mr))
+        {
+            fprintf (stderr, "failed to deregister MR\n");
+            rc = 1;
+        }
+    if (res->buf)
+        free (res->buf);
+    if (res->cq)
+        if (ibv_destroy_cq (res->cq))
+        {
+            fprintf (stderr, "failed to destroy CQ\n");
+            rc = 1;
+        }
+    if (res->pd)
+        if (ibv_dealloc_pd (res->pd))
+        {
+            fprintf (stderr, "failed to deallocate PD\n");
+            rc = 1;
+        }
+    if (res->ib_ctx)
+        if (ibv_close_device (res->ib_ctx))
+        {
+            fprintf (stderr, "failed to close device context\n");
+            rc = 1;
+        }
+    if (res->sock >= 0)
+        if (close (res->sock))
+        {
+            fprintf (stderr, "failed to close socket\n");
+            rc = 1;
+        }
+    return rc;
+}
 
+/* SOCKET OPERATION WRAPPERS */
 
 static int sock_connect (const char *servername, int port)
 {
@@ -763,7 +719,31 @@ sock_connect_exit:
     return sockfd;
 }
 
+int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data)
+{
+    int rc;
+    int read_bytes = 0;
+    int total_read_bytes = 0;
 
+    rc = write (sock, local_data, xfer_size);
+
+    if (rc < xfer_size)
+        fprintf (stderr, "Failed writing data during sock_sync_data\n");
+    else
+        rc = 0;
+
+    while (!rc && total_read_bytes < xfer_size)
+    {
+        read_bytes = read (sock, remote_data, xfer_size);
+        if (read_bytes > 0)
+            total_read_bytes += read_bytes;
+        else
+            rc = read_bytes;
+    }
+    return rc;
+}
+
+/* UTILITY */
 
 static void usage (const char *argv0)
 {
@@ -796,3 +776,28 @@ static void print_config (void)
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
 
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+static inline uint64_t htonll (uint64_t x)
+{
+    return bswap_64 (x);
+}
+
+static inline uint64_t ntohll (uint64_t x)
+{
+    return bswap_64 (x);
+}
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+static inline uint64_t htonll (uint64_t x)
+{
+    return x;
+}
+
+static inline uint64_t ntohll (uint64_t x)
+{
+    return x;
+}
+#else
+#error __BYTE_ORDER is neither __LITTLE_ENDIAN nor __BIG_ENDIAN
+#endif 
