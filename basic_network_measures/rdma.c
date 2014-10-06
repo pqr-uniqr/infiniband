@@ -213,12 +213,6 @@ int main ( int argc, char *argv[] )
                 goto main_exit;
             }
 
-            /* POLL FOR COMPLETION */
-            if ( poll_completion(&res) ){
-                fprintf (stderr, "poll completion failed 2\n");
-                rc = 1;
-                goto main_exit;
-            }
 
             //get_usage(getpid(),&b);
             //calc_cpu_usage(&a, &b, &ucpu, &scpu);
@@ -227,7 +221,14 @@ int main ( int argc, char *argv[] )
             cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
             average += cur_time_usec - start_time_usec;
         } 
-       
+
+        /* POLL FOR COMPLETION */
+        if ( poll_completion(&res) ){
+            fprintf (stderr, "poll completion failed 2\n");
+            rc = 1;
+            goto main_exit;
+        }
+
         //TODO once this is both ways, this is not gonna work like this
         if( config.config_other->opcode == IBV_WR_SEND ){
             /* IF OTHER SENDS, WE WILL BE NOTIFIED AS WELL */
