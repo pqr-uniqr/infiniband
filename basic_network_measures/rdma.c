@@ -1063,7 +1063,7 @@ static void report_result(struct metrics_t met)
             fprintf(stdout, "NOT SUPPORTED YET");
             return;
     }
-    fprintf(stdout, "%zd\t%d\t%f\t%f\t%f",config.xfer_unit, config.trials, min, max, average);
+    fprintf(stdout, "%zd\t%d\t%f\t%f\t%f\n",config.xfer_unit, config.trials, min, max, average);
 }
 
 static void check_wc_status(enum ibv_wc_status status)
