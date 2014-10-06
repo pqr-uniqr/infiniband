@@ -19,7 +19,6 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <math.h>
-#include "getusage.c"
 
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
@@ -31,9 +30,29 @@
 #define WHT  "\x1B[37m"
 #define RESET "\033[0m"
 
+
 #define MAX_POLL_CQ_TIMEOUT 2000
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
+#define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
+
+#ifdef DEBUG
+# define DEBUG_PRINT(x) fprintf x
+#else
+# define DEBUG_PRINT(x) do {} while (0)
+#endif
+
+#define CRT_ALL 0
+#define CRT_BW 1
+#define CRT_LAT 2
+#define CRT_CPU 3
+
+struct metrics_t
+{
+    long unsigned total;
+    long unsigned min;
+    long unsigned max;
+};
 
 // store configuration fed through command line
 struct config_t
@@ -46,6 +65,7 @@ struct config_t
     size_t xfer_unit;       /* how big is each transfer going to be (bytes) */
     int trials;             /* number of times we are going to transfer */
     enum ibv_wr_opcode opcode;     /* requested op */
+    int crt;            /* what to test for */
     struct config_t *config_other;
 };
 
@@ -101,8 +121,10 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 
 /* UTIL */
 static void usage(const char *argv0);
+static void opcode_to_str(int code, char **str);
+static void crt_to_str(int code, char **str);
 static void print_config(void);
-static void report_result(float time_average);
+static void report_result(struct metrics_t met);
 static inline uint64_t htonll(uint64_t x);
 static inline uint64_t ntohll(uint64_t x);
 static void check_wc_status(enum ibv_wc_status status);

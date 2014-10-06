@@ -17,6 +17,7 @@ struct config_t config =
     0,              /* xfer_unit */
     0,              /* trials*/
     -1,             /* opcode */
+    CRT_ALL,       /* criteria */
     NULL,
 };
 int msg_size;
@@ -34,11 +35,8 @@ int main ( int argc, char *argv[] )
     struct timeval cur_time;
     long start_time_usec;
     long cur_time_usec;
-    long average = 0;
-    long unsigned int ucpu;
-    long unsigned int scpu;
-    struct pstat a;
-    struct pstat b;
+    long d;
+    struct metrics_t met;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -53,10 +51,11 @@ int main ( int argc, char *argv[] )
             {.name = "xfer-unit", .has_arg = 1, .val = 'b'},
             {.name = "trials", .has_arg = 1, .val = 't'},
             {.name = "verb", .has_arg=1, .val= 'v'},
+            {.name = "criteria", .has_arg=1, .val='c'},
             {.name = NULL,.has_arg = 0,.val = '\0'}
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:i:g:b:t:v:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:i:g:b:t:v:c:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -97,6 +96,7 @@ int main ( int argc, char *argv[] )
                 }
                 break;
             case 'v':
+                //awkward!
                 if( 'r' == optarg[0] ){
                     config.opcode = IBV_WR_RDMA_READ;
                 } else if( 'w' == optarg[0] ){
@@ -104,9 +104,20 @@ int main ( int argc, char *argv[] )
                 } else if( 's' == optarg[0] ){
                     config.opcode = IBV_WR_SEND; 
                 } else {
-                    //TODO operation wrongly specified
                     usage(argv[0]);
                     return 1;
+                }
+                break;
+            case 'c':
+                //awkward!
+                if(optarg[0] == 'b'){
+                    config.crt = CRT_BW;
+                } else if( optarg[0] == 'l' ){
+                    config.crt = CRT_LAT;
+                } else if( optarg[0] == 'c'){
+                    config.crt = CRT_CPU;
+                } else {
+                    config.crt = CRT_ALL;
                 }
                 break;
             default:
@@ -116,16 +127,12 @@ int main ( int argc, char *argv[] )
     }
 
     /* PARSE SERVER NAME IF GIVEN*/
-    if (optind == argc - 1)
-    {
+    if (optind == argc - 1){
         config.server_name = argv[optind];
-    }
-    else if (optind < argc)
-    {
+    } else if (optind < argc){
         usage (argv[0]);
         return 1;
     }
-
 
     /* SUM UP CONFIG */
 #ifdef DEBUG
@@ -134,9 +141,7 @@ int main ( int argc, char *argv[] )
 
     /* INITIATE RESOURCES  */
     resources_init(&res);
-#ifdef DEBUG
-    fprintf(stderr, GRN "resources_init() successful\n" RESET);
-#endif
+    DEBUG_PRINT((stdout, GRN "resources_init() successful\n" RESET));
 
     /* SET UP RESOURCES  */
     if( resources_create(&res) ){
@@ -145,9 +150,7 @@ int main ( int argc, char *argv[] )
         goto main_exit;
 
     }
-#ifdef DEBUG
-    printf(GRN "resources_create() successful\n" RESET);
-#endif
+    DEBUG_PRINT((stdout,GRN "resources_create() successful\n" RESET));
 
     /* CONNECT QUEUE PAIRS */
     if( connect_qp(&res) ){
@@ -155,17 +158,16 @@ int main ( int argc, char *argv[] )
         rc = 1;
         goto main_exit;
     }
-#ifdef DEBUG
-    printf(GRN "connect_qp() successful\n" RESET);
-#endif
+    DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
     rc = 0;
 
+    /* START TRIALS! */
     trials = MAX(config.trials, config.config_other->trials);
-    average = 0;
+    met.total = 0;
+    met.max = 0;
+    met.min = ~0;
     for( i=0; i < trials; i++){
-#ifdef DEBUG
-        fprintf(stdout, YEL "trial no. %d ------------\n" RESET , i);
-#endif
+        DEBUG_PRINT((stdout, YEL "trial no. %d ------------\n" RESET , i));
 
         /* GENERATE DATA */
         if( config.config_other->opcode == IBV_WR_RDMA_READ || 
@@ -175,7 +177,7 @@ int main ( int argc, char *argv[] )
             fclose(random);
 #ifdef DEBUG
             csum = checksum(res.buf, config.xfer_unit);
-            printf(WHT "checksum of data in my buffer: %0x\n" RESET, csum);
+            fprintf(stdout, WHT "checksum of data in my buffer: %0x\n" RESET, csum);
 #endif
         }
 
@@ -194,40 +196,39 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
-#ifdef DEBUG
-        fprintf(stdout, GRN "sync finished--beginning operation\n" RESET );
-#endif
+        DEBUG_PRINT((stdout, GRN "sync finished--beginning operation\n" RESET ));
 
         /* DATA OPERATION */
         if( config.opcode == IBV_WR_RDMA_READ || 
                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
 
 
-            /* POST REQUEST */
             gettimeofday(&cur_time, NULL);
             start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
-            //get_usage(getpid(),&a);
+
+            /* POST REQUEST */
             if ( post_send(&res, config.opcode) ){
                 fprintf (stderr, "failed to post SR 2\n");
                 rc = 1;
                 goto main_exit;
             }
 
-
-            //get_usage(getpid(),&b);
-            //calc_cpu_usage(&a, &b, &ucpu, &scpu);
+            /* POLL FOR COMPLETION */
+            if ( poll_completion(&res) ){
+                fprintf (stderr, "poll completion failed 2\n");
+                rc = 1;
+                goto main_exit;
+            }
 
             gettimeofday(&cur_time, NULL);
             cur_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
-            average += cur_time_usec - start_time_usec;
+
+            d = cur_time_usec - start_time_usec;
+            met.total += d;
+            met.min = MIN(d, met.min);
+            met.max = MAX(d, met.max);
         } 
 
-        /* POLL FOR COMPLETION */
-        if ( poll_completion(&res) ){
-            fprintf (stderr, "poll completion failed 2\n");
-            rc = 1;
-            goto main_exit;
-        }
 
         //TODO once this is both ways, this is not gonna work like this
         if( config.config_other->opcode == IBV_WR_SEND ){
@@ -250,9 +251,7 @@ int main ( int argc, char *argv[] )
 #endif
     }
 
-#ifdef DEBUG
-    fprintf(stdout, GRN "data operation finished\n" RESET );
-#endif
+    DEBUG_PRINT((stdout, GRN "data operation finished\n" RESET ));
 
     /* WAIT */
 
@@ -262,12 +261,12 @@ main_exit:
         rc = 1;
     }
     if (config.dev_name) free ((char *) config.dev_name);
+    if (config.config_other) free((char *)config.config_other);
 
     /* REPORT ON EXPERIMENT TO STDOUT */
-    /* CONDITIONS and VARIABLES of the EXPERIMENT, RESULTS */
-   
-    report_result( (float) average / (float) trials);
-    //fprintf(stdout, "average time/trial is %f microseconds\n" , (float) average / (float) trials);
+
+    report_result( met );
+    // report_result( (float) / (float) trials ); TODO 
     free( msg );
     return rc;
 
@@ -306,23 +305,21 @@ static int post_send (struct resources *res, int opcode)
         fprintf (stderr, "failed to post SR\n");
     else
     {
-#ifdef DEBUG
         switch (opcode)
         {
             case IBV_WR_SEND:
-                fprintf (stdout, "Send Request was posted\n");
+                DEBUG_PRINT((stdout, "Send Request was posted\n"));
                 break;
             case IBV_WR_RDMA_READ:
-                fprintf (stdout, "RDMA Read Request was posted\n");
+                DEBUG_PRINT((stdout, "RDMA Read Request was posted\n"));
                 break;
             case IBV_WR_RDMA_WRITE:
-                fprintf (stdout, "RDMA Write Request was posted\n");
+                DEBUG_PRINT((stdout, "RDMA Write Request was posted\n"));
                 break;
             default:
-                fprintf (stdout, "Unknown Request was posted\n");
+                DEBUG_PRINT((stdout, "Unknown Request was posted\n"));
                 break;
         }
-#endif
     }
     return rc;
 }
@@ -360,9 +357,8 @@ static int poll_completion (struct resources *res)
     else
     {
         /* CQE found */
+        DEBUG_PRINT((stdout, "completion was found in CQ with status 0x%x\n", wc.status));
 #ifdef DEBUG
-        fprintf (stdout, "completion was found in CQ with status 0x%x\n",
-                wc.status);
         check_wc_status(wc.status);
 #endif
 
@@ -486,9 +482,7 @@ static int connect_qp (struct resources *res)
     local_con_data.qp_num = htonl (res->qp->qp_num);
     local_con_data.lid = htons (res->port_attr.lid);
     memcpy (local_con_data.gid, &my_gid, 16);
-#ifdef DEBUG
-    fprintf (stdout, "\nLocal LID = 0x%x\n", res->port_attr.lid);
-#endif
+    DEBUG_PRINT((stdout, "\nLocal LID = 0x%x\n", res->port_attr.lid));
 
     if (sock_sync_data
             (res->sock, sizeof (struct cm_con_data_t), (char *) &local_con_data,
@@ -507,28 +501,22 @@ static int connect_qp (struct resources *res)
     remote_con_data.lid = ntohs (tmp_con_data.lid);
     memcpy (remote_con_data.gid, tmp_con_data.gid, 16);
     res->remote_props = remote_con_data;
-#ifdef DEBUG
-    fprintf (stdout, "Remote address = 0x%" PRIx64 "\n", remote_con_data.addr);
-    fprintf (stdout, "Remote rkey = 0x%x\n", remote_con_data.rkey);
-    fprintf (stdout, "Remote QP number = 0x%x\n", remote_con_data.qp_num);
-    fprintf (stdout, "Remote LID = 0x%x\n", remote_con_data.lid);
-#endif
+    DEBUG_PRINT((stdout, "Remote address = 0x%" PRIx64 "\n", remote_con_data.addr));
+    DEBUG_PRINT((stdout, "Remote rkey = 0x%x\n", remote_con_data.rkey));
+    DEBUG_PRINT((stdout, "Remote QP number = 0x%x\n", remote_con_data.qp_num));
+    DEBUG_PRINT((stdout, "Remote LID = 0x%x\n", remote_con_data.lid));
 
-    if (config.gid_idx >= 0)
-    {
+    if (config.gid_idx >= 0){
         uint8_t *p = remote_con_data.gid;
-#ifdef DEBUG
-        fprintf (stdout,
+        DEBUG_PRINT((stdout,
                 "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
                 p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
-                p[10], p[11], p[12], p[13], p[14], p[15]);
-#endif
+                p[10], p[11], p[12], p[13], p[14], p[15]));
     }
 
     /* MODIFY QP STATE TO INIT */
     rc = modify_qp_to_init (res->qp);
-    if (rc)
-    {
+    if (rc){
         fprintf (stderr, "change QP state to INIT failed\n");
         goto connect_qp_exit;
     }
@@ -544,19 +532,14 @@ static int connect_qp (struct resources *res)
         goto connect_qp_exit;
     }
 
-#ifdef DEBUG
-    fprintf (stdout, "Modified QP state to RTR\n");
-#endif
+    DEBUG_PRINT((stdout, "Modified QP state to RTR\n"));
 
     rc = modify_qp_to_rts (res->qp);
-    if (rc)
-    {
+    if (rc){
         fprintf (stderr, "failed to modify QP state to RTR\n");
         goto connect_qp_exit;
     }
-#ifdef DEBUG
-    fprintf (stdout, "QP state was change to RTS\n");
-#endif
+    DEBUG_PRINT((stdout, "QP state was change to RTS\n"));
 
 
     /* sync to make sure that both sides are in states that they can connect to prevent packet loose */
@@ -591,9 +574,7 @@ static int post_receive (struct resources *res)
     if (rc){
         fprintf (stderr, "failed to post RR\n");
     } else {
-#ifdef DEBUG
-        fprintf (stdout, "Receive Request was posted\n");
-#endif
+        DEBUG_PRINT((stdout, "Receive Request was posted\n"));
     }
     return rc;
 }
@@ -629,10 +610,7 @@ static int resources_create (struct resources *res)
             goto resources_create_exit;
         }
     } else {
-#ifdef DEBUG
-        fprintf (stdout, "waiting on port %d for TCP connection\n",
-                config.tcp_port);
-#endif
+        DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", config.tcp_port));
         res->sock = sock_connect (NULL, config.tcp_port);
         if (res->sock < 0){
             fprintf (stderr,
@@ -642,9 +620,7 @@ static int resources_create (struct resources *res)
             goto resources_create_exit;
         }
     }
-#ifdef DEBUG
-    fprintf (stdout, "TCP connection was established\n");
-#endif
+    DEBUG_PRINT((stdout, "TCP connection was established\n"));
 
 
     /* EXCHANGE CONFIG INFO */
@@ -655,42 +631,34 @@ static int resources_create (struct resources *res)
         rc = -1;
         goto resources_create_exit;
     }
-#ifdef DEBUG
-    fprintf(stdout,"demanded buffer size is %zd bytes\n", config_other->xfer_unit);
-#endif
+    DEBUG_PRINT((stdout,"demanded buffer size is %zd bytes\n", config_other->xfer_unit));
     config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
     config.config_other = config_other;
 
     /* GET IB DEVICES AND SELECT ONE */
-#ifdef DEBUG
-    fprintf (stdout, "searching for IB devices in host\n");
-#endif
+    DEBUG_PRINT((stdout, "searching for IB devices in host\n"));
     dev_list = ibv_get_device_list (&num_devices);
-    if (!dev_list)
-    {
+    if (!dev_list){
         fprintf (stderr, "failed to get IB devices list\n");
         rc = 1;
         goto resources_create_exit;
     }
-    if (!num_devices)
-    {
+
+    if (!num_devices){
         fprintf (stderr, "found %d device(s)\n", num_devices);
         rc = 1;
         goto resources_create_exit;
     }
-#ifdef DEBUG
-    fprintf (stdout, "found %d device(s)\n", num_devices);
-#endif
+    DEBUG_PRINT((stdout, "found %d device(s)\n", num_devices));
+
     for (i = 0; i < num_devices; i++)
     {
         if (!config.dev_name)
         {
             config.dev_name = strdup (ibv_get_device_name (dev_list[i]));
-#ifdef DEBUG
-            fprintf (stdout,
+            DEBUG_PRINT((stdout,
                     "device not specified, using first one found: %s\n",
-                    config.dev_name);
-#endif
+                    config.dev_name));
         }
         if (!strcmp (ibv_get_device_name (dev_list[i]), config.dev_name))
         {
@@ -764,11 +732,9 @@ static int resources_create (struct resources *res)
         rc = 1;
         goto resources_create_exit;
     }
-#ifdef DEBUG
-    fprintf (stdout,
+    DEBUG_PRINT((stdout,
             "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
-            res->buf, res->mr->lkey, res->mr->rkey, mr_flags);
-#endif
+            res->buf, res->mr->lkey, res->mr->rkey, mr_flags));
 
 
     /* CREATE QUEUE PAIR */
@@ -788,9 +754,7 @@ static int resources_create (struct resources *res)
         rc = 1;
         goto resources_create_exit;
     }
-#ifdef DEBUG
-    fprintf (stdout, "QP was created, QP number=0x%x\n", res->qp->qp_num);
-#endif
+    DEBUG_PRINT((stdout, "QP was created, QP number=0x%x\n", res->qp->qp_num));
 
     /* FOR WHEN THINGS GO WRONG */
 resources_create_exit:
@@ -1009,6 +973,9 @@ static void usage (const char *argv0)
 
 static void print_config (void)
 {
+    char *op;
+    char *crt;
+
     fprintf (stdout, YEL "CONFIG-------------------------------------------\n" );
     fprintf (stdout, "Device name : \"%s\"\n", config.dev_name);
     fprintf (stdout, "IB port : %u\n", config.ib_port);
@@ -1017,23 +984,10 @@ static void print_config (void)
     fprintf (stdout, "TCP port : %u\n", config.tcp_port);
     if (config.gid_idx >= 0)
         fprintf (stdout, "GID index : %u\n", config.gid_idx);
-
-    char *op;
-    switch(config.opcode){
-        case IBV_WR_RDMA_READ:
-            op = "RDMA READ";
-            break;
-        case IBV_WR_RDMA_WRITE:
-            op = "RDMA WRITE";
-            break;
-        case IBV_WR_SEND:
-            op = "SEND";
-            break;
-        default:
-            op = "no";
-    }
-
-    fprintf(stdout, "%s operation requested\n", op);
+    
+    opcode_to_str(config.opcode, &op);
+    crt_to_str(config.crt, &crt);
+    fprintf(stdout, "%s operation requested (for %s test)\n", op, crt);
 
     if ( !config.trials || !config.xfer_unit )
         fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
@@ -1043,28 +997,74 @@ static void print_config (void)
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
 
-static void report_result(float time_average)
+static void crt_to_str(int code, char **str)
 {
-    char *op;
-    switch(config.opcode){
-        case IBV_WR_RDMA_READ:
-            op = "RDMA READ";
+    char *s;
+    switch( code ){
+        case CRT_BW:
+            s = "BANDWIDTH";
             break;
-        case IBV_WR_RDMA_WRITE:
-            op = "RDMA WRITE";
+        case CRT_LAT:
+            s = "LATENCY";
             break;
-        case IBV_WR_SEND:
-            op = "SEND";
+        case CRT_CPU:
+            s = "CPU USAGE";
             break;
         default:
-            op = "no";
+            s = "ALL";
     }
-
-    fprintf(stdout, "Report:\n");
-    fprintf(stdout, "Op: %s, Trials: %d, Transfer Unit: %d bytes\n", op, config.trials, config.xfer_unit);
-    fprintf(stdout, "Average time/trial: %f microseconds\n" , time_average);
+    *str = malloc( strlen(s) );
+    strcpy(*str, s);
+    return;
 }
 
+static void opcode_to_str(int opcode, char **str)
+{
+    char *s;
+    switch( opcode ){
+        case IBV_WR_RDMA_READ:
+            s = "RDMA READ";
+            break;
+        case IBV_WR_RDMA_WRITE:
+            s = "RDMA WRITE";
+            break;
+        case IBV_WR_SEND:
+            s = "SEND";
+            break;
+        default:
+            s = "NONE";
+
+    }
+    *str = malloc( strlen(s) );
+    strcpy(*str, s);
+    return;
+}
+
+static void report_result(struct metrics_t met)
+{
+    float average, min, max;
+    switch(config.crt){
+        case CRT_BW:
+            average = (float) config.xfer_unit / ((float) met.total / (float) config.trials);
+            min = (float) config.xfer_unit / met.min;
+            max = (float) config.xfer_unit / met.max;
+            break;
+        case CRT_LAT:
+            average = (float) met.total / (float) config.trials;
+            min = met.min;
+            max = met.max;
+            break;
+/*         case CRT_CPU:
+ *             break;
+ *         case CRT_ALL:
+ *             break;
+ */
+        default:
+            fprintf(stdout, "NOT SUPPORTED YET");
+            return;
+    }
+    fprintf(stdout, "%zd\t%d\t%f\t%f\t%f",config.xfer_unit, config.trials, min, max, average);
+}
 
 static void check_wc_status(enum ibv_wc_status status)
 {
