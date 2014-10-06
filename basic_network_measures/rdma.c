@@ -201,6 +201,8 @@ int main ( int argc, char *argv[] )
         /* DATA OPERATION */
         if( config.opcode == IBV_WR_RDMA_READ || 
                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
+
+
             /* POST REQUEST */
             gettimeofday(&cur_time, NULL);
             start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;

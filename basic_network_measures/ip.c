@@ -104,9 +104,8 @@ int main ( int argc, char *argv[] )
     config.xfer_unit= MAX(config.xfer_unit, config_other->xfer_unit);
     config.config_other = config_other;
 
-    trials = MAX( config.trials, config.config_other->trials );
- 
-    buf = (char *) malloc( config.xfer_unit);
+    trials = MAX(config.trials, config.config_other->trials);
+    buf = (char *) malloc(config.xfer_unit);
     memset(buf, 0, config.xfer_unit);
 
     for(i = 0; i< trials; i++){
