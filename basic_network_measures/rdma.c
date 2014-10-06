@@ -1046,8 +1046,8 @@ static void report_result(struct metrics_t met)
     switch(config.crt){
         case CRT_BW:
             average = (float) config.xfer_unit / ((float) met.total / (float) config.trials);
-            min = (float) config.xfer_unit / met.min;
-            max = (float) config.xfer_unit / met.max;
+            max = (float) config.xfer_unit / met.min;
+            min = (float) config.xfer_unit / met.max;
             break;
         case CRT_LAT:
             average = (float) met.total / (float) config.trials;
@@ -1060,7 +1060,7 @@ static void report_result(struct metrics_t met)
  *             break;
  */
         default:
-            fprintf(stdout, "NOT SUPPORTED YET");
+            fprintf(stdout, "NOT SUPPORTED YET\n");
             return;
     }
     fprintf(stdout, "%zd\t%d\t%f\t%f\t%f\n",config.xfer_unit, config.trials, min, max, average);
