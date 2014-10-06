@@ -166,7 +166,9 @@ int main ( int argc, char *argv[] )
     met.total = 0;
     met.max = 0;
     met.min = ~0;
+
     for( i=0; i < trials; i++){
+
         DEBUG_PRINT((stdout, YEL "trial no. %d ------------\n" RESET , i));
 
         /* GENERATE DATA */
@@ -238,6 +240,7 @@ int main ( int argc, char *argv[] )
                 goto main_exit;
             }
         }
+
         if ( sock_sync_data (res.sock, 1, "D", &temp_char) ){
             fprintf (stderr, "sync error after RDMA ops\n");
             rc = 1;
@@ -1040,6 +1043,9 @@ static void opcode_to_str(int opcode, char **str)
     return;
 }
 
+/*  note on units: bytes/microseconds turns out to be the same as MB/sec
+ *
+ * */
 static void report_result(struct metrics_t met)
 {
     float average, min, max;
