@@ -148,7 +148,6 @@ int main ( int argc, char *argv[] )
         fprintf(stderr, RED "resources_create() failed\n" RESET);
         rc = 1;
         goto main_exit;
-
     }
     DEBUG_PRINT((stdout,GRN "resources_create() successful\n" RESET));
 
@@ -168,20 +167,20 @@ int main ( int argc, char *argv[] )
     met.min = ~0;
 
     for( i=0; i < trials; i++){
-
         DEBUG_PRINT((stdout, YEL "trial no. %d ------------\n" RESET , i));
 
         /* GENERATE DATA */
-        if( config.config_other->opcode == IBV_WR_RDMA_READ || 
-                config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
-            FILE *random = fopen("/dev/urandom", "r");
-            fread(res.buf, 1, config.xfer_unit, random);
-            fclose(random);
-#ifdef DEBUG
-            csum = checksum(res.buf, config.xfer_unit);
-            fprintf(stdout, WHT "checksum of data in my buffer: %0x\n" RESET, csum);
-#endif
-        }
+/*         if( config.config_other->opcode == IBV_WR_RDMA_READ || 
+ *                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
+ *             FILE *random = fopen("/dev/urandom", "r");
+ *             fread(res.buf, 1, config.xfer_unit, random);
+ *             fclose(random);
+ * #ifdef DEBUG
+ *             csum = checksum(res.buf, config.xfer_unit);
+ *             fprintf(stdout, WHT "checksum of data in my buffer: %0x\n" RESET, csum);
+ * #endif
+ *         }
+ */
 
         /* POST RECEIVE IF THE OTHER HAS PLANS TO DO SEND */
         if (config.config_other->opcode == IBV_WR_SEND ){
@@ -247,11 +246,12 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
-#ifdef DEBUG
-        csum = checksum( res.buf, config.xfer_unit );
-        fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
-        fprintf(stdout, YEL "------------------------\n\n" RESET);
-#endif
+/* #ifdef DEBUG
+ *         csum = checksum( res.buf, config.xfer_unit );
+ *         fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
+ *         fprintf(stdout, YEL "------------------------\n\n" RESET);
+ * #endif
+ */
     }
 
     DEBUG_PRINT((stdout, GRN "data operation finished\n" RESET ));
