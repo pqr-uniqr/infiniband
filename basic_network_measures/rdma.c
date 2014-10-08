@@ -2,7 +2,6 @@
  * rdma_mellanox_example.c modified for use in performance benchmark
  * measures: network bandwidth, latency, cpu usage 
  * */
-
 #include "rdma.h"
 
 /* GLOBALS */
@@ -15,20 +14,21 @@ struct config_t config =
     1,              /* ib_port */
     -1,              /* gid_idx */
     0,              /* xfer_unit */
-    0,              /* trials*/
+    0,              /* iter */
     -1,             /* opcode */
     CRT_ALL,       /* criteria */
     NULL,
 };
-int msg_size;
-char *msg;
+
+cycles_t *tposted; //TODO must free these
+cycles_t *tcompleted; //TODO must free these
 
 /* MAIN */
 int main ( int argc, char *argv[] )
 {
     int rc = 1;
     int i;
-    int trials;
+    int iter;
     uint16_t csum;
     struct resources res;
     char temp_char;
@@ -49,13 +49,13 @@ int main ( int argc, char *argv[] )
             {.name = "ib-port",.has_arg = 1,.val = 'i'},
             {.name = "gid-idx",.has_arg = 1,.val = 'g'},
             {.name = "xfer-unit", .has_arg = 1, .val = 'b'},
-            {.name = "trials", .has_arg = 1, .val = 't'},
+            {.name = "iter", .has_arg = 1, .val = 'i'},
             {.name = "verb", .has_arg=1, .val= 'v'},
             {.name = "criteria", .has_arg=1, .val='c'},
             {.name = NULL,.has_arg = 0,.val = '\0'}
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:i:g:b:t:v:c:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:i:g:b:i:v:c:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -89,8 +89,8 @@ int main ( int argc, char *argv[] )
                 }
                 break;
             case 't':
-                config.trials = strtoul(optarg, NULL, 0);
-                if(config.trials < 0){
+                config.iter = strtoul(optarg, NULL, 0);
+                if(config.iter < 0){
                     usage(argv[0]);
                     return 1;
                 }
@@ -160,27 +160,47 @@ int main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
     rc = 0;
 
-    /* START TRIALS! */
-    trials = MAX(config.trials, config.config_other->trials);
-    met.total = 0;
-    met.max = 0;
-    met.min = ~0;
 
-    for( i=0; i < trials; i++){
+    /* START ITERATIONS! */
+
+
+    ALLOCATE(tposted, cycles_t, config.iter);
+    ALLOCATE(tcompleted, cycles_t, config.iter);
+    run_iter(&res);
+
+main_exit:
+    if (resources_destroy (&res)){
+        fprintf (stderr, "failed to destroy resources\n");
+        rc = 1;
+    }
+    if (config.dev_name) free ((char *) config.dev_name);
+    if (config.config_other) free((char *)config.config_other);
+
+    /* REPORT ON EXPERIMENT TO STDOUT */
+    //report_result( met ); FIXME 
+    
+    return rc;
+
+
+
+
+    /* BELOW IS OLD CODE ------------------------------------------- */
+ 
+    for( i=0; i < iter; i++){
         DEBUG_PRINT((stdout, YEL "trial no. %d ------------\n" RESET , i));
 
         /* GENERATE DATA */
-/*         if( config.config_other->opcode == IBV_WR_RDMA_READ || 
- *                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
- *             FILE *random = fopen("/dev/urandom", "r");
- *             fread(res.buf, 1, config.xfer_unit, random);
- *             fclose(random);
- * #ifdef DEBUG
- *             csum = checksum(res.buf, config.xfer_unit);
- *             fprintf(stdout, WHT "checksum of data in my buffer: %0x\n" RESET, csum);
- * #endif
- *         }
- */
+        if( config.config_other->opcode == IBV_WR_RDMA_READ || 
+                config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
+            FILE *random = fopen("/dev/urandom", "r");
+            fread(res.buf, 1, config.xfer_unit, random);
+            fclose(random);
+#ifdef DEBUG
+            csum = checksum(res.buf, config.xfer_unit);
+            fprintf(stdout, WHT "checksum of data in my buffer: %0x\n" RESET, csum);
+#endif
+        }
+
 
         /* POST RECEIVE IF THE OTHER HAS PLANS TO DO SEND */
         if (config.config_other->opcode == IBV_WR_SEND ){
@@ -188,7 +208,11 @@ int main ( int argc, char *argv[] )
                 fprintf(stderr, "failed to post RR\n");
                 goto main_exit;
             }
-        } 
+        }  
+
+
+
+
 
         /* WAIT TILL BOTH ARE ON THE SAME PAGE */
         if (sock_sync_data (res.sock, 1, "R", &temp_char)){
@@ -202,7 +226,6 @@ int main ( int argc, char *argv[] )
         /* DATA OPERATION */
         if( config.opcode == IBV_WR_RDMA_READ || 
                 config.opcode == IBV_WR_RDMA_WRITE || config.opcode == IBV_WR_SEND ){
-
 
             gettimeofday(&cur_time, NULL);
             start_time_usec = (cur_time.tv_sec * 1000 * 1000) + cur_time.tv_usec;
@@ -233,12 +256,12 @@ int main ( int argc, char *argv[] )
 
         //TODO once this is both ways, this is not gonna work like this
         if( config.config_other->opcode == IBV_WR_SEND ){
-            /* IF OTHER SENDS, WE WILL BE NOTIFIED AS WELL */
             if (poll_completion (&res)){
                 fprintf (stderr, "poll completion failed\n");
                 goto main_exit;
             }
-        }
+        } 
+
 
         if ( sock_sync_data (res.sock, 1, "D", &temp_char) ){
             fprintf (stderr, "sync error after RDMA ops\n");
@@ -246,19 +269,19 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
-/* #ifdef DEBUG
- *         csum = checksum( res.buf, config.xfer_unit );
- *         fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
- *         fprintf(stdout, YEL "------------------------\n\n" RESET);
- * #endif
- */
+#ifdef DEBUG
+        csum = checksum( res.buf, config.xfer_unit );
+        fprintf(stdout, WHT "final checksum inside my buffer: %0x\n" RESET, csum);
+        fprintf(stdout, YEL "------------------------\n\n" RESET);
+#endif
+
     }
 
     DEBUG_PRINT((stdout, GRN "data operation finished\n" RESET ));
 
     /* WAIT */
 
-main_exit:
+//main_exit: FIXME
     if (resources_destroy (&res)){
         fprintf (stderr, "failed to destroy resources\n");
         rc = 1;
@@ -267,13 +290,96 @@ main_exit:
     if (config.config_other) free((char *)config.config_other);
 
     /* REPORT ON EXPERIMENT TO STDOUT */
-
     report_result( met );
-    // report_result( (float) / (float) trials ); TODO 
-    free( msg );
     return rc;
+}
 
-}				/* ----------  end of function main  ---------- */
+
+/*  */
+static int run_iter(struct resources *res)
+{
+    struct metrics_t met;
+    met.total = 0;
+    met.max = 0;
+    met.min = ~0;
+
+    int scnt = 0;
+    int ccnt = 0;
+    int rc = 0;
+    int ne;
+    int i;
+
+    struct ibv_send_wr *bad_wr;
+    struct ibv_wc *wc = NULL;
+    ALLOCATE(wc, struct ibv_wc, 1);
+
+    struct ibv_sge sge; //FIXME do we need to do scatter/gather? (what is it anyways?)
+    memset(&sge, 0, sizeof(sge));
+    sge.addr = (uintptr_t) res->buf;
+    sge.length = config.xfer_unit;
+    sge.lkey = res->mr->lkey;
+
+    struct ibv_send_wr sr;
+    memset(&sr, 0, sizeof(sr));
+    sr.next = NULL; 
+    sr.wr_id = 0;
+    sr.sg_list = &sge;
+    sr.num_sge = 1;
+    sr.opcode = config.opcode;
+    sr.send_flags = IBV_SEND_SIGNALED; //FIXME this value will be set in the while loop
+
+    if(config.opcode != IBV_WR_SEND){
+        sr.wr.rdma.remote_addr = res->remote_props.addr;
+        sr.wr.rdma.rkey = res->remote_props.rkey;
+    }
+
+
+    while( scnt < config.iter|| ccnt < config.iter ){
+
+        //TODO tx_depth hardcoded for now
+        while( scnt < config.iter && (scnt - ccnt) < 100){
+
+            if((scnt % CQ_MODERATION) == 0)
+                sr.send_flags &= ~IBV_SEND_SIGNALED;
+       
+            tposted[scnt] = get_cycles();
+            if(ibv_post_send(res->qp, &sr, &bad_wr)){
+                fprintf(stderr, "Couldn't post send: scnt=%d\n",scnt);
+                return 1;
+            }
+            ++scnt;
+            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
+                sr.send_flags |= IBV_SEND_SIGNALED;
+        }
+
+        if( ccnt < config.iter ){
+            do {
+                ne = ibv_poll_cq(res->cq, 1, wc);
+                if( ne > 0 ){
+
+                    for( i = 0; i < ne; i++){
+                        if(wc[i].status != IBV_WC_SUCCESS)
+                            check_wc_status(wc[i].status);
+
+                        ccnt += CQ_MODERATION;
+                        
+                        if(ccnt >= config.iter -1)
+                            tcompleted[config.iter-1] = get_cycles();
+                        else
+                            tcompleted[ccnt-1] = get_cycles();
+                    }
+                }
+            } while (ne > 0);
+
+            if( ne < 0){
+                fprintf(stderr, "poll CQ failed %d\n", ne);
+                return 1;
+            }
+        }
+    }
+    free(wc);
+    return 0;
+}
 
 
 /* IB OPERATIONS */
@@ -636,6 +742,7 @@ static int resources_create (struct resources *res)
     }
     DEBUG_PRINT((stdout,"demanded buffer size is %zd bytes\n", config_other->xfer_unit));
     config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
+    config.iter = MAX(config.iter, config.config_other->iter);
     config.config_other = config_other;
 
     /* GET IB DEVICES AND SELECT ONE */
@@ -992,10 +1099,10 @@ static void print_config (void)
     crt_to_str(config.crt, &crt);
     fprintf(stdout, "%s operation requested (for %s test)\n", op, crt);
 
-    if ( !config.trials || !config.xfer_unit )
+    if ( !config.iter|| !config.xfer_unit )
         fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
     else
-        fprintf(stdout, "%d trials, each %zd bytes\n", config.trials, config.xfer_unit );
+        fprintf(stdout, "%d iters, each %zd bytes\n", config.iter, config.xfer_unit );
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
@@ -1051,12 +1158,12 @@ static void report_result(struct metrics_t met)
     float average, min, max;
     switch(config.crt){
         case CRT_BW:
-            average = (float) config.xfer_unit / ((float) met.total / (float) config.trials);
+            average = (float) config.xfer_unit / ((float) met.total / (float) config.iter);
             max = (float) config.xfer_unit / met.min;
             min = (float) config.xfer_unit / met.max;
             break;
         case CRT_LAT:
-            average = (float) met.total / (float) config.trials;
+            average = (float) met.total / (float) config.iter;
             min = met.min;
             max = met.max;
             break;
@@ -1069,7 +1176,36 @@ static void report_result(struct metrics_t met)
             fprintf(stdout, "NOT SUPPORTED YET\n");
             return;
     }
-    fprintf(stdout, "%zd\t%d\t%f\t%f\t%f\n",config.xfer_unit, config.trials, min, max, average);
+    fprintf(stdout, "%zd\t%d\t%f\t%f\t%f\n",config.xfer_unit, config.iter, min, max, average);
+}
+
+static void print_report(unsigned int iters, unsigned size, int duplex,
+        int no_cpu_freq_fail)
+{
+    double cycles_to_units;
+    unsigned long tsize;	/* Transferred size, in megabytes */
+    int i, j;
+    int opt_posted = 0, opt_completed = 0;
+    cycles_t opt_delta;
+    cycles_t t;
+
+    opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
+
+    /* Find the peak bandwidth */
+    for (i = 0; i < iters; ++i)
+        for (j = i; j < iters; ++j) {
+            t = (tcompleted[j] - tposted[i]) / (j - i + 1);
+            if (t < opt_delta) {
+                opt_delta  = t;
+                opt_posted = i;
+                opt_completed = j;
+            }
+        }
+    cycles_to_units = get_cpu_mhz(no_cpu_freq_fail) * 1000000;
+    tsize = duplex ? 2 : 1;
+    tsize = tsize * size;
+    printf(REPORT_FMT,size,iters,tsize * cycles_to_units / opt_delta / 0x100000,
+            tsize * iters * cycles_to_units /(tcompleted[iters - 1] - tposted[0]) / 0x100000);
 }
 
 static void check_wc_status(enum ibv_wc_status status)

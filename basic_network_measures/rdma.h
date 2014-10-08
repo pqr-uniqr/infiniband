@@ -20,6 +20,8 @@
 #include <netdb.h>
 #include <math.h>
 
+#include "get_clock.c" //TODO someone needs to teach me how to use C huh
+
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
 #define GRN  "\x1B[32m"
@@ -36,6 +38,13 @@
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
+
+#define REPORT_FMT     " %-7d    %d           %-7.2f            %-7.2f\n"
+#define ALLOCATE(var,type,size)                                  \
+    { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
+        { fprintf(stderr," Cannot Allocate\n"); exit(1);}}
+
+
 #ifdef DEBUG
 # define DEBUG_PRINT(x) fprintf x
 #else
@@ -46,6 +55,8 @@
 #define CRT_BW 1
 #define CRT_LAT 2
 #define CRT_CPU 3
+
+#define CQ_MODERATION 50
 
 struct metrics_t
 {
@@ -63,7 +74,7 @@ struct config_t
     int ib_port;			/* local IB port to work with */
     int gid_idx;			/* gid index to use */
     size_t xfer_unit;       /* how big is each transfer going to be (bytes) */
-    int trials;             /* number of times we are going to transfer */
+    int iter;             /* number of times we are going to transfer */
     enum ibv_wr_opcode opcode;     /* requested op */
     int crt;            /* what to test for */
     struct config_t *config_other;
@@ -97,6 +108,9 @@ struct resources
 };
 
 
+/*  */
+static int run_iter(struct resources *res);
+
 /* IB OPERATIONS */
 static int post_send(struct resources *res, int opcode);
 static int poll_completion(struct resources *res);
@@ -120,15 +134,14 @@ static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
 
 /* UTIL */
+static void report_result(struct metrics_t met);
+static void print_report(unsigned int iters, unsigned size, int duplex, int no_cpu_freq_fail);
+
 static void usage(const char *argv0);
 static void opcode_to_str(int code, char **str);
 static void crt_to_str(int code, char **str);
 static void print_config(void);
-static void report_result(struct metrics_t met);
 static inline uint64_t htonll(uint64_t x);
 static inline uint64_t ntohll(uint64_t x);
 static void check_wc_status(enum ibv_wc_status status);
 static uint16_t checksum(void *vdata, size_t length);
-
-
-
