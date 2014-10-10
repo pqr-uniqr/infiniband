@@ -193,6 +193,7 @@ main_exit:
 /*  */
 static int run_iter(struct resources *res)
 {
+    DEBUG_PRINT((stdout,"run_iter called\n"));
 
     char temp_char;
     int scnt = 0;
@@ -240,6 +241,7 @@ static int run_iter(struct resources *res)
                 return 1;
             }
             ++scnt;
+            DEBUG_PRINT((stdout, "Work request posted\n"));
 
             if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
                 sr.send_flags |= IBV_SEND_SIGNALED;
@@ -249,11 +251,11 @@ static int run_iter(struct resources *res)
             do {
                 ne = ibv_poll_cq(res->cq, 1, wc);
                 if( ne > 0 ){
-
                     for( i = 0; i < ne; i++){
                         if(wc[i].status != IBV_WC_SUCCESS)
                             check_wc_status(wc[i].status);
 
+                        DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
                         ccnt += CQ_MODERATION;
                         
                         if(ccnt >= config.iter -1)
@@ -262,6 +264,7 @@ static int run_iter(struct resources *res)
                             tcompleted[ccnt-1] = get_cycles();
                     }
                 }
+
             } while (ne > 0);
 
             if( ne < 0){
