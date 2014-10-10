@@ -241,7 +241,7 @@ static int run_iter(struct resources *res)
        
             tposted[scnt] = get_cycles();
             if( ibv_post_send(res->qp, &sr, &bad_wr) ){
-                fprintf(stderr, "Couldn't post send: scnt=%d\n",scnt);
+                fprintf(stderr, "Couldn't post send: scnt=%d\n", scnt);
                 return 1;
             }
             ++scnt;
@@ -750,7 +750,7 @@ static int resources_create (struct resources *res)
     /* CREATE QUEUE PAIR */
     memset (&qp_init_attr, 0, sizeof (qp_init_attr));
     qp_init_attr.qp_type = IBV_QPT_RC;
-    qp_init_attr.sq_sig_all = 1;
+    qp_init_attr.sq_sig_all = 0; 
     qp_init_attr.send_cq = res->cq;
     qp_init_attr.recv_cq = res->cq;
     qp_init_attr.cap.max_send_wr = 1;
