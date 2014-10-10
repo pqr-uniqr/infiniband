@@ -187,7 +187,6 @@ main_exit:
     return rc;
 }
 
-
 /*  */
 static int run_iter(struct resources *res)
 {
@@ -202,7 +201,7 @@ static int run_iter(struct resources *res)
     int ne;
     int i;
 
-    struct ibv_send_wr *bad_wr;
+    struct ibv_send_wr *bad_wr = NULL;
     struct ibv_wc *wc = NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
 
@@ -219,13 +218,11 @@ static int run_iter(struct resources *res)
     sr.sg_list = &sge;
     sr.num_sge = 1;
     sr.opcode = config.opcode;
-    sr.send_flags = IBV_SEND_SIGNALED; //FIXME this value will be set in the while loop
 
-    if(config.opcode != IBV_WR_SEND){
+    if( config.opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = res->remote_props.addr;
         sr.wr.rdma.rkey = res->remote_props.rkey;
     }
-
 
     while( scnt < config.iter|| ccnt < config.iter ){
 
@@ -236,7 +233,7 @@ static int run_iter(struct resources *res)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
        
             tposted[scnt] = get_cycles();
-            if(ibv_post_send(res->qp, &sr, &bad_wr)){
+            if( ibv_post_send(res->qp, &sr, &bad_wr) ){
                 fprintf(stderr, "Couldn't post send: scnt=%d\n",scnt);
                 return 1;
             }
@@ -633,10 +630,10 @@ static int resources_create (struct resources *res)
         rc = -1;
         goto resources_create_exit;
     }
-    DEBUG_PRINT((stdout,"demanded buffer size is %zd bytes\n", config_other->xfer_unit));
     config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
     config.iter = MAX(config.iter, config_other->iter);
     config.config_other = config_other;
+    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations\n", config.xfer_unit, config.iter));
 
     /* GET IB DEVICES AND SELECT ONE */
     DEBUG_PRINT((stdout, "searching for IB devices in host\n"));
@@ -716,9 +713,8 @@ static int resources_create (struct resources *res)
 
     /* CREATE MEMORY BUFFER */
     size = config.xfer_unit;
-    res->buf = (char *) malloc (size);
-    if (!res->buf)
-    {
+    res->buf = (char *) malloc(size);
+    if (!res->buf){
         fprintf (stderr, "failed to malloc %Zu bytes to memory buffer\n", size);
         rc = 1;
         goto resources_create_exit;
