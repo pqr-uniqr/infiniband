@@ -234,7 +234,7 @@ static int run_iter(struct resources *res)
     while( scnt < config.iter || ccnt < config.iter ){
 
         //TODO tx_depth hardcoded for now
-        while( scnt < config.iter && (scnt - ccnt) < 100){
+        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR ){
 
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
@@ -754,10 +754,10 @@ static int resources_create (struct resources *res)
     //qp_init_attr.sq_sig_all = 0; 
     qp_init_attr.send_cq = res->cq;
     qp_init_attr.recv_cq = res->cq;
-    qp_init_attr.cap.max_send_wr = 1;
-    qp_init_attr.cap.max_recv_wr = 1;
-    qp_init_attr.cap.max_send_sge = 1;
-    qp_init_attr.cap.max_recv_sge = 1;
+    qp_init_attr.cap.max_send_wr = MAX_SEND_WR;
+    qp_init_attr.cap.max_recv_wr = MAX_RECV_WR;
+    qp_init_attr.cap.max_send_sge = MAX_SEND_SGE;
+    qp_init_attr.cap.max_recv_sge = MAX_RECV_SGE;
     res->qp = ibv_create_qp (res->pd, &qp_init_attr);
     if (!res->qp)
     {
