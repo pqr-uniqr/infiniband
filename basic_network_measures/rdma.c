@@ -167,7 +167,7 @@ int main ( int argc, char *argv[] )
 
     /* START ITERATIONS! */
 
-    if(config.opcode)
+    if(config.opcode != -1)
         run_iter(&res);
 
 main_exit:
