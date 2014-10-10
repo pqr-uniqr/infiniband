@@ -173,7 +173,7 @@ int main ( int argc, char *argv[] )
         return 1;
     }
 
-    DEBUG_PRINT((stdout, "final socket sync finished--terminating\n"));
+    DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
 main_exit:
     if (resources_destroy (&res)){
@@ -185,6 +185,8 @@ main_exit:
 
     /* REPORT ON EXPERIMENT TO STDOUT */
     //report_result( met ); FIXME 
+    
+    print_report(config.iter, config.xfer_size, 0, 0);
     
     free(tposted);
     free(tcompleted);
