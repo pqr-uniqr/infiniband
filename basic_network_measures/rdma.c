@@ -246,7 +246,7 @@ static int run_iter(struct resources *res)
                 return 1;
             }
             ++scnt;
-            DEBUG_PRINT((stdout, "Work request posted\n"));
+            //DEBUG_PRINT((stdout, "Work request posted\n"));
 
             if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
                 sr.send_flags |= IBV_SEND_SIGNALED;
