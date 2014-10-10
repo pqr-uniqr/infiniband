@@ -240,7 +240,8 @@ static int run_iter(struct resources *res)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
        
             tposted[scnt] = get_cycles();
-            if( ibv_post_send(res->qp, &sr, &bad_wr) ){
+            if( ( rc = ibv_post_send(res->qp, &sr, &bad_wr) ) ){
+                perror("ibv_post_send");
                 fprintf(stderr, "Couldn't post send: scnt=%d\n", scnt);
                 return 1;
             }
