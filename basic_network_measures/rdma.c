@@ -454,7 +454,7 @@ static int modify_qp_to_rts (struct ibv_qp *qp)
     attr.retry_cnt = 6;
     attr.rnr_retry = 0;
     attr.sq_psn = 0;
-    attr.max_rd_atomic = 1;
+    attr.max_rd_atomic = 16; //FIXME hardcoded!
     flags = IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
         IBV_QP_RNR_RETRY | IBV_QP_SQ_PSN | IBV_QP_MAX_QP_RD_ATOMIC;
     rc = ibv_modify_qp (qp, &attr, flags);

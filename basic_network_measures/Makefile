@@ -1,4 +1,4 @@
-CFLAGS= -O6 
+CFLAGS= -O3
 CFLAGS= -g 
 CC=gcc
 LD=gcc 
