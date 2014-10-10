@@ -186,7 +186,7 @@ main_exit:
     /* REPORT ON EXPERIMENT TO STDOUT */
     //report_result( met ); FIXME 
     
-    print_report(config.iter, config.xfer_size, 0, 0);
+    print_report(config.iter, config.xfer_unit, 0, 0);
     
     free(tposted);
     free(tcompleted);
