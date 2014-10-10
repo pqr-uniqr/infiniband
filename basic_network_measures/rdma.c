@@ -161,14 +161,16 @@ int main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
     rc = 0;
 
-
     ALLOCATE(tposted, cycles_t, config.iter);
     ALLOCATE(tcompleted, cycles_t, config.iter);
 
     /* START ITERATIONS! */
+    run_iter(&res);
 
-    if(config.opcode != -1)
-        run_iter(&res);
+    if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+        fprintf(stderr, "sync error while in data transfer\n");
+        return 1;
+    }
 
 main_exit:
     if (resources_destroy (&res)){
@@ -190,28 +192,21 @@ main_exit:
 /*  */
 static int run_iter(struct resources *res)
 {
-    struct metrics_t met;
-    met.total = 0;
-    met.max = 0;
-    met.min = ~0;
 
+    char temp_char;
     int scnt = 0;
     int ccnt = 0;
     int rc = 0;
     int ne;
     int i;
 
+    struct ibv_send_wr sr;
+    struct ibv_sge sge; //FIXME do we need to do scatter/gather? (what is it anyways?)
     struct ibv_send_wr *bad_wr = NULL;
     struct ibv_wc *wc = NULL;
+
     ALLOCATE(wc, struct ibv_wc, 1);
 
-    struct ibv_sge sge; //FIXME do we need to do scatter/gather? (what is it anyways?)
-    memset(&sge, 0, sizeof(sge));
-    sge.addr = (uintptr_t) res->buf;
-    sge.length = config.xfer_unit;
-    sge.lkey = res->mr->lkey;
-
-    struct ibv_send_wr sr;
     memset(&sr, 0, sizeof(sr));
     sr.next = NULL; 
     sr.wr_id = 0;
@@ -219,12 +214,18 @@ static int run_iter(struct resources *res)
     sr.num_sge = 1;
     sr.opcode = config.opcode;
 
+    memset(&sge, 0, sizeof(sge));
+    sge.addr = (uintptr_t) res->buf;
+    sge.length = config.xfer_unit;
+    sge.lkey = res->mr->lkey;
+
+
     if( config.opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = res->remote_props.addr;
         sr.wr.rdma.rkey = res->remote_props.rkey;
     }
 
-    while( scnt < config.iter|| ccnt < config.iter ){
+    while( scnt < config.iter || ccnt < config.iter ){
 
         //TODO tx_depth hardcoded for now
         while( scnt < config.iter && (scnt - ccnt) < 100){
@@ -238,6 +239,7 @@ static int run_iter(struct resources *res)
                 return 1;
             }
             ++scnt;
+
             if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
                 sr.send_flags |= IBV_SEND_SIGNALED;
         }
@@ -266,7 +268,9 @@ static int run_iter(struct resources *res)
                 return 1;
             }
         }
+
     }
+
     free(wc);
     return 0;
 }
@@ -725,8 +729,7 @@ static int resources_create (struct resources *res)
     mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ |
         IBV_ACCESS_REMOTE_WRITE;
     res->mr = ibv_reg_mr (res->pd, res->buf, size, mr_flags);
-    if (!res->mr)
-    {
+    if (!res->mr){
         fprintf (stderr, "ibv_reg_mr failed with mr_flags=0x%x\n", mr_flags);
         rc = 1;
         goto resources_create_exit;
