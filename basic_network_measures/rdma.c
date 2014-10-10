@@ -46,7 +46,7 @@ int main ( int argc, char *argv[] )
         static struct option long_options[] = {
             {.name = "port",.has_arg = 1,.val = 'p'},
             {.name = "ib-dev",.has_arg = 1,.val = 'd'},
-            {.name = "ib-port",.has_arg = 1,.val = 'i'},
+            //{.name = "ib-port",.has_arg = 1,.val = 'i'},
             {.name = "gid-idx",.has_arg = 1,.val = 'g'},
             {.name = "xfer-unit", .has_arg = 1, .val = 'b'},
             {.name = "iter", .has_arg = 1, .val = 'i'},
@@ -55,7 +55,7 @@ int main ( int argc, char *argv[] )
             {.name = NULL,.has_arg = 0,.val = '\0'}
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:i:g:b:i:v:c:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -65,14 +65,15 @@ int main ( int argc, char *argv[] )
             case 'd':
                 config.dev_name = strdup (optarg);
                 break;
-            case 'i':
-                config.ib_port = strtoul (optarg, NULL, 0);
-                if (config.ib_port < 0)
-                {
-                    usage (argv[0]);
-                    return 1;
-                }
-                break;
+/*             case 'i':
+ *                 config.ib_port = strtoul (optarg, NULL, 0);
+ *                 if (config.ib_port < 0)
+ *                 {
+ *                     usage (argv[0]);
+ *                     return 1;
+ *                 }
+ *                 break;
+ */
             case 'g':
                 config.gid_idx = strtoul (optarg, NULL, 0);
                 if (config.gid_idx < 0)
@@ -88,7 +89,7 @@ int main ( int argc, char *argv[] )
                     return 1;
                 }
                 break;
-            case 't':
+            case 'i':
                 config.iter = strtoul(optarg, NULL, 0);
                 if(config.iter < 0){
                     usage(argv[0]);
