@@ -165,7 +165,8 @@ int main ( int argc, char *argv[] )
     ALLOCATE(tcompleted, cycles_t, config.iter);
 
     /* START ITERATIONS! */
-    run_iter(&res);
+    if(config.opcode != -1)
+        run_iter(&res);
 
     if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, "sync error while in data transfer\n");
