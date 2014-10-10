@@ -173,6 +173,8 @@ int main ( int argc, char *argv[] )
         return 1;
     }
 
+    DEBUG_PRINT((stdout, "final socket sync finished--terminating\n"));
+
 main_exit:
     if (resources_destroy (&res)){
         fprintf (stderr, "failed to destroy resources\n");
