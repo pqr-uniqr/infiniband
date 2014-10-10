@@ -167,8 +167,8 @@ int main ( int argc, char *argv[] )
 
     /* START ITERATIONS! */
 
-
-    run_iter(&res);
+    if(config.opcode)
+        run_iter(&res);
 
 main_exit:
     if (resources_destroy (&res)){
