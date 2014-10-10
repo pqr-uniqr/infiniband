@@ -418,7 +418,7 @@ static int modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dl
     attr.path_mtu = IBV_MTU_256;
     attr.dest_qp_num = remote_qpn;
     attr.rq_psn = 0;
-    attr.max_dest_rd_atomic = 1;
+    attr.max_dest_rd_atomic = 16;
     attr.min_rnr_timer = 0x12;
     attr.ah_attr.is_global = 0;
     attr.ah_attr.dlid = dlid;
