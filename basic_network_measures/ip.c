@@ -321,8 +321,8 @@ static int run_iter(struct resources *res)
                 }
             }
             csum = checksum(res->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout WHT "checksum on received data = %0x\n", csum));
-            DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n"RESET, config.xfer_unit));
+            DEBUG_PRINT((stdout, WHT "checksum on received data = %0x\n", csum));
+            DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n" RESET, config.xfer_unit));
         }
     }
 
