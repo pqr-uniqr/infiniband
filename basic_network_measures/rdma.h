@@ -20,7 +20,7 @@
 #include <netdb.h>
 #include <math.h>
 
-#include "get_clock.c" //TODO someone needs to teach me how to use C huh
+#include "get_clock.c" 
 
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
@@ -55,7 +55,7 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
-#define CRT_ALL 0
+#define CRT_DEF 0
 #define CRT_BW 1
 #define CRT_LAT 2
 #define CRT_CPU 3
@@ -138,9 +138,7 @@ static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
 
 /* UTIL */
-static void report_result(struct metrics_t met);
 static void print_report(unsigned int iters, unsigned size, int duplex, int no_cpu_freq_fail);
-
 static void usage(const char *argv0);
 static void opcode_to_str(int code, char **str);
 static void crt_to_str(int code, char **str);

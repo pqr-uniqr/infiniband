@@ -16,9 +16,14 @@ debug: rdma.c  get_clock.c get_clock.h
 	${CC} ${CFLAGS} -m64 -c ${NAME}.c -DDEBUG
 	${LD} ${NAME}.o ${LIB} -o ${NAME} 
 
-ip: ip.c 
-	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c -DDEBUG
+ip: ip.c  ip.h
+	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c
 	${LD} ${IPNAME}.o ${LIB} -o ${IPNAME} 
+
+ip_dbg: ip.c  ip.h
+	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c
+	${LD} ${IPNAME}.o ${LIB} -o ${IPNAME} 
+
 
 clean:
 	rm -f ${NAME} ${NAME}.o ${IPNAME} ${IPNAME}.o

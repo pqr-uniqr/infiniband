@@ -16,7 +16,7 @@ struct config_t config =
     0,              /* xfer_unit */
     0,              /* iter */
     -1,             /* opcode */
-    CRT_ALL,       /* criteria */
+    CRT_DEF,       /* criteria */
     NULL,
 };
 
@@ -65,15 +65,6 @@ int main ( int argc, char *argv[] )
             case 'd':
                 config.dev_name = strdup (optarg);
                 break;
-/*             case 'i':
- *                 config.ib_port = strtoul (optarg, NULL, 0);
- *                 if (config.ib_port < 0)
- *                 {
- *                     usage (argv[0]);
- *                     return 1;
- *                 }
- *                 break;
- */
             case 'g':
                 config.gid_idx = strtoul (optarg, NULL, 0);
                 if (config.gid_idx < 0)
@@ -118,7 +109,7 @@ int main ( int argc, char *argv[] )
                 } else if( optarg[0] == 'c'){
                     config.crt = CRT_CPU;
                 } else {
-                    config.crt = CRT_ALL;
+                    config.crt = CRT_DEF;
                 }
                 break;
             default:
@@ -130,7 +121,7 @@ int main ( int argc, char *argv[] )
     /* PARSE SERVER NAME IF GIVEN*/
     if (optind == argc - 1){
         config.server_name = argv[optind];
-    } else if (optind < argc){
+    } else if (optind < argc - 1){
         usage (argv[0]);
         return 1;
     }
@@ -197,8 +188,6 @@ main_exit:
 /*  */
 static int run_iter(struct resources *res)
 {
-    DEBUG_PRINT((stdout,"run_iter called\n"));
-
     char temp_char;
     int scnt = 0;
     int ccnt = 0;
@@ -246,7 +235,6 @@ static int run_iter(struct resources *res)
                 return 1;
             }
             ++scnt;
-            //DEBUG_PRINT((stdout, "Work request posted\n"));
 
             if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
                 sr.send_flags |= IBV_SEND_SIGNALED;
@@ -1053,32 +1041,6 @@ static void opcode_to_str(int opcode, char **str)
 /*  note on units: bytes/microseconds turns out to be the same as MB/sec
  *
  * */
-static void report_result(struct metrics_t met)
-{
-    float average, min, max;
-    switch(config.crt){
-        case CRT_BW:
-            average = (float) config.xfer_unit / ((float) met.total / (float) config.iter);
-            max = (float) config.xfer_unit / met.min;
-            min = (float) config.xfer_unit / met.max;
-            break;
-        case CRT_LAT:
-            average = (float) met.total / (float) config.iter;
-            min = met.min;
-            max = met.max;
-            break;
-/*         case CRT_CPU:
- *             break;
- *         case CRT_ALL:
- *             break;
- */
-        default:
-            fprintf(stdout, "NOT SUPPORTED YET\n");
-            return;
-    }
-    fprintf(stdout, "%zd\t%d\t%f\t%f\t%f\n",config.xfer_unit, config.iter, min, max, average);
-}
-
 static void print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
