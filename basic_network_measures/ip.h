@@ -52,7 +52,7 @@
         { fprintf(stderr," Cannot Allocate\n"); exit(1);}}
 
 
-struct config_t{
+struct config_t {
     char *server_name;
     u_int32_t tcp_port;
     size_t xfer_unit;
@@ -61,7 +61,7 @@ struct config_t{
     struct config_t *config_other;
 };
 
-struct resources{
+struct resources {
     int sock;
     char *buf;
 };
@@ -73,4 +73,5 @@ static int resources_create(struct resources *res);
 static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
 static int run_iter(struct resources *res);
+static uint16_t checksum(void *vdata, size_t length);
 

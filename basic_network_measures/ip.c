@@ -17,6 +17,7 @@ int main ( int argc, char *argv[] )
 {
     int rc = 1;
     struct resources res;
+    char temp_char;
     /* PROCES CL ARGUMENTS */
     while(1){
         int c;
@@ -69,11 +70,17 @@ int main ( int argc, char *argv[] )
     }
     DEBUG_PRINT((stdout, GRN "resources_create() successful\n" RESET));
    
-    /*  
     rc = 0;
 
+    /*  
     ALLOCATE(tposted, cycles_t, config.iter);
     ALLOCATE(tcompleted, cycles_t, config.iter);
+    */
+
+    if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+        fprintf(stderr, "sync error while in data transfer\n");
+        return 1;
+    }
 
     run_iter(&res);
 
@@ -81,8 +88,8 @@ int main ( int argc, char *argv[] )
         fprintf(stderr, "sync error while in data transfer\n");
         return 1;
     }
+
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
-    */
 
 
 main_exit:
@@ -123,7 +130,7 @@ static int resources_create(struct resources *res)
             fprintf (stderr,
                     "failed to establish TCP connection to server %s, port %d\n",
                     config.server_name, config.tcp_port);
-            rc = -1;
+            rc = 1;
             goto resources_create_exit;
         }
     } else {
@@ -133,7 +140,7 @@ static int resources_create(struct resources *res)
             fprintf (stderr,
                     "failed to establish TCP connection with client on port %d\n",
                     config.tcp_port);
-            rc = -1;
+            rc = 1;
             goto resources_create_exit;
         }
     }
@@ -145,14 +152,24 @@ static int resources_create(struct resources *res)
                 (char *) config_other) < 0 ){
 
         fprintf(stderr, "failed to exchange config info\n");
-        rc = -1;
+        rc = 1;
         goto resources_create_exit;
     }
     config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
     config.iter = MAX(config.iter, config_other->iter);
     config.config_other = config_other;
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations\n", config.xfer_unit, config.iter));
-    
+
+    res->buf = (char *) malloc(config.xfer_unit);
+    if(!res->buf){
+        fprintf(stderr, "failed to malloc res->buf\n");
+        rc = 1;
+        goto resources_create_exit;
+    }
+    memset(res->buf, 0, config.xfer_unit);
+
+
+
 resources_create_exit:
     if(rc){
         if(res->buf){
@@ -270,6 +287,74 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 
 static int run_iter(struct resources *res)
 {
+    int i;
+    int rc;
+    int bytes_read;
 
+    //iteration loop
+    for(i = 0; i < config.iter; i++){
+        rc = 0;
+    
+        DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
+        if( config.server_name ){
+            rc = write(res->sock, res->buf, config.xfer_unit);
+
+            if(rc < config.xfer_unit){
+                fprintf(stderr, "Failed writing data to socket in run_iter\n");
+                return 1;
+            }
+
+            DEBUG_PRINT((stdout, GRN "%zd bytes written to socket\n"RESET, config.xfer_unit));
+
+        } else {
+            bytes_read = 0;
+            while( bytes_read < config.xfer_unit ){
+                rc = read(res->sock, res->buf, config.xfer_unit);
+                if (rc > 0){
+                    bytes_read += rc;
+                } else {
+                    return 1;
+                }
+            }
+            //DEBUG_PRINT((stdout WHT "checksum on received data = %d\n"));
+            DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n"RESET, config.xfer_unit));
+        }
+    }
+
+    return 0;
+
+}
+
+static uint16_t checksum(void *vdata, size_t length)
+{
+    // Cast the data pointer to one that can be indexed.
+    char* data = (char*)vdata;
+
+    // Initialise the accumulator.
+    uint32_t acc=0xffff;
+
+    // Handle complete 16-bit blocks.
+    size_t i;
+    for (i=0;i+1<length;i+=2) {
+        uint16_t word;
+        memcpy(&word,data+i,2);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Handle any partial block at the end of the data.
+    if (length&1) {
+        uint16_t word=0;
+        memcpy(&word,data+length-1,1);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Return the checksum in network byte order.
+    return htons(~acc);
 }
 
