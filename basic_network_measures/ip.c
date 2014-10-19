@@ -290,6 +290,10 @@ static int run_iter(struct resources *res)
     int i;
     int rc;
     int bytes_read;
+    uint16_t csum;
+
+    csum = checksum(res->buf, config.xfer_unit);
+    printf("checksum of data in my buffer: %0x\n", csum);
 
     //iteration loop
     for(i = 0; i < config.iter; i++){
@@ -316,7 +320,8 @@ static int run_iter(struct resources *res)
                     return 1;
                 }
             }
-            //DEBUG_PRINT((stdout WHT "checksum on received data = %d\n"));
+            csum = checksum(res->buf, config.xfer_unit);
+            DEBUG_PRINT((stdout WHT "checksum on received data = %0x\n", csum));
             DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n"RESET, config.xfer_unit));
         }
     }
