@@ -21,7 +21,7 @@ ip: ip.c  ip.h
 	${LD} ${IPNAME}.o ${LIB} -o ${IPNAME} 
 
 ip_dbg: ip.c  ip.h
-	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c
+	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c -DDEBUG
 	${LD} ${IPNAME}.o ${LIB} -o ${IPNAME} 
 
 
