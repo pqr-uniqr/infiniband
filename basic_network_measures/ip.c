@@ -9,9 +9,8 @@ struct config_t config = {
     NULL,
 };
 
-/* cycles_t *tposted; TODO
- * cycles_t *tcompleted;
- */
+cycles_t *tposted;
+cycles_t *tcompleted;
 
 int main ( int argc, char *argv[] )
 {
@@ -72,10 +71,8 @@ int main ( int argc, char *argv[] )
    
     rc = 0;
 
-    /*  
     ALLOCATE(tposted, cycles_t, config.iter);
     ALLOCATE(tcompleted, cycles_t, config.iter);
-    */
 
     if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, "sync error while in data transfer\n");
@@ -97,21 +94,52 @@ main_exit:
     return EXIT_SUCCESS;
 }				
 
-
-static void print_config( void )
+static int run_iter(struct resources *res)
 {
-    fprintf (stdout, YEL "CONFIG-------------------------------------------\n" );
-    if (config.server_name)
-        fprintf (stdout, "IP : %s\n", config.server_name);
-    fprintf (stdout, "TCP port : %u\n", config.tcp_port);
-    if ( !config.iter|| !config.xfer_unit )
-        fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
-    else
-        fprintf(stdout, "%d iters, each %zd bytes\n", config.iter, config.xfer_unit );
-    fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
+    int i;
+    int rc;
+    int bytes_read;
+    uint16_t csum;
+
+    csum = checksum(res->buf, config.xfer_unit);
+    printf("checksum of data in my buffer: %0x\n", csum);
+
+    //iteration loop
+    for(i = 0; i < config.iter; i++){
+        rc = 0;
     
+        DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
+        if( config.server_name ){
+            tposted[i] = get_cycles();
+            rc = write(res->sock, res->buf, config.xfer_unit);
+
+            if(rc < config.xfer_unit){
+                fprintf(stderr, "Failed writing data to socket in run_iter\n");
+                return 1;
+            }
+            tcompleted[i] = get_cycles();
+
+            DEBUG_PRINT((stdout, GRN "%zd bytes written to socket\n"RESET, config.xfer_unit));
+        } else {
+            bytes_read = 0;
+            while( bytes_read < config.xfer_unit ){
+                rc = read(res->sock, res->buf, config.xfer_unit);
+                if (rc > 0){
+                    bytes_read += rc;
+                } else {
+                    return 1;
+                }
+            }
+            csum = checksum(res->buf, config.xfer_unit);
+            DEBUG_PRINT((stdout, WHT "checksum on received data = %0x\n", csum));
+            DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n" RESET, config.xfer_unit));
+        }
+    }
+
+    return 0;
 
 }
+
 
 static void resources_init(struct resources *res)
 {
@@ -184,7 +212,6 @@ resources_create_exit:
     }
     return rc;
 }
-
 
 static int sock_connect(const char *servername, int port)
 {
@@ -285,49 +312,46 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
     return rc;
 }
 
-static int run_iter(struct resources *res)
+
+static void print_config( void )
 {
-    int i;
-    int rc;
-    int bytes_read;
-    uint16_t csum;
+    fprintf (stdout, YEL "CONFIG-------------------------------------------\n" );
+    if (config.server_name)
+        fprintf (stdout, "IP : %s\n", config.server_name);
+    fprintf (stdout, "TCP port : %u\n", config.tcp_port);
+    if ( !config.iter|| !config.xfer_unit )
+        fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
+    else
+        fprintf(stdout, "%d iters, each %zd bytes\n", config.iter, config.xfer_unit );
+    fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
+}
 
-    csum = checksum(res->buf, config.xfer_unit);
-    printf("checksum of data in my buffer: %0x\n", csum);
+static void print_report( void )
+{
+    double cycles_to_units;
+    unsigned long tsize;	/* Transferred size, in megabytes */
+    int i, j;
+    int opt_posted = 0, opt_completed = 0;
+    cycles_t opt_delta;
+    cycles_t t;
 
-    //iteration loop
-    for(i = 0; i < config.iter; i++){
-        rc = 0;
-    
-        DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
-        if( config.server_name ){
-            rc = write(res->sock, res->buf, config.xfer_unit);
+    opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
 
-            if(rc < config.xfer_unit){
-                fprintf(stderr, "Failed writing data to socket in run_iter\n");
-                return 1;
+    /* Find the peak bandwidth */
+    for (i = 0; i < config.iter; ++i)
+        for (j = i; j < config.iter; ++j) {
+            t = (tcompleted[j] - tposted[i]) / (j - i + 1);
+            if (t < opt_delta) {
+                opt_delta  = t;
+                opt_posted = i;
+                opt_completed = j;
             }
-
-            DEBUG_PRINT((stdout, GRN "%zd bytes written to socket\n"RESET, config.xfer_unit));
-
-        } else {
-            bytes_read = 0;
-            while( bytes_read < config.xfer_unit ){
-                rc = read(res->sock, res->buf, config.xfer_unit);
-                if (rc > 0){
-                    bytes_read += rc;
-                } else {
-                    return 1;
-                }
-            }
-            csum = checksum(res->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout, WHT "checksum on received data = %0x\n", csum));
-            DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n" RESET, config.xfer_unit));
         }
-    }
 
-    return 0;
-
+    cycles_to_units = get_cpu_mhz(0) * 1000000;
+    tsize = size;
+    printf(REPORT_FMT, size, iters, tsize * cycles_to_units / opt_delta / 0x100000,
+            tsize * iters * cycles_to_units /(tcompleted[iters - 1] - tposted[0]) / 0x100000);
 }
 
 static uint16_t checksum(void *vdata, size_t length)

@@ -20,7 +20,7 @@
 #include <netdb.h>
 #include <math.h>
 
-//#include "get_clock.c" TODO 
+#include "get_clock.c" 
 
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
