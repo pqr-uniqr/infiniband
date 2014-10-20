@@ -104,8 +104,7 @@ static int run_iter(struct resources *res)
     int bytes_read;
     uint16_t csum;
 
-    csum = checksum(res->buf, config.xfer_unit);
-    printf("checksum of data in my buffer: %0x\n", csum);
+    DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
     //iteration loop
     for(i = 0; i < config.iter; i++){
@@ -114,14 +113,19 @@ static int run_iter(struct resources *res)
         DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
 
         if( config.server_name ){
+
+            memset(res->buf, i % 2, config.xfer_unit);
+            csum = checksum(res->buf, config.xfer_unit);
+            DEBUG_PRINT((stdout,"checksum of buffer to be sent: %0x\n", csum));
+
             tposted[i] = get_cycles();
             rc = write(res->sock, res->buf, config.xfer_unit);
+            tcompleted[i] = get_cycles();
 
             if(rc < config.xfer_unit){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
                 return 1;
             }
-            tcompleted[i] = get_cycles();
 
             DEBUG_PRINT((stdout, GRN "%zd bytes written to socket\n"RESET, config.xfer_unit));
         } else {
@@ -198,7 +202,7 @@ static int resources_create(struct resources *res)
         rc = 1;
         goto resources_create_exit;
     }
-    memset(res->buf, 1, config.xfer_unit);
+    memset(res->buf, 0x1, config.xfer_unit);
 
 
 
