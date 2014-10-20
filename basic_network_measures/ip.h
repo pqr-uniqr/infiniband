@@ -68,11 +68,12 @@ struct resources {
 };
 
 
-static void print_config(void);
+static int run_iter(struct resources *res);
 static void resources_init(struct resources *res);
 static int resources_create(struct resources *res);
 static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
-static int run_iter(struct resources *res);
 static uint16_t checksum(void *vdata, size_t length);
+static void print_report(void);
+static void print_config(void);
 

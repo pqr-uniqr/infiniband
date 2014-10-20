@@ -88,6 +88,7 @@ int main ( int argc, char *argv[] )
 
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
+    print_report( );
 
 main_exit:
 
