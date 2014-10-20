@@ -81,6 +81,8 @@ int main ( int argc, char *argv[] )
 
     run_iter(&res);
 
+    DEBUG_PRINT((stdout, YEL "run_iter finished, headed to final socket sync\n" RESET));
+
     if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, "sync error while in data transfer\n");
         return 1;
@@ -110,6 +112,7 @@ static int run_iter(struct resources *res)
         rc = 0;
     
         DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
+
         if( config.server_name ){
             tposted[i] = get_cycles();
             rc = write(res->sock, res->buf, config.xfer_unit);
@@ -132,8 +135,8 @@ static int run_iter(struct resources *res)
                 }
             }
             csum = checksum(res->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout, WHT "checksum on received data = %0x\n", csum));
             DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n" RESET, config.xfer_unit));
+            DEBUG_PRINT((stdout, WHT "\tchecksum on received data = %0x\n", csum));
         }
     }
 
@@ -195,7 +198,7 @@ static int resources_create(struct resources *res)
         rc = 1;
         goto resources_create_exit;
     }
-    memset(res->buf, 0, config.xfer_unit);
+    memset(res->buf, 1, config.xfer_unit);
 
 
 
