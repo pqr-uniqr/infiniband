@@ -332,14 +332,16 @@ static void print_report( void )
     unsigned long tsize;	/* Transferred size, in megabytes */
     int i, j;
     int opt_posted = 0, opt_completed = 0;
+    unsigned int iters = config.iter;
+    unsigned size = config.xfer_unit;
     cycles_t opt_delta;
     cycles_t t;
 
     opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
 
     /* Find the peak bandwidth */
-    for (i = 0; i < config.iter; ++i)
-        for (j = i; j < config.iter; ++j) {
+    for (i = 0; i < iters; ++i)
+        for (j = i; j < iters; ++j) {
             t = (tcompleted[j] - tposted[i]) / (j - i + 1);
             if (t < opt_delta) {
                 opt_delta  = t;
