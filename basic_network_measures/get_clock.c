@@ -45,22 +45,6 @@
 #include <stdio.h>
 #include "get_clock.h"
 
-/*  
-#ifndef DEBUG
-#define DEBUG 0
-#endif
-#ifndef DEBUG_DATA
-#define DEBUG_DATA 0
-#endif
-*/
-
-#ifdef DEBUG
-# define DEBUG_PRINT(x) fprintf x
-#else
-# define DEBUG_PRINT(x) do {} while (0)
-#endif
-
-
 #define MEASUREMENTS 200
 #define USECSTEP 10
 #define USECSTART 100
@@ -103,7 +87,6 @@ static double sample_get_cpu_mhz(void)
 		x[i] = (tv2.tv_sec - tv1.tv_sec) * 1000000 +
 			tv2.tv_usec - tv1.tv_usec;
 		y[i] = get_cycles() - start;
-        DEBUG_PRINT((stdout, "x=%ld y=%Ld\n", x[i], (long long)y[i]));
 	}
 
 	for (i = 0; i < MEASUREMENTS; ++i) {
@@ -120,16 +103,12 @@ static double sample_get_cpu_mhz(void)
 	a = (sy - b * sx) / MEASUREMENTS;
 
 
-    DEBUG_PRINT((stdout, "a = %g\n", a));
-    DEBUG_PRINT((stdout, "b = %g\n", b));
-    DEBUG_PRINT((stdout, "a / b = %g\n", a/b));
 
 
 	r_2 = (MEASUREMENTS * sxy - sx * sy) * (MEASUREMENTS * sxy - sx * sy) /
 		(MEASUREMENTS * sxx - sx * sx) /
 		(MEASUREMENTS * syy - sy * sy);
 
-    DEBUG_PRINT((stderr, "r^2 = %g\n", r_2));
 	if (r_2 < 0.9) {
 		fprintf(stderr,"Correlation coefficient r^2: %g < 0.9\n", r_2);
 		return 0;

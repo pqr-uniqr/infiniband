@@ -251,24 +251,17 @@ static int sock_connect(const char *servername, int port)
     for (iterator = resolved_addr; iterator; iterator = iterator->ai_next)
     {
         sockfd = socket(iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
-
         setsockopt(sockfd, SOL_SOCKET ,SO_REUSEADDR, &so_reuseaddr, sizeof(so_reuseaddr));
 
-        if (sockfd >= 0)
-        {
-            if (servername)
-            {
+        if (sockfd >= 0){
+            if (servername){
                 /* Client mode. Initiate connection to remote */
-                if ((tmp =
-                            connect (sockfd, iterator->ai_addr, iterator->ai_addrlen)))
-                {
+                if ((tmp = connect (sockfd, iterator->ai_addr, iterator->ai_addrlen))){
                     fprintf (stderr, "failed connect \n");
                     close (sockfd);
                     sockfd = -1;
                 }
-            }
-            else
-            {
+            } else {
                 /* Server mode. Set up listening socket an accept a connection */
                 listenfd = sockfd;
                 sockfd = -1;
@@ -279,6 +272,7 @@ static int sock_connect(const char *servername, int port)
             }
         }
     }
+
 sock_connect_exit:
     if (listenfd)
         close (listenfd);
