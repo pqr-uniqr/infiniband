@@ -49,6 +49,6 @@ else
 
     while true 
     do
-        `./$EXEC`
+        ./$EXEC
     done
 fi
