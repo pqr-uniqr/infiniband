@@ -116,7 +116,7 @@ static int run_iter(struct resources *res)
 
             memset(res->buf, i % 2, config.xfer_unit);
             csum = checksum(res->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout,"checksum of buffer to be sent: %0x\n", csum));
+            DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 
             tposted[i] = get_cycles();
             rc = write(res->sock, res->buf, config.xfer_unit);
@@ -331,7 +331,6 @@ static void print_config( void )
 static void print_report( void )
 {
     double cycles_to_units;
-    unsigned long tsize;	/* Transferred size, in megabytes */
     int i, j;
     int opt_posted = 0, opt_completed = 0;
     unsigned int iters = config.iter;
@@ -353,9 +352,8 @@ static void print_report( void )
         }
 
     cycles_to_units = get_cpu_mhz(0) * 1000000;
-    tsize = size;
-    printf(REPORT_FMT, size, iters, tsize * cycles_to_units / opt_delta / 0x100000,
-            tsize * iters * cycles_to_units /(tcompleted[iters - 1] - tposted[0]) / 0x100000);
+    printf(REPORT_FMT, size, iters, size * cycles_to_units / opt_delta / 0x100000,
+            size * iters * cycles_to_units / (tcompleted[iters-1] - tposted[0]) / 0x100000 );
 }
 
 static uint16_t checksum(void *vdata, size_t length)
