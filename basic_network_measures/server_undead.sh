@@ -32,6 +32,21 @@ if [ "$EXEC" != 'ip' -a "$EXEC" != 'rdma' ]
 then
     cecho "Error: please specify the executable (ip or rdma)" $red
 else
+    if [ -x $EXEC ]
+    then
+        cecho "> executable present. "  $green 
+    else
+        cecho "> executable not present--compiling" $red
+        make $EXEC
+        if [ -x $EXEC ]
+        then
+            cecho "> executable compiled." $green
+        else
+            cecho "> executable could not be compiled. exiting..." $red
+            exit 1
+        fi
+    fi
+
     while true 
     do
         `./$EXEC`
