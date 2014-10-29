@@ -28,7 +28,7 @@ return
 EXEC=$1
 
 
-if [ "$EXEC" != 'ip' -a "$EXEC" != 'rdma' ]
+if [ "${EXEC}" = "" ]
 then
     cecho "Error: please specify the executable (ip or rdma)" $red
 else
