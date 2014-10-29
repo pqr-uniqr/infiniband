@@ -25,13 +25,29 @@ color=${2:-$black}           # Defaults to black, if not specified.
 return
 }  
 
+printheader() { echo -e "#bytes      #iterations      Peak BW       Avg. BW"; }
 
+
+DATE=`date | sed 's/ /_/g'`
+GITVER=`git show | grep "commit" -m 1`
+DIR='res'
 EXEC=$1
+
 
 if [ "$EXEC" != 'ip' -a "$EXEC" != 'rdma' ]
 then
     cecho "Error: please specify the executable (ip or rdma)" $red
 else
+
+    # CORDIAL MESSAGE AND SOME INFO
+    cecho "##########################" $cyan
+    cecho "> hi there" $cyan
+    cecho "> $EXEC experiment (date: $DATE, using $GITVER)" $cyan
+    cecho "##########################\n" $cyan
+
+    sleep 1
+
+    # CHECK IF REQUIRED EXECUTABLE IS PRESENT 
     if [ -x $EXEC ]
     then
         cecho "> executable present. "  $green 
@@ -47,15 +63,43 @@ else
         fi
     fi
 
-    cecho "> Specify address of the server" $white
-    read ADDR
-    cecho "> $ADDR it is." $green #TODO bheck
+    # GET NAME OF FILE TO WRITE TO 
+    cecho "> Specify name of file (defaults to date/time)" $white
+    while read FILENAME; do
+        if [ -n "${FILENAME}"  ]
+        then
+            if [ -e "$DIR/$FILENAME" ]
+            then
+                cecho "> file already exists" $red
+            else
+                FILEPATH="$DIR/$FILENAME"
+                cecho "> experiment will be stored in '$FILEPATH'" $green
+                break
+            fi
+        else
+            FILENAME="$EXEC_$DATE"
+            FILEPATH="$DIR/$FILENAME"
+            cecho "> defaulting to: $FILEPATH" $green
+            break
+        fi
+    done
 
+    # GET SERVER ADDR
+    cecho "> Specify address of the server" $white
+    while read ADDR; do 
+        if [ -z "${ADDR}" ]
+        then
+            cecho "> try again " $red
+        else
+            cecho "> $ADDR it is." $green #TODO check
+            break
+        fi
+    done
+
+    # GET XFER SIZE
     cecho "> I will test transfer sizes from 2^1 to 2^x. Specify x. (max 29)" $white
-    while true;
-    do
-        read POW #TODO nulcheck
-        if [ $POW -gt 29  ]
+    while read POW; do
+        if [ "0$POW" -gt 29  ] || [ -z "${POW}" ]
         then
             cecho "> try again (max 29)" $red
         else
@@ -65,11 +109,10 @@ else
         fi
     done 
 
+    # GET NUMBER OF ITERATIONS
     cecho "> i will run y many iterations for each transfer size. Specify y (max 100000)" $white
-    while true;
-    do 
-        read ITER #TODO nullcheck
-        if [ $ITER -gt 100000 ]
+    while read ITER; do
+        if [ "0$ITER" -gt 100000 ] || [ -z "${ITER}" ]
         then 
             cecho "> try again (max 100000)" $red
         else
@@ -78,13 +121,21 @@ else
         fi
     done
 
-    if [ "$EXEC" = 'rdma' ]
+    # CHECK IF RESULT DIRETORY EXISTS 
+    if  ! [ -d "$DIR" ] 
     then
+        mkdir $DIR
+    fi
+
+    touch "$FILEPATH"
+    echo "$EXEC experiment: Up to 2^$POW bytes, each $ITER iterations (server addr: $ADDR)" > $FILEPATH
+    echo "* to recreate this result, use $GITVER *" >> $FILEPATH
+
+    if [ "$EXEC" = 'rdma' ]; then
+        # GET VERB FOR RDMA
         cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
-        while true;
-        do 
-            read OP #TODO nullcheck 
-            if [ "$OP" != 'r' ] && [ "$OP" != 'w' ] && [ "$OP" != 's' ]
+        while read OP; do 
+            if [ -z "${OP}" ] || [ [ "$OP" != 'r' ] && [ "$OP" != 'w' ] && [ "$OP" != 's' ] ]
             then
                 cecho "> try again " $red
             else
@@ -92,26 +143,27 @@ else
             fi
         done
 
+        echo "verb: $VERB"  >> $FILEPATH
+        printheader >> $FILEPATH
+        cecho "STDERR OUTPUT: " $red
 
-        echo -e "#bytes\t#iterations\tPeak BW\tAvg. BW"
-        for i in `seq 1 $POW`;
-        do
-          ./rdma -v $VERB -i $ITER -b $i $ADDRESS
+        # RUN RDMA EXPERIMENT
+        for i in `seq 1 $POW`; do
+          ./rdma -v $VERB -i $ITER -b $i $ADDR >> $FILEPATH
           sleep 1
         done
     else
+        printheader >> $FILEPATH
+        cecho "STDERR OUTPUT: " $red
 
-
-        echo -e "#bytes\t#iterations\tPeak BW\tAvg. BW"
-        for i in `seq 1 $POW`;
-        do
-            ./ip -b $i -i $ITER $ADDR
+        # RUN IP EXPERIMENT
+        for i in `seq 1 $POW`; do
+            ./ip -b $i -i $ITER $ADDR >> $FILEPATH
           sleep 1
         done
     fi
 
-
-
+    make clean
 fi
 
 exit 0
