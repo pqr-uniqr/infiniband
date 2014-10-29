@@ -335,14 +335,20 @@ static void print_report( void )
     int opt_posted = 0, opt_completed = 0;
     unsigned int iters = config.iter;
     unsigned size = config.xfer_unit;
+    cycles_t total_delta = 0;
     cycles_t opt_delta;
     cycles_t t;
-
+ 
     opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
 
     /* Find the peak bandwidth */
     for (i = 0; i < iters; ++i)
         for (j = i; j < iters; ++j) {
+           
+            if(i == j){
+                total_delta += tcompleted[i] - tposted[i];
+            }
+
             t = (tcompleted[j] - tposted[i]) / (j - i + 1);
             if (t < opt_delta) {
                 opt_delta  = t;
@@ -351,9 +357,12 @@ static void print_report( void )
             }
         }
 
+
+
     cycles_to_units = get_cpu_mhz(0) * 1000000;
     printf(REPORT_FMT, size, iters, size * cycles_to_units / opt_delta / 0x100000,
-            size * iters * cycles_to_units / (tcompleted[iters-1] - tposted[0]) / 0x100000 );
+            size * iters * cycles_to_units / (total_delta));
+            //size * iters * cycles_to_units / (tcompleted[iters-1] - tposted[0]) / 0x100000 );
 }
 
 static uint16_t checksum(void *vdata, size_t length)
