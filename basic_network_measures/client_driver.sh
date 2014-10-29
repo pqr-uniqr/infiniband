@@ -32,11 +32,12 @@ DATE=`date | sed 's/ /_/g'`
 GITVER=`git show | grep "commit" -m 1`
 DIR='res'
 EXEC=$1
+DBG=$2
 
 
-if [ "$EXEC" != 'ip' -a "$EXEC" != 'rdma' ]
+if [ "${EXEC}" = "" ]
 then
-    cecho "Error: please specify the executable (ip or rdma)" $red
+    cecho "Error: please specify the executable" $red
 else
 
     # CORDIAL MESSAGE AND SOME INFO
@@ -45,22 +46,19 @@ else
     cecho "> $EXEC experiment (date: $DATE, using $GITVER)" $cyan
     cecho "##########################\n" $cyan
 
-    sleep 1
+    sleep 0.5
 
-    # CHECK IF REQUIRED EXECUTABLE IS PRESENT 
+
+    # RECOMPILE EXECUTABLE
+    make clean
+    cecho "> compiling executable..."  $green
+    make $EXEC
     if [ -x $EXEC ]
     then
-        cecho "> executable present. "  $green 
+        cecho "> executable compiled." $green
     else
-        cecho "> executable not present--compiling" $red
-        make $EXEC
-        if [ -x $EXEC ]
-        then
-            cecho "> executable compiled." $green
-        else
-            cecho "> executable could not be compiled. exiting..." $red
-            exit 1
-        fi
+        cecho "> executable could not be compiled. exiting..." $red
+        exit 1
     fi
 
     # GET NAME OF FILE TO WRITE TO 

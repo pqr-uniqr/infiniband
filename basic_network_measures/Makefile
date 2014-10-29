@@ -2,29 +2,27 @@ CFLAGS= -O3
 CFLAGS= -g 
 CC=gcc
 LD=gcc 
-NAME=rdma
-IPNAME=ip
 LIB=-libverbs -lm
 
 all: rdma
 
 rdma: rdma.c get_clock.c get_clock.h
-	${CC} ${CFLAGS} -m64 -c ${NAME}.c
-	${LD} ${NAME}.o ${LIB} -o ${NAME} 
+	${CC} ${CFLAGS} -m64 -c rdma.c
+	${LD} rdma.o ${LIB} -o rdma
 
-debug: rdma.c  get_clock.c get_clock.h 
-	${CC} ${CFLAGS} -m64 -c ${NAME}.c -DDEBUG
-	${LD} ${NAME}.o ${LIB} -o ${NAME} 
+rdma_dbg: rdma.c  get_clock.c get_clock.h 
+	${CC} ${CFLAGS} -m64 -c rdma.c -DDEBUG
+	${LD} rdma.o ${LIB} -o rdma_dbg
 
 ip: ip.c  ip.h
-	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c
-	${LD} ${IPNAME}.o ${LIB} -o ${IPNAME} 
+	${CC} ${CFLAGS} -m64 -c ip.c
+	${LD} ip.o ${LIB} -o ip
 
 ip_dbg: ip.c  ip.h
-	${CC} ${CFLAGS} -m64 -c ${IPNAME}.c -DDEBUG
-	${LD} ${IPNAME}.o ${LIB} -o ${IPNAME} 
+	${CC} ${CFLAGS} -m64 -c ip.c -DDEBUG
+	${LD} ip.o ${LIB} -o ip_dbg
 
 
 clean:
-	rm -f ${NAME} ${NAME}.o ${IPNAME} ${IPNAME}.o
+	rm -f rdma rdma.o ip ip.o ip_dbg rdma_dbg
 
