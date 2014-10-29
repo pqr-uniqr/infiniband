@@ -130,7 +130,7 @@ else
     echo "$EXEC experiment: Up to 2^$POW bytes, each $ITER iterations (server addr: $ADDR)" > $FILEPATH
     echo "* to recreate this result, use $GITVER *" >> $FILEPATH
 
-    if [ "$EXEC" = 'rdma' ]; then
+    if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
         # GET VERB FOR RDMA
         cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
         while read OP; do 
@@ -152,7 +152,7 @@ else
 
         # RUN RDMA EXPERIMENT
         for i in `seq 1 $POW`; do
-          ./rdma -v $OP -i $ITER -b $i $ADDR >> $FILEPATH
+          ./$EXEC -v $OP -i $ITER -b $i $ADDR >> $FILEPATH
           sleep 1
         done
     else
@@ -162,7 +162,7 @@ else
 
         # RUN IP EXPERIMENT
         for i in `seq 1 $POW`; do
-            ./ip -b $i -i $ITER $ADDR >> $FILEPATH
+            ./$EXEC -b $i -i $ITER $ADDR >> $FILEPATH
           sleep 1
         done
     fi
