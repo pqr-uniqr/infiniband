@@ -955,18 +955,18 @@ int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data
 static void usage (const char *argv0)
 {
 
-    fprintf (stdout, "Usage:\n");
-    fprintf (stdout, " %s start a server and wait for connection\n", argv0);
-    fprintf (stdout, " %s <host> connect to server at <host>\n", argv0);
-    fprintf (stdout, "\n");
-    fprintf (stdout, "Options:\n");
-    fprintf (stdout,
+    fprintf (stderr, "Usage:\n");
+    fprintf (stderr, " %s start a server and wait for connection\n", argv0);
+    fprintf (stderr, " %s <host> connect to server at <host>\n", argv0);
+    fprintf (stderr, "\n");
+    fprintf (stderr, "Options:\n");
+    fprintf (stderr,
             " -p, --port <port> listen on/connect to port <port> (default 18515)\n");
-    fprintf (stdout,
+    fprintf (stderr,
             " -d, --ib-dev <dev> use IB device <dev> (default first device found)\n");
-    fprintf (stdout,
+    fprintf (stderr,
             " -i, --ib-port <port> use port <port> of IB device (default 1)\n");
-    fprintf (stdout,
+    fprintf (stderr,
             " -g, --gid_idx <git index> gid index to be used in GRH (default not used)\n");
 }
 

@@ -72,12 +72,13 @@ else
             then
                 cecho "> file already exists" $red
             else
+                FILENAME="${EXEC}_$FILENAME"
                 FILEPATH="$DIR/$FILENAME"
                 cecho "> experiment will be stored in '$FILEPATH'" $green
                 break
             fi
         else
-            FILENAME="$EXEC_$DATE"
+            FILENAME="${EXEC}_$DATE"
             FILEPATH="$DIR/$FILENAME"
             cecho "> defaulting to: $FILEPATH" $green
             break
@@ -135,25 +136,30 @@ else
         # GET VERB FOR RDMA
         cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
         while read OP; do 
-            if [ -z "${OP}" ] || [ [ "$OP" != 'r' ] && [ "$OP" != 'w' ] && [ "$OP" != 's' ] ]
-            then
-                cecho "> try again " $red
-            else
-                break
+            if  [ -n "${OP}" ]; then 
+                if [ "$OP" != 'r' ] && [ "$OP" != 'w' ] && [ "$OP" != 's' ] ; then
+                    cecho "> try again " $red
+                else
+                    cecho "> $OP received" $green
+                    break
+                fi
             fi
         done
 
-        echo "verb: $VERB"  >> $FILEPATH
+
+        echo "verb: $OP"  >> $FILEPATH
         printheader >> $FILEPATH
+        cecho "starting experiment..." $green
         cecho "STDERR OUTPUT: " $red
 
         # RUN RDMA EXPERIMENT
         for i in `seq 1 $POW`; do
-          ./rdma -v $VERB -i $ITER -b $i $ADDR >> $FILEPATH
+          ./rdma -v $OP -i $ITER -b $i $ADDR >> $FILEPATH
           sleep 1
         done
     else
         printheader >> $FILEPATH
+        cecho "starting experiment..." $green
         cecho "STDERR OUTPUT: " $red
 
         # RUN IP EXPERIMENT
