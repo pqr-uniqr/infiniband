@@ -975,7 +975,7 @@ static void print_config (void)
     char *op;
     char *crt;
 
-    fprintf (stdout, YEL "CONFIG-------------------------------------------\n" );
+    fprintf (stdout, YEL "\n\nCONFIG-------------------------------------------\n" );
     fprintf (stdout, "Device name : \"%s\"\n", config.dev_name);
     fprintf (stdout, "IB port : %u\n", config.ib_port);
     if (config.server_name)

@@ -30,7 +30,7 @@ EXEC=$1
 
 if [ "${EXEC}" = "" ]
 then
-    cecho "Error: please specify the executable (ip or rdma)" $red
+    cecho "Error: please specify the executable" $red
 else
     if [ -x $EXEC ]
     then

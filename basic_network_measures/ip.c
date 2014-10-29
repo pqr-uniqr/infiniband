@@ -317,7 +317,7 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 
 static void print_config( void )
 {
-    fprintf (stdout, YEL "CONFIG-------------------------------------------\n" );
+    fprintf (stdout, YEL "\n\nCONFIG-------------------------------------------\n" );
     if (config.server_name)
         fprintf (stdout, "IP : %s\n", config.server_name);
     fprintf (stdout, "TCP port : %u\n", config.tcp_port);
