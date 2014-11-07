@@ -380,8 +380,8 @@ static void print_report( void )
 
     cycles_to_units = get_cpu_mhz(0) * 1000000;
     printf(REPORT_FMT, size, iters, size * cycles_to_units / opt_delta / 0x100000,
-            size * iters * cycles_to_units / (total_delta) / 0x100000);
-            //size * iters * cycles_to_units / (tcompleted[iters-1] - tposted[0]) / 0x100000 );
+            //size * iters * cycles_to_units / (total_delta) / 0x100000);
+            size * iters * cycles_to_units / (tcompleted[iters-1] - tposted[0]) / 0x100000 );
 }
 
 static uint16_t checksum(void *vdata, size_t length)
