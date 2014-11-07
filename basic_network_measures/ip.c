@@ -135,7 +135,7 @@ static int run_iter(struct resources *res)
             while( bytes_read < config.xfer_unit ){
                 rc = read(res->sock, res->buf, config.xfer_unit);
 
-                DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()", rc));
+                DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
 
                 if (rc > 0){
                     bytes_read += rc;
