@@ -129,24 +129,25 @@ static int run_iter(struct resources *res)
                 return 1;
             }
 
-            DEBUG_PRINT((stdout, GRN "%zd bytes written to socket\n"RESET, config.xfer_unit));
+            DEBUG_PRINT((stdout, GRN "%d bytes written to socket\n" RESET, rc));
         } else {
             bytes_read = 0;
             while( bytes_read < config.xfer_unit ){
                 rc = read(res->sock, res->buf, config.xfer_unit);
+
+                DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()", rc));
+
                 if (rc > 0){
-                    //TODO debug printing
                     bytes_read += rc;
                 } else {
-                    //TODO debug printing
                     fprintf(stderr, "failed to read from socket in run_iter\n");
                     return 1;
                 }
             }
 #ifdef DEBUG
-            csum = checksum(res->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n" RESET, config.xfer_unit));
-            DEBUG_PRINT((stdout, WHT "\tchecksum on received data = %0x\n", csum));
+            DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
+            csum = checksum(res->buf, bytes_read);
+            DEBUG_PRINT((stdout, WHT "\tchecksum on received data = %0x\n" RESET, csum));
 #endif
         }
     }
