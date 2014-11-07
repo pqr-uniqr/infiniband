@@ -211,15 +211,15 @@ static int resources_create(struct resources *res)
     /* PRINT TCP WINDOW SIZE */
 
     int tcp_win_size = 0;
-    Socklen_t len = sizeof( tcp_win_size ); 
+    socklen_t len = sizeof( tcp_win_size ); 
 
 
     if( config.server_name ){
         getsockopt( res->sock, SOL_SOCKET, SO_SNDBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
-        DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size)) 
+        DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size));
     } else {
         getsockopt( res->sock, SOL_SOCKET, SO_RCVBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
-        DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size))
+        DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size));
     }
 
 resources_create_exit:
