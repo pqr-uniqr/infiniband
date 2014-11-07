@@ -32,19 +32,16 @@ if [ "${EXEC}" = "" ]
 then
     cecho "Error: please specify the executable" $red
 else
+    make clean
+    cecho "> compiling executable" $green
+    make $EXEC
+
     if [ -x $EXEC ]
     then
-        cecho "> executable present. "  $green 
+        cecho "> executable compiled"  $green 
     else
-        cecho "> executable not present--compiling" $red
-        make $EXEC
-        if [ -x $EXEC ]
-        then
-            cecho "> executable compiled." $green
-        else
-            cecho "> executable could not be compiled. exiting..." $red
-            exit 1
-        fi
+        cecho "> executable could not be compiled. exiting..." $red
+        exit 1
     fi
 
     while true 
