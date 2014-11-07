@@ -133,8 +133,10 @@ static int run_iter(struct resources *res)
             while( bytes_read < config.xfer_unit ){
                 rc = read(res->sock, res->buf, config.xfer_unit);
                 if (rc > 0){
+                    //TODO debug printing
                     bytes_read += rc;
                 } else {
+                    //TODO debug printing
                     return 1;
                 }
             }
@@ -182,6 +184,8 @@ static int resources_create(struct resources *res)
     }
     DEBUG_PRINT((stdout, GRN "TCP connection was established\n" RESET));
 
+
+    /* EXCHANGE EXPERIMENT CONFIGURATION */
     if( sock_sync_data(res->sock, 
                 sizeof(struct config_t), 
                 (char *) &config, 
@@ -204,7 +208,19 @@ static int resources_create(struct resources *res)
     }
     memset(res->buf, 0x1, config.xfer_unit);
 
+    /* PRINT TCP WINDOW SIZE */
 
+    int tcp_win_size = 0;
+    Socklen_t len = sizeof( tcp_win_size ); 
+
+
+    if( config.server_name ){
+        getsockopt( res->sock, SOL_SOCKET, SO_SNDBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
+        DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size)) 
+    } else {
+        getsockopt( res->sock, SOL_SOCKET, SO_RCVBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
+        DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size))
+    }
 
 resources_create_exit:
     if(rc){
