@@ -114,9 +114,11 @@ static int run_iter(struct resources *res)
 
         if( config.server_name ){
 
+#ifdef DEBUG
             memset(res->buf, i % 2, config.xfer_unit);
             csum = checksum(res->buf, config.xfer_unit);
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
+#endif
 
             tposted[i] = get_cycles();
             rc = write(res->sock, res->buf, config.xfer_unit);
@@ -140,9 +142,11 @@ static int run_iter(struct resources *res)
                     return 1;
                 }
             }
+#ifdef DEBUG
             csum = checksum(res->buf, config.xfer_unit);
             DEBUG_PRINT((stdout, GRN "%zd bytes read from socket\n" RESET, config.xfer_unit));
             DEBUG_PRINT((stdout, WHT "\tchecksum on received data = %0x\n", csum));
+#endif
         }
     }
 
