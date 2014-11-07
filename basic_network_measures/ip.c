@@ -150,7 +150,6 @@ static int run_iter(struct resources *res)
 
 }
 
-
 static void resources_init(struct resources *res)
 {
     memset( (void *) res, 0, sizeof *res);
@@ -213,7 +212,6 @@ static int resources_create(struct resources *res)
     int tcp_win_size = 0;
     socklen_t len = sizeof( tcp_win_size ); 
 
-
     if( config.server_name ){
         getsockopt( res->sock, SOL_SOCKET, SO_SNDBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
         DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size));
@@ -221,6 +219,13 @@ static int resources_create(struct resources *res)
         getsockopt( res->sock, SOL_SOCKET, SO_RCVBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
         DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size));
     }
+
+    /* PRINT TCP MAX SEGMENT SIZE */
+
+    int mss = 0;
+    socklen_t len = sizeof( mss );
+    getsockopt(res->sock, IPPROTO_TCP, TCP_MAXSEG, (char *) &mss, &len);
+    DEBUG_PRINT((stdout, "tcp maximum segment size set to %d\n", mss));
 
 resources_create_exit:
     if(rc){
@@ -372,8 +377,6 @@ static void print_report( void )
                 opt_completed = j;
             }
         }
-
-
 
     cycles_to_units = get_cpu_mhz(0) * 1000000;
     printf(REPORT_FMT, size, iters, size * cycles_to_units / opt_delta / 0x100000,
