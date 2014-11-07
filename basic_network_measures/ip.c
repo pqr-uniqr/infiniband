@@ -139,6 +139,7 @@ static int run_iter(struct resources *res)
                     bytes_read += rc;
                 } else {
                     //TODO debug printing
+                    fprintf(stderr, "failed to read from socket in run_iter\n");
                     return 1;
                 }
             }
