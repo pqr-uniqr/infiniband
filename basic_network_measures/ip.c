@@ -103,6 +103,8 @@ static int run_iter(struct resources *res)
     int rc;
     int bytes_read;
     uint16_t csum;
+    char *read_to;
+    int left_to_read;
 
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
@@ -131,11 +133,37 @@ static int run_iter(struct resources *res)
 
             DEBUG_PRINT((stdout, GRN "%d bytes written to socket\n" RESET, rc));
         } else {
+            read_to = res->buf;
+            left_to_read = config.xfer_unit;
             bytes_read = 0;
+
+            while( left_to_read ){
+                rc = read(res->sock, read_to, left_to_read);
+    
+                if( rc < 0 ){
+                    fprintf(stderr, "failed to read from socket in run_iter\n");
+                    return 1;
+                }
+                
+                DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
+                left_to_read -= rc;
+                bytes_read += rc;
+                read_to += rc;
+            }
+
+            /* 
             while( bytes_read < config.xfer_unit ){
                 rc = read(res->sock, res->buf, config.xfer_unit);
 
+                if( rc < 0 ){
+                    fprintf(stderr, "failed to read from socket in run_iter\n");
+                    return 1;
+                }
+
                 DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
+                bytes_read += rc;
+                res->buf
+
 
                 if (rc > 0){
                     bytes_read += rc;
@@ -144,6 +172,7 @@ static int run_iter(struct resources *res)
                     return 1;
                 }
             }
+            */
 #ifdef DEBUG
             DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
             csum = checksum(res->buf, bytes_read);
