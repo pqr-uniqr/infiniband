@@ -223,7 +223,7 @@ static int resources_create(struct resources *res)
     /* PRINT TCP MAX SEGMENT SIZE */
 
     int mss = 0;
-    socklen_t len = sizeof( mss );
+    len = sizeof( mss );
     getsockopt(res->sock, IPPROTO_TCP, TCP_MAXSEG, (char *) &mss, &len);
     DEBUG_PRINT((stdout, "tcp maximum segment size set to %d\n", mss));
 

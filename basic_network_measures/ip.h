@@ -17,6 +17,7 @@
 #include <infiniband/verbs.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
 #include <math.h>
 
