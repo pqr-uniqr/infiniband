@@ -10,8 +10,8 @@ struct config_t config = {
 
 cycles_t cposted;
 cycles_t ccompleted;
-struct timeval *tposted;
-struct timeval *tcompleted;
+struct timeval tposted;
+struct timeval tcompleted;
 
 int main ( int argc, char *argv[] )
 {
@@ -29,7 +29,7 @@ int main ( int argc, char *argv[] )
             {.name=NULL, .has_arg=0, .val='\0'},
         };
 
-        if( (c = getopt_long(argc, argv, "b:i:c:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc, argv, "b:i:", long_options, NULL)) == -1 ) break;
 
         switch(c){
             case 'b':
@@ -107,7 +107,7 @@ static int run_iter(struct resources *res)
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
     cposted = get_cycles();
-    gettimeofday( tposted, NULL );
+    gettimeofday( &tposted, NULL );
     for(i = 0; i < config.iter; i++){
         rc = 0;
     
@@ -156,7 +156,7 @@ static int run_iter(struct resources *res)
         }
     }
     ccompleted = get_cycles();
-    gettimeofday( tcompleted, NULL );
+    gettimeofday( &tcompleted, NULL );
 
     return 0;
 
@@ -366,8 +366,8 @@ static void print_report( void )
     unsigned size = config.xfer_unit;
     unsigned int iters = config.iter;
 
-    int elapsed = (tcompleted->tv_sec - tposted->tv_sec) / 0x1000000 + 
-        (tcompleted->tv_usec - tcompleted->tv_usec);
+    int elapsed = (tcompleted.tv_sec - tposted.tv_sec) / 0x1000000 + 
+        (tcompleted.tv_usec - tposted.tv_usec);
     printf(REPORT_FMT, size, iters, size * iters / elapsed );
     return;
 
