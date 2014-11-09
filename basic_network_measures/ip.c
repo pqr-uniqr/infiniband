@@ -363,11 +363,10 @@ static void print_report( void )
 {
     unsigned size = config.xfer_unit;
     unsigned int iters = config.iter;
-    double cycles_per_sec = get_cpu_mhz(0) * 1000000;
-    double cpu_usage = (ccompleted - cposted)/ cycles_per_sec;
-
     float elapsed = (tcompleted.tv_sec - tposted.tv_sec) * 0x1000000 + 
         (tcompleted.tv_usec - tposted.tv_usec);
+    double cycles_per_sec = get_cpu_mhz(0) * 1000000;
+    double cpu_usage = (ccompleted - cposted) / (cycles_per_sec * (elapsed / 0x1000000));
     
     printf( REPORT_FMT, size, iters, size * iters / elapsed, cpu_usage );
     return;
