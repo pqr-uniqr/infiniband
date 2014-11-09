@@ -362,17 +362,17 @@ static void print_config( void )
 
 static void print_report( void )
 {
-    double cycles_to_units = get_cpu_mhz(0) * 1000000;
     unsigned size = config.xfer_unit;
     unsigned int iters = config.iter;
+    double cycles_to_units = get_cpu_mhz(0) * 1000000;
 
-    int elapsed = (tcompleted.tv_sec - tposted.tv_sec) / 0x1000000 + 
+    float elapsed = (tcompleted.tv_sec - tposted.tv_sec) * 0x1000000 + 
         (tcompleted.tv_usec - tposted.tv_usec);
-    printf(REPORT_FMT, size, iters, size * iters / elapsed );
+    printf( REPORT_FMT, size, iters, size * iters / elapsed );
     return;
 
-    printf(REPORT_FMT, size, iters, size * iters * cycles_to_units / 
-            (ccompleted - cposted) / 0x100000 );
+    //printf( REPORT_FMT, size, iters, size * iters * cycles_to_units / 
+     //       (ccompleted - cposted) / 0x100000 );
     return;
 
     
