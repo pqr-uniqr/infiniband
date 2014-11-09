@@ -5,25 +5,25 @@ struct config_t config = {
     19875, /* tcp port */
     0,  /* xfer unit */
     0,  /* iterations  */
-    CRT_DEF, /* default criteria is bandwidth */
     NULL,
 };
 
-cycles_t *tposted;
-cycles_t *tcompleted;
+cycles_t ccompleted;
+cycles_t cposted;
 
 int main ( int argc, char *argv[] )
 {
     int rc = 1;
     struct resources res;
     char temp_char;
+
     /* PROCES CL ARGUMENTS */
+
     while(1){
         int c;
         static struct option long_options[] = {
             {.name="xfer-unit", .has_arg=1, .val='b'},
             {.name="iter", .has_arg=1, .val='i'},
-            {.name="criteria", .has_arg=1, .val='c'},
             {.name=NULL, .has_arg=0, .val='\0'},
         };
 
@@ -38,9 +38,6 @@ int main ( int argc, char *argv[] )
                 break;
             case 'i':
                 config.iter = strtoul(optarg,NULL,0);
-                break;
-            case 'c':
-                config.crt = strtoul(optarg, NULL, 0);
                 break;
             default:
                 return 1;
@@ -59,9 +56,11 @@ int main ( int argc, char *argv[] )
     print_config();
 #endif
 
+    /* INITIALIZE RESOURCES */
     resources_init(&res);
     DEBUG_PRINT((stdout, GRN "resources_init() successful\n" RESET));
 
+    /* CREATE RESOURCES */
     if( resources_create(&res) ){
         fprintf(stderr, RED "resources_create() failed\n" RESET);
         rc = 1;
@@ -70,9 +69,6 @@ int main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "resources_create() successful\n" RESET));
    
     rc = 0;
-
-    ALLOCATE(tposted, cycles_t, config.iter);
-    ALLOCATE(tcompleted, cycles_t, config.iter);
 
     if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, "sync error while in data transfer\n");
@@ -108,7 +104,7 @@ static int run_iter(struct resources *res)
 
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
-    //iteration loop
+    cposted = get_cycles();
     for(i = 0; i < config.iter; i++){
         rc = 0;
     
@@ -122,9 +118,15 @@ static int run_iter(struct resources *res)
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
 
-            tposted[i] = get_cycles();
+
+            //gettimeofday( &tposted[i], NULL );
+            //cposted[i] = get_cycles();
+
             rc = write(res->sock, res->buf, config.xfer_unit);
-            tcompleted[i] = get_cycles();
+
+            //ccompleted[i] = get_cycles();
+            //gettimeofday( &tcompleted[i], NULL );
+
 
             if(rc < config.xfer_unit){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
@@ -151,28 +153,6 @@ static int run_iter(struct resources *res)
                 read_to += rc;
             }
 
-            /* 
-            while( bytes_read < config.xfer_unit ){
-                rc = read(res->sock, res->buf, config.xfer_unit);
-
-                if( rc < 0 ){
-                    fprintf(stderr, "failed to read from socket in run_iter\n");
-                    return 1;
-                }
-
-                DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
-                bytes_read += rc;
-                res->buf
-
-
-                if (rc > 0){
-                    bytes_read += rc;
-                } else {
-                    fprintf(stderr, "failed to read from socket in run_iter\n");
-                    return 1;
-                }
-            }
-            */
 #ifdef DEBUG
             DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
             csum = checksum(res->buf, bytes_read);
@@ -180,6 +160,7 @@ static int run_iter(struct resources *res)
 #endif
         }
     }
+    ccompleted = get_cycles();
 
     return 0;
 
@@ -370,7 +351,6 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
     return rc;
 }
 
-
 static void print_config( void )
 {
     fprintf (stdout, YEL "\n\nCONFIG-------------------------------------------\n" );
@@ -386,6 +366,16 @@ static void print_config( void )
 
 static void print_report( void )
 {
+    double cycles_to_units = get_cpu_mhz(0) * 1000000;
+    unsigned size = config.xfer_unit;
+    unsigned int iters = config.iter;
+    printf(REPORT_FMT, size, iters, size * iters * cycles_to_units / 
+            (ccompleted - cposted) / 0x100000 );
+    return;
+
+    
+    // PERFTEST-STYLE BANDWIDTH COMPUTATION
+    /*
     double cycles_to_units;
     int i, j;
     int opt_posted = 0, opt_completed = 0;
@@ -395,17 +385,16 @@ static void print_report( void )
     cycles_t opt_delta;
     cycles_t t;
  
-    opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
-
-    /* Find the peak bandwidth */
+    opt_delta = ccompleted[opt_posted] - cposted[opt_completed];
+    //TODO  replace with time
     for (i = 0; i < iters; ++i)
         for (j = i; j < iters; ++j) {
            
             if(i == j){
-                total_delta += tcompleted[i] - tposted[i];
+                total_delta += ccompleted[i] - cposted[i];
             }
 
-            t = (tcompleted[j] - tposted[i]) / (j - i + 1);
+            t = (ccompleted[j] - cposted[i]) / (j - i + 1);
             if (t < opt_delta) {
                 opt_delta  = t;
                 opt_posted = i;
@@ -413,10 +402,15 @@ static void print_report( void )
             }
         }
 
+    // TODO replace with tposted
     cycles_to_units = get_cpu_mhz(0) * 1000000;
     printf(REPORT_FMT, size, iters, size * cycles_to_units / opt_delta / 0x100000,
             //size * iters * cycles_to_units / (total_delta) / 0x100000);
-            size * iters * cycles_to_units / (tcompleted[iters-1] - tposted[0]) / 0x100000 );
+            size * iters * cycles_to_units / (ccompleted[iters-1] - cposted[0]) / 0x100000 );
+
+    // TODO calculate CPU utilization
+
+    */
 }
 
 static uint16_t checksum(void *vdata, size_t length)

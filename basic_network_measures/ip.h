@@ -40,14 +40,9 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
-#define CRT_DEF 0
-#define CRT_BW 1
-#define CRT_LAT 2
-#define CRT_CPU 3
-
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
-#define REPORT_FMT     " %-7d    %d           %-7.2f            %-7.2f\n"
+#define REPORT_FMT     " %-7d    %d            %-7.2f\n"
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
@@ -59,7 +54,6 @@ struct config_t {
     u_int32_t tcp_port;
     size_t xfer_unit;
     int iter;
-    int crt;
     struct config_t *config_other;
 };
 
