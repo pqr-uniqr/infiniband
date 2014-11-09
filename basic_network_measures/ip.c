@@ -8,8 +8,10 @@ struct config_t config = {
     NULL,
 };
 
-cycles_t ccompleted;
 cycles_t cposted;
+cycles_t ccompleted;
+struct timeval *tposted;
+struct timeval *tcompleted;
 
 int main ( int argc, char *argv[] )
 {
@@ -105,6 +107,7 @@ static int run_iter(struct resources *res)
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
     cposted = get_cycles();
+    gettimeofday( tposted, NULL );
     for(i = 0; i < config.iter; i++){
         rc = 0;
     
@@ -118,15 +121,7 @@ static int run_iter(struct resources *res)
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
 
-
-            //gettimeofday( &tposted[i], NULL );
-            //cposted[i] = get_cycles();
-
             rc = write(res->sock, res->buf, config.xfer_unit);
-
-            //ccompleted[i] = get_cycles();
-            //gettimeofday( &tcompleted[i], NULL );
-
 
             if(rc < config.xfer_unit){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
@@ -161,6 +156,7 @@ static int run_iter(struct resources *res)
         }
     }
     ccompleted = get_cycles();
+    gettimeofday( tcompleted, NULL );
 
     return 0;
 
@@ -369,6 +365,12 @@ static void print_report( void )
     double cycles_to_units = get_cpu_mhz(0) * 1000000;
     unsigned size = config.xfer_unit;
     unsigned int iters = config.iter;
+
+    int elapsed = (tcompleted->tv_sec - tposted->tv_sec) / 0x1000000 + 
+        (tcompleted->tv_usec - tcompleted->tv_usec);
+    printf(REPORT_FMT, size, iters, size * iters / elapsed );
+    return;
+
     printf(REPORT_FMT, size, iters, size * iters * cycles_to_units / 
             (ccompleted - cposted) / 0x100000 );
     return;
