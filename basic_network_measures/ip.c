@@ -159,7 +159,6 @@ static int run_iter(struct resources *res)
     gettimeofday( &tcompleted, NULL );
 
     return 0;
-
 }
 
 static void resources_init(struct resources *res)
@@ -364,16 +363,17 @@ static void print_report( void )
 {
     unsigned size = config.xfer_unit;
     unsigned int iters = config.iter;
-    double cycles_to_units = get_cpu_mhz(0) * 1000000;
+    double cycles_per_sec = get_cpu_mhz(0) * 1000000;
+    double cpu_usage = (ccompleted - cposted)/ cycles_per_sec;
 
     float elapsed = (tcompleted.tv_sec - tposted.tv_sec) * 0x1000000 + 
         (tcompleted.tv_usec - tposted.tv_usec);
-    printf( REPORT_FMT, size, iters, size * iters / elapsed );
+    
+    printf( REPORT_FMT, size, iters, size * iters / elapsed, cpu_usage );
     return;
 
     //printf( REPORT_FMT, size, iters, size * iters * cycles_to_units / 
      //       (ccompleted - cposted) / 0x100000 );
-    return;
 
     
     // PERFTEST-STYLE BANDWIDTH COMPUTATION
