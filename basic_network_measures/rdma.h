@@ -43,7 +43,7 @@
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
 
-#define REPORT_FMT     " %-7d    %d           %-7.2f            %-7.2f\n"
+#define REPORT_FMT     "%-7d\t%d\t%-7.2f\t%-7.2f\n"
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
         { fprintf(stderr," Cannot Allocate\n"); exit(1);}}

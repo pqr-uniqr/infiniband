@@ -127,8 +127,8 @@ else
     fi
 
     touch "$FILEPATH"
-    echo "$EXEC experiment: Up to 2^$POW bytes, each $ITER iterations (server addr: $ADDR)" > $FILEPATH
-    echo "* to recreate this result, use $GITVER *" >> $FILEPATH
+    echo "#$EXEC experiment: Up to 2^$POW bytes, each $ITER iterations (server addr: $ADDR)" > $FILEPATH
+    echo "#* to recreate this result, use $GITVER *" >> $FILEPATH
 
     if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
         # GET VERB FOR RDMA
