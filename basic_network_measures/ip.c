@@ -366,12 +366,12 @@ static void print_report( void )
     float elapsed = (tcompleted.tv_sec - tposted.tv_sec) * 0x1000000 + 
         (tcompleted.tv_usec - tposted.tv_usec);
     double cycles_per_sec = get_cpu_mhz(0) * 1000000;
-    double cpu_usage = (ccompleted - cposted) / (cycles_per_sec * (elapsed / 0x1000000) );
+    double cpu_usage = (ccompleted - cposted) / 0x100000 / (cycles_per_sec * (elapsed / 0x1000000) );
 
-    printf("cycles used: %llu\n", (unsigned long long) ccompleted - cposted);
-    printf("cycles per second %f\n", cycles_per_sec);
-    printf("time elapsed %2.7f sec\n", elapsed/ 0x1000000);
-    printf("all cycles in time elapsed %f\n", cycles_per_sec * (elapsed / 0x1000000));
+    //printf("cycles used: %llu\n", (unsigned long long) ccompleted - cposted);
+    //printf("cycles per second %f\n", cycles_per_sec);
+    //printf("time elapsed %2.7f sec\n", elapsed/ 0x1000000);
+    //printf("all cycles in time elapsed %f\n", cycles_per_sec * (elapsed / 0x1000000));
 
     
     printf( REPORT_FMT, size, iters, size * iters / elapsed, cpu_usage );
