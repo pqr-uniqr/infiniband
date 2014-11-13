@@ -1,0 +1,771 @@
+ip_dbg experiment: Up to 2^20 bytes, each 10 iterations (server addr: 192.168.1.1)
+* to recreate this result, use commit 250dac7479449c517b1160d4ca4f1561188e8e58 *
+#bytes      #iterations      Peak BW       Avg. BW
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 2 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 2 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m2 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 2          10           4.43               1.52   
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 4 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 4 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m4 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 4          10           9.62               1.90   
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 8 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 8 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m8 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 8          10           18.40              3.71   
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 16 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 16 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m16 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 16         10           38.15              7.30   
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 32 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 32 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m32 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 32         10           76.30              14.67  
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 64 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 64 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m64 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m64 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 64         10           125.73             27.76  
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 128 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 128 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m128 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m128 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 128        10           301.08             48.74  
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 256 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 256 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m256 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m256 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 256        10           583.83             89.74  
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 512 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 512 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m512 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: fefe
+[0m[32m512 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 512        10           1105.20            143.32 
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 1024 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 1024 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m1024 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: fdfd
+[0m[32m1024 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 1024       10           1960.31            204.10 
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 2048 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 2048 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2048 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: fbfb
+[0m[32m2048 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 2048       10           2927.11            259.15 
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 4096 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 4096 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4096 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: f7f7
+[0m[32m4096 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 4096       10           3710.71            250.03 
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 8192 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 8192 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8192 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: efef
+[0m[32m8192 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 8192       10           3451.41            289.96 
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 16384 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 16384 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16384 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: dfdf
+[0m[32m16384 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 16384      10           6641.43            301.30 
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 32768 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 32768 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32768 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: bfbf
+[0m[32m32768 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 32768      10           5184.92            312.09 
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+10 iters, each 65536 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 65536 bytes, 10 iterations
+tcp window size set to 2626560
+tcp maximum segment size set to 21888
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 1
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 2
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 3
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 4
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 5
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 6
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 7
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 8
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m65536 bytes written to socket
+[0m[33mITERATION 9
+[0m[37m	checksum of buffer to be sent: 7f7f
+[0m[32m65536 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 65536      10           4087.03            314.18 

@@ -1,0 +1,11 @@
+ip experiment: Up to 2^15 bytes, each 1000 iterations (server addr: 192.168.1.1)
+* to recreate this result, use commit 699e3db6278d5daaf4df51503d6e2a0c757feba5 *
+#bytes      #iterations      Peak BW       Avg. BW
+ 2          1000           4.95               4.59   
+ 4          1000           9.90               9.24   
+ 8          1000           19.70              18.47  
+ 16         1000           39.59              36.59  
+ 32         1000           78.44              67.80  
+ 64         1000           156.14             135.69 
+ 128        1000           310.84             255.42 
+ 256        1000           594.17             461.72 

@@ -1,0 +1,258 @@
+ip_dbg experiment: Up to 2^15 bytes, each 1 iterations (server addr: 192.168.1.1)
+* to recreate this result, use commit c44b22b04f896459b088e1695a2a9cc7b49a0faa *
+#bytes      #iterations      Peak BW       Avg. BW
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 2 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 2 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 2          1           0.67               0.67   
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 4 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 4 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 4          1           1.52               1.52   
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 8 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 8 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 8          1           2.91               2.91   
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 16 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 16 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 16         1           5.59               5.59   
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 32 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 32 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 32         1           12.21              12.21  
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 64 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 64 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m64 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 64         1           24.08              24.08  
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 128 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 128 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m128 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 128        1           46.72              46.72  
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 256 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 256 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m256 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 256        1           97.16              97.16  
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 512 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 512 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m512 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 512        1           188.33             188.33 
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 1024 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 1024 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m1024 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 1024       1           355.48             355.48 
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 2048 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 2048 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2048 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 2048       1           762.42             762.42 
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 4096 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 4096 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4096 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 4096       1           1202.30            1202.30
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 8192 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 8192 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m8192 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 8192       1           1642.59            1642.59
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 16384 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 16384 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m16384 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 16384      1           2463.17            2463.17
+[33mCONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 32768 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 32768 bytes, 1 iterations
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m32768 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 32768      1           2312.08            2312.08

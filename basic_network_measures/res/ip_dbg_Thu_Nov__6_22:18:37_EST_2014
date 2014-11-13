@@ -1,0 +1,43 @@
+ip_dbg experiment: Up to 2^10 bytes, each 1 iterations (server addr: 192.168.1.1)
+* to recreate this result, use commit 07dd826bb92ae1acb5756043be953de35c7fd55c *
+#bytes      #iterations      Peak BW       Avg. BW
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 2 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 2 bytes, 1 iterations
+tcp window size set to 2626560
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m2 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 2          1           0.73               0.73   
+[33m
+
+CONFIG-------------------------------------------
+IP : 192.168.1.1
+TCP port : 19875
+1 iters, each 4 bytes
+CONFIG------------------------------------------
+
+[0m[32mresources_init() successful
+[0m[32mTCP connection was established
+[0mbuffer 4 bytes, 1 iterations
+tcp window size set to 2626560
+[32mresources_create() successful
+[0m[33mXFER STARTS-------------------
+[0m[33mITERATION 0
+[0m[37m	checksum of buffer to be sent: 0
+[0m[32m4 bytes written to socket
+[0m[33mrun_iter finished, headed to final socket sync
+[0m[32mfinal socket sync finished--terminating
+[0m 4          1           0.55               0.55   

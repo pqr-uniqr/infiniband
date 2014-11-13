@@ -1,0 +1,103 @@
+ip experiment: Up to 2^20 bytes, each 1000 iterations (server addr: 192.168.1.1)
+* to recreate this result, use commit 7ec50e7b0731432a97c86c760db2fb5cf7397e97 *
+#bytes      #iterations      Avg. BW
+cycles used: 883964
+cycles per second 2200066000.000000
+time elapsed 0.0000238 sec
+all cycles in time elapsed 52322.526813
+ 2          1000            5.01            16.8945205
+cycles used: 854768
+cycles per second 2200066000.000000
+time elapsed 0.0000231 sec
+all cycles in time elapsed 50748.916984
+ 4          1000            10.34           16.8430786
+cycles used: 844180
+cycles per second 2200066000.000000
+time elapsed 0.0000228 sec
+all cycles in time elapsed 50093.246222
+ 8          1000            20.94           16.8521720
+cycles used: 849700
+cycles per second 2200066000.000000
+time elapsed 0.0000229 sec
+all cycles in time elapsed 50355.514526
+ 16         1000            41.67           16.8740208
+cycles used: 909380
+cycles per second 2200066000.000000
+time elapsed 0.0000246 sec
+all cycles in time elapsed 54027.270794
+ 32         1000            77.67           16.8318700
+cycles used: 927148
+cycles per second 2200066000.000000
+time elapsed 0.0000250 sec
+all cycles in time elapsed 54945.209861
+ 64         1000            152.74          16.8740460
+cycles used: 960472
+cycles per second 2200066000.000000
+time elapsed 0.0000259 sec
+all cycles in time elapsed 57043.356299
+ 128        1000            294.25          16.8375787
+cycles used: 1050396
+cycles per second 2200066000.000000
+time elapsed 0.0000284 sec
+all cycles in time elapsed 62419.856548
+ 256        1000            537.82          16.8279144
+cycles used: 1226156
+cycles per second 2200066000.000000
+time elapsed 0.0000331 sec
+all cycles in time elapsed 72779.454589
+ 512        1000            922.52          16.8475569
+cycles used: 1616220
+cycles per second 2200066000.000000
+time elapsed 0.0000437 sec
+all cycles in time elapsed 96121.333718
+ 1024       1000            1397.00         16.8143734
+cycles used: 2280552
+cycles per second 2200066000.000000
+time elapsed 0.0000617 sec
+all cycles in time elapsed 135723.847747
+ 2048       1000            1978.74         16.8028835
+cycles used: 3267496
+cycles per second 2200066000.000000
+time elapsed 0.0000885 sec
+all cycles in time elapsed 194603.082180
+ 4096       1000            2760.11         16.7905665
+cycles used: 7465360
+cycles per second 2200066000.000000
+time elapsed 0.0002022 sec
+all cycles in time elapsed 444807.044983
+ 8192       1000            2415.09         16.7833673
+cycles used: 13995950
+cycles per second 2200066000.000000
+time elapsed 0.0003791 sec
+all cycles in time elapsed 834144.343495
+ 16384      1000            2575.70         16.7788107
+cycles used: 31003476
+cycles per second 2200066000.000000
+time elapsed 0.0008399 sec
+all cycles in time elapsed 1847811.341643
+ 32768      1000            2325.46         16.7784856
+cycles used: 65269030
+cycles per second 2200066000.000000
+time elapsed 0.0017682 sec
+all cycles in time elapsed 3890225.765467
+ 65536      1000            2209.13         16.7776972
+cycles used: 135208140
+cycles per second 2200066000.000000
+time elapsed 0.0036631 sec
+all cycles in time elapsed 8059111.604810
+ 131072     1000            2132.74         16.7770527
+cycles used: 255912332
+cycles per second 2200066000.000000
+time elapsed 0.0069334 sec
+all cycles in time elapsed 15253918.011069
+ 262144     1000            2253.59         16.7768262
+cycles used: 479160776
+cycles per second 2200066000.000000
+time elapsed 0.0129819 sec
+all cycles in time elapsed 28561018.395424
+ 524288     1000            2407.20         16.7767399
+cycles used: 902668516
+cycles per second 2200066000.000000
+time elapsed 0.0244560 sec
+all cycles in time elapsed 53804867.271423
+ 1048576    1000            2555.61         16.7767074

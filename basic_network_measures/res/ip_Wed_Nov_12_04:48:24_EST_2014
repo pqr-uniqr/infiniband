@@ -1,0 +1,28 @@
+#ip experiment: Up to 2^20 bytes, each 1000 iterations (server addr: 192.168.1.1)
+#* to recreate this result, use commit 63fed8d493f2d5c536534cd25f1087fa3bd5a640 *
+#bytes	#iterations	Avg. BW	CPU%
+cycles used: 851728
+cycles per second 2200066000.000000
+time elapsed 0.0000229 sec
+all cycles in time elapsed 50486.648679
+2      	1000	5.19   	16.8703612
+cycles used: 850124
+cycles per second 2200066000.000000
+time elapsed 0.0000229 sec
+all cycles in time elapsed 50355.514526
+4      	1000	10.42  	16.8824409
+cycles used: 855288
+cycles per second 2200066000.000000
+time elapsed 0.0000231 sec
+all cycles in time elapsed 50748.916984
+8      	1000	20.67  	16.8533252
+cycles used: 855576
+cycles per second 2200066000.000000
+time elapsed 0.0000231 sec
+all cycles in time elapsed 50748.916984
+16     	1000	41.34  	16.8590002
+cycles used: 921080
+cycles per second 2200066000.000000
+time elapsed 0.0000249 sec
+all cycles in time elapsed 54682.941556
+32     	1000	76.74  	16.8440097
