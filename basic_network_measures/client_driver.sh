@@ -145,7 +145,7 @@ else
         done
 
 
-        echo "verb: $OP"  >> $FILEPATH
+        echo "#verb: $OP"  >> $FILEPATH
         printheader >> $FILEPATH
         cecho "starting experiment..." $green
         cecho "STDERR OUTPUT: " $red
