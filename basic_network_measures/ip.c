@@ -372,7 +372,6 @@ static void print_report( void )
     //printf("cycles per second %f\n", cycles_per_sec);
     //printf("time elapsed %2.7f sec\n", elapsed/ 0x1000000);
     //printf("all cycles in time elapsed %f\n", cycles_per_sec * (elapsed / 0x1000000));
-
     
     printf( REPORT_FMT, size, iters, size * iters / elapsed, cpu_usage );
     return;
