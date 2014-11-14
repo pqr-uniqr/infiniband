@@ -1057,6 +1057,7 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
 
     double cpu_usage = 0; //FIXME hard-coded
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
+    printf("\n");
 
 
     /*     double cycles_to_units;
