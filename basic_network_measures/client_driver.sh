@@ -25,7 +25,7 @@ color=${2:-$black}           # Defaults to black, if not specified.
 return
 }  
 
-printheader() { echo -e "#bytes\t#iterations\tAvg. BW\tCPU%"; }
+printheader() { echo -e "#bytes\titer.\tAvg. BW\tCPU%"; }
 
 
 DATE=`date | sed 's/ /_/g'`
