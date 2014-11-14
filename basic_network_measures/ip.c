@@ -362,12 +362,12 @@ static void print_config( void )
 static void print_report( void )
 {
 
-    float xfer_total = config.xfer_unit * config.iter;
-    float elapsed = (tcompleted.tv_sec - tposted.tv_sec) * 0x1000000 + 
+    double xfer_total = config.xfer_unit * config.iter;
+    double elapsed = (tcompleted.tv_sec - tposted.tv_sec) * 0x1000000 + 
         (tcompleted.tv_usec - tposted.tv_usec);
-    float avg_bw = xfer_total / elapsed;
+    double avg_bw = xfer_total / elapsed;
 
-    printf("elapsed time %10.2f, xfer_total: %d\n", elapsed, (int) xfer_total);
+    printf("\nelapsed time %f, xfer_total: %d bytes \n", elapsed, (int) xfer_total);
 
     double cycles_per_sec = get_cpu_mhz(0) * 1000000;
     double cpu_usage = (ccompleted - cposted) / 0x100000 / 
