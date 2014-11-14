@@ -1045,14 +1045,14 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
     double xfer_total = config.xfer_unit * config.iter;
-    double elapsed= (ttcompleted.tv_sec - ttposted.tv_sec) * 0x1000000 +
-        (ttcompleted.tv_usec - ttposted.tv_usec);
+    long elapsed = ( ttcompleted.tv_sec * 1e6 + ttcompleted.tv_usec )
+        - ( ttposted.tv_sec * 1e6 + ttcompleted.tv_usec );
     double avg_bw = xfer_total / elapsed;
 
     printf("posted: (sec) %lu, (usec) %lu, completed: (sec) %lu, (usec) %lu \n", 
             ttposted.tv_sec, ttposted.tv_usec, ttcompleted.tv_sec, ttcompleted.tv_usec);
     printf("diff in sec: %ld, diff in usec: %ld\n", ttcompleted.tv_sec - ttposted.tv_sec, ttcompleted.tv_usec - ttposted.tv_usec);
-    printf("elapsed (usec) : %f\n", elapsed);
+    printf("elapsed (usec) : %ld\n", elapsed);
     printf("xfer_total (bytes): %f\n", xfer_total);
 
     double cpu_usage = 0; //FIXME hard-coded
