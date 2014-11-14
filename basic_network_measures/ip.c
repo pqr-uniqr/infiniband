@@ -8,10 +8,12 @@ struct config_t config = {
     NULL,
 };
 
-cycles_t cposted;
-cycles_t ccompleted;
 struct timeval tposted;
 struct timeval tcompleted;
+
+struct pstat pstart;
+struct pstat pend;
+
 
 int main ( int argc, char *argv[] )
 {
@@ -106,7 +108,7 @@ static int run_iter(struct resources *res)
 
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
-    cposted = get_cycles();
+    get_usage( getpid(), &pstart );
     gettimeofday( &tposted, NULL );
     for(i = 0; i < config.iter; i++){
         rc = 0;
@@ -155,8 +157,8 @@ static int run_iter(struct resources *res)
 #endif
         }
     }
-    ccompleted = get_cycles();
     gettimeofday( &tcompleted, NULL );
+    get_usage( getpid(), &pend );
 
     return 0;
 }
@@ -366,18 +368,11 @@ static void print_report( void )
     long elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
         (tposted.tv_sec * 1e6 + tposted.tv_usec);
     double avg_bw = xfer_total / elapsed;
-    double cpu_usage = 0; //FIXME  hard-coded
+    double ucpu;
+    double scpu;
+    calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu );
 
-/*     double cycles_per_sec = get_cpu_mhz(0) * 1000000;
- *     double cpu_usage = (ccompleted - cposted) / 0x100000 / 
- *         (cycles_per_sec * (elapsed / 0x1000000) );
- *     printf("cycles used: %llu\n", (unsigned long long) ccompleted - cposted);
- *     printf("cycles per second %f\n", cycles_per_sec);
- *     printf("time elapsed %2.7f sec\n", elapsed/ 0x1000000);
- *     printf("all cycles in time elapsed %f\n", cycles_per_sec * (elapsed / 0x1000000));
- */
-    
-    printf( REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage );
+    printf( REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
 }
 
 static uint16_t checksum(void *vdata, size_t length)

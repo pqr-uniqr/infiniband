@@ -21,6 +21,8 @@
 #include <netdb.h>
 #include <math.h>
 
+#include "getusage.c"
+
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
 #define GRN  "\x1B[32m"
@@ -40,7 +42,7 @@
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
-#define REPORT_FMT     "%-7d\t%d\t%-7.2f\t%-2.7f\n"
+#define REPORT_FMT     "%-7d\t%d\t%-7.2f\t%-7.2f\t%7.2f\n"
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
