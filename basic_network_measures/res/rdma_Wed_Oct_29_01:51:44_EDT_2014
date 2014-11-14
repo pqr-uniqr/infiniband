@@ -1,0 +1,22 @@
+rdma experiment: Up to 2^10 bytes, each 10 iterations (server addr: 192.168.1.1)
+* to recreate this result, use commit 9a925256010a550d396812d3424db6e1f4d7197b *
+verb: 
+#bytes      #iterations      Peak BW       Avg. BW
+Usage:
+ ./rdma start a server and wait for connection
+ ./rdma <host> connect to server at <host>
+
+Options:
+ -p, --port <port> listen on/connect to port <port> (default 18515)
+ -d, --ib-dev <dev> use IB device <dev> (default first device found)
+ -i, --ib-port <port> use port <port> of IB device (default 1)
+ -g, --gid_idx <git index> gid index to be used in GRH (default not used)
+Usage:
+ ./rdma start a server and wait for connection
+ ./rdma <host> connect to server at <host>
+
+Options:
+ -p, --port <port> listen on/connect to port <port> (default 18515)
+ -d, --ib-dev <dev> use IB device <dev> (default first device found)
+ -i, --ib-port <port> use port <port> of IB device (default 1)
+ -g, --gid_idx <git index> gid index to be used in GRH (default not used)
