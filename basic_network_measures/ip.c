@@ -361,62 +361,24 @@ static void print_config( void )
 
 static void print_report( void )
 {
-    unsigned size = config.xfer_unit;
-    unsigned int iters = config.iter;
+
+    float xfer_total = config.xfer_unit * config.iter;
     float elapsed = (tcompleted.tv_sec - tposted.tv_sec) * 0x1000000 + 
         (tcompleted.tv_usec - tposted.tv_usec);
+    float avg_bw = xfer_total / elapsed;
+
+    printf("elapsed time %10.2f, xfer_total: %d\n", elapsed, (int) xfer_total);
+
     double cycles_per_sec = get_cpu_mhz(0) * 1000000;
-    double cpu_usage = (ccompleted - cposted) / 0x100000 / (cycles_per_sec * (elapsed / 0x1000000) );
+    double cpu_usage = (ccompleted - cposted) / 0x100000 / 
+        (cycles_per_sec * (elapsed / 0x1000000) );
 
     //printf("cycles used: %llu\n", (unsigned long long) ccompleted - cposted);
     //printf("cycles per second %f\n", cycles_per_sec);
     //printf("time elapsed %2.7f sec\n", elapsed/ 0x1000000);
     //printf("all cycles in time elapsed %f\n", cycles_per_sec * (elapsed / 0x1000000));
     
-    printf( REPORT_FMT, size, iters, size * iters / elapsed, cpu_usage );
-    return;
-
-    //printf( REPORT_FMT, size, iters, size * iters * cycles_to_units / 
-     //       (ccompleted - cposted) / 0x100000 );
-
-    
-    // PERFTEST-STYLE BANDWIDTH COMPUTATION
-    /*
-    double cycles_to_units;
-    int i, j;
-    int opt_posted = 0, opt_completed = 0;
-    unsigned int iters = config.iter;
-    unsigned size = config.xfer_unit;
-    cycles_t total_delta = 0;
-    cycles_t opt_delta;
-    cycles_t t;
- 
-    opt_delta = ccompleted[opt_posted] - cposted[opt_completed];
-    //TODO  replace with time
-    for (i = 0; i < iters; ++i)
-        for (j = i; j < iters; ++j) {
-           
-            if(i == j){
-                total_delta += ccompleted[i] - cposted[i];
-            }
-
-            t = (ccompleted[j] - cposted[i]) / (j - i + 1);
-            if (t < opt_delta) {
-                opt_delta  = t;
-                opt_posted = i;
-                opt_completed = j;
-            }
-        }
-
-    // TODO replace with tposted
-    cycles_to_units = get_cpu_mhz(0) * 1000000;
-    printf(REPORT_FMT, size, iters, size * cycles_to_units / opt_delta / 0x100000,
-            //size * iters * cycles_to_units / (total_delta) / 0x100000);
-            size * iters * cycles_to_units / (ccompleted[iters-1] - cposted[0]) / 0x100000 );
-
-    // TODO calculate CPU utilization
-
-    */
+    printf( REPORT_FMT, config.xfer_unit, config.iter, avg_bw, cpu_usage );
 }
 
 static uint16_t checksum(void *vdata, size_t length)
