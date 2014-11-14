@@ -24,10 +24,7 @@ ctrl_c(){
 }
 trap ctrl_c SIGINT
 
-
 EXEC=$1
-
-
 
 if [ "${EXEC}" = "" ]
 then
@@ -35,8 +32,7 @@ then
 else
     make clean
     cecho "> compiling executable" $green
-    make $EXEC
-
+    make $EXEC &> /dev/null
     if [ -x $EXEC ]
     then
         cecho "> executable compiled"  $green 

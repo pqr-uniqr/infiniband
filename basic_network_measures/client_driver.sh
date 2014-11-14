@@ -49,7 +49,7 @@ else
     # RECOMPILE EXECUTABLE
     make clean
     cecho "> compiling executable..."  $green
-    make $EXEC
+    make $EXEC &> /dev/null
     if [ -x $EXEC ]
     then
         cecho "> executable compiled." $green
