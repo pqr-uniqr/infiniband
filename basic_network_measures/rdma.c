@@ -1046,7 +1046,7 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
 {
     double xfer_total = config.xfer_unit * config.iter;
     long elapsed = ( ttcompleted.tv_sec * 1e6 + ttcompleted.tv_usec )
-        - ( ttposted.tv_sec * 1e6 + ttcompleted.tv_usec );
+        - ( ttposted.tv_sec * 1e6 + ttposted.tv_usec );
     double avg_bw = xfer_total / elapsed;
 
     printf("posted: (sec) %lu, (usec) %lu, completed: (sec) %lu, (usec) %lu \n", 
