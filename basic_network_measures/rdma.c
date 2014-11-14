@@ -22,6 +22,8 @@ struct config_t config =
 
 cycles_t *tposted; 
 cycles_t *tcompleted; 
+struct timeval ttposted; //FIXME temp
+struct timeval ttcompleted; //FIXME temp
 
 /* MAIN */
 int main ( int argc, char *argv[] )
@@ -33,10 +35,6 @@ int main ( int argc, char *argv[] )
     struct resources res;
     char temp_char;
     struct timeval cur_time;
-    long start_time_usec;
-    long cur_time_usec;
-    long d;
-    struct metrics_t met;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -175,13 +173,12 @@ main_exit:
     if (config.config_other) free((char *)config.config_other);
 
     /* REPORT ON EXPERIMENT TO STDOUT */
-    //report_result( met ); FIXME 
-    
+
     print_report(config.iter, config.xfer_unit, 0, 0);
-    
+
     free(tposted);
     free(tcompleted);
-    
+
     return rc;
 }
 
@@ -220,6 +217,7 @@ static int run_iter(struct resources *res)
         sr.wr.rdma.rkey = res->remote_props.rkey;
     }
 
+    gettimeofday( &ttposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
         //TODO tx_depth hardcoded for now
@@ -227,8 +225,8 @@ static int run_iter(struct resources *res)
 
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
-       
-            tposted[scnt] = get_cycles();
+
+            //tposted[scnt] = get_cycles(); FIXME
             if( ( rc = ibv_post_send(res->qp, &sr, &bad_wr) ) ){
                 perror("ibv_post_send");
                 fprintf(stderr, "Couldn't post send: scnt=%d\n", scnt);
@@ -250,11 +248,12 @@ static int run_iter(struct resources *res)
 
                         DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
                         ccnt += CQ_MODERATION;
-                        
-                        if(ccnt >= config.iter -1)
-                            tcompleted[config.iter-1] = get_cycles();
-                        else
-                            tcompleted[ccnt-1] = get_cycles();
+
+                        /*                         if(ccnt >= config.iter -1) FIXME
+                         *                             tcompleted[config.iter-1] = get_cycles();
+                         *                         else
+                         *                             tcompleted[ccnt-1] = get_cycles();
+                         */
                     }
                 }
 
@@ -267,6 +266,7 @@ static int run_iter(struct resources *res)
         }
 
     }
+    gettimeofday( &ttcompleted, NULL );
 
     free(wc);
     return 0;
@@ -509,9 +509,9 @@ static int connect_qp (struct resources *res)
     if (config.gid_idx >= 0){
         uint8_t *p = remote_con_data.gid;
         DEBUG_PRINT((stdout,
-                "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
-                p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
-                p[10], p[11], p[12], p[13], p[14], p[15]));
+                    "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+                    p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
+                    p[10], p[11], p[12], p[13], p[14], p[15]));
     }
 
     /* MODIFY QP STATE TO INIT */
@@ -658,8 +658,8 @@ static int resources_create (struct resources *res)
         {
             config.dev_name = strdup (ibv_get_device_name (dev_list[i]));
             DEBUG_PRINT((stdout,
-                    "device not specified, using first one found: %s\n",
-                    config.dev_name));
+                        "device not specified, using first one found: %s\n",
+                        config.dev_name));
         }
         if (!strcmp (ibv_get_device_name (dev_list[i]), config.dev_name))
         {
@@ -732,8 +732,8 @@ static int resources_create (struct resources *res)
         goto resources_create_exit;
     }
     DEBUG_PRINT((stdout,
-            "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
-            res->buf, res->mr->lkey, res->mr->rkey, mr_flags));
+                "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
+                res->buf, res->mr->lkey, res->mr->rkey, mr_flags));
 
 
     /* CREATE QUEUE PAIR */
@@ -983,7 +983,7 @@ static void print_config (void)
     fprintf (stdout, "TCP port : %u\n", config.tcp_port);
     if (config.gid_idx >= 0)
         fprintf (stdout, "GID index : %u\n", config.gid_idx);
-    
+
     opcode_to_str(config.opcode, &op);
     crt_to_str(config.crt, &crt);
     fprintf(stdout, "%s operation requested (for %s test)\n", op, crt);
@@ -1044,30 +1044,38 @@ static void opcode_to_str(int opcode, char **str)
 static void print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
-    double cycles_to_units;
-    unsigned long tsize;	/* Transferred size, in megabytes */
-    int i, j;
-    int opt_posted = 0, opt_completed = 0;
-    cycles_t opt_delta;
-    cycles_t t;
+    double xfer_total = config.xfer_unit * config.iter;
+    double elapsed= (ttcompleted.tv_sec - ttposted.tv_sec) * 0x1000000 +
+        (ttcompleted.tv_usec - ttposted.tv_usec);
+    double avg_bw = xfer_total / elapsed;
+    double cpu_usage = 0; //FIXME hard-coded
+    printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
 
-    opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
 
-    /* Find the peak bandwidth */
-    for (i = 0; i < iters; ++i)
-        for (j = i; j < iters; ++j) {
-            t = (tcompleted[j] - tposted[i]) / (j - i + 1);
-            if (t < opt_delta) {
-                opt_delta  = t;
-                opt_posted = i;
-                opt_completed = j;
-            }
-        }
-    cycles_to_units = get_cpu_mhz(no_cpu_freq_fail) * 1000000;
-    tsize = duplex ? 2 : 1;
-    tsize = tsize * size;
-    printf(REPORT_FMT,size,iters,tsize * cycles_to_units / opt_delta / 0x100000,
-            tsize * iters * cycles_to_units /(tcompleted[iters - 1] - tposted[0]) / 0x100000);
+    /*     double cycles_to_units;
+     *     unsigned long tsize;
+     *     int i, j;
+     *     int opt_posted = 0, opt_completed = 0;
+     *     cycles_t opt_delta;
+     *     cycles_t t;
+     * 
+     *     opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
+     * 
+     *     for (i = 0; i < iters; ++i)
+     *         for (j = i; j < iters; ++j) {
+     *             t = (tcompleted[j] - tposted[i]) / (j - i + 1);
+     *             if (t < opt_delta) {
+     *                 opt_delta  = t;
+     *                 opt_posted = i;
+     *                 opt_completed = j;
+     *             }
+     *         }
+     *     cycles_to_units = get_cpu_mhz(no_cpu_freq_fail) * 1000000;
+     *     tsize = duplex ? 2 : 1;
+     *     tsize = tsize * size;
+     *     printf(REPORT_FMT,size,iters,tsize * cycles_to_units / opt_delta / 0x100000,
+     *             tsize * iters * cycles_to_units /(tcompleted[iters - 1] - tposted[0]) / 0x100000);
+     */
 }
 
 static void check_wc_status(enum ibv_wc_status status)

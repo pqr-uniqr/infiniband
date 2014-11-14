@@ -367,8 +367,6 @@ static void print_report( void )
         (tcompleted.tv_usec - tposted.tv_usec);
     double avg_bw = xfer_total / elapsed;
 
-    printf("\nelapsed time %f, xfer_total: %f bytes \n", elapsed, xfer_total);
-
     double cycles_per_sec = get_cpu_mhz(0) * 1000000;
     double cpu_usage = (ccompleted - cposted) / 0x100000 / 
         (cycles_per_sec * (elapsed / 0x1000000) );
