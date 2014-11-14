@@ -1,5 +1,4 @@
-CFLAGS= -O3
-CFLAGS= -g 
+CFLAGS= -O3 -g -Wall
 CC=gcc
 LD=gcc 
 LIB=-libverbs -lm

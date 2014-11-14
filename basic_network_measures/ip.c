@@ -378,7 +378,7 @@ static void print_report( void )
     //printf("time elapsed %2.7f sec\n", elapsed/ 0x1000000);
     //printf("all cycles in time elapsed %f\n", cycles_per_sec * (elapsed / 0x1000000));
     
-    printf( REPORT_FMT, config.xfer_unit, config.iter, avg_bw, cpu_usage );
+    printf( REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage );
 }
 
 static uint16_t checksum(void *vdata, size_t length)
