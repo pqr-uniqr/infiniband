@@ -9,15 +9,16 @@ magenta='\E[35;200m'
 cyan='\E[36;200m'
 white='\E[37;200m'
 
-cecho (){
+cecho(){
     local default_msg="No message passed."
+    message=${1:-$default_msg}  
     color=${2:-$black}
     echo -e "$color $message"
     tput sgr0
     return
 }
 
-ctrl_c (){
+ctrl_c(){
     make clean
     exit
 }
