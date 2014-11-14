@@ -1048,42 +1048,8 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
     long elapsed = ( ttcompleted.tv_sec * 1e6 + ttcompleted.tv_usec )
         - ( ttposted.tv_sec * 1e6 + ttposted.tv_usec );
     double avg_bw = xfer_total / elapsed;
-
-    printf("posted: (sec) %lu, (usec) %lu, completed: (sec) %lu, (usec) %lu \n", 
-            ttposted.tv_sec, ttposted.tv_usec, ttcompleted.tv_sec, ttcompleted.tv_usec);
-    printf("diff in sec: %ld, diff in usec: %ld\n", ttcompleted.tv_sec - ttposted.tv_sec, ttcompleted.tv_usec - ttposted.tv_usec);
-    printf("elapsed (usec) : %ld\n", elapsed);
-    printf("xfer_total (bytes): %f\n", xfer_total);
-
     double cpu_usage = 0; //FIXME hard-coded
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
-    printf("\n");
-
-
-    /*     double cycles_to_units;
-     *     unsigned long tsize;
-     *     int i, j;
-     *     int opt_posted = 0, opt_completed = 0;
-     *     cycles_t opt_delta;
-     *     cycles_t t;
-     * 
-     *     opt_delta = tcompleted[opt_posted] - tposted[opt_completed];
-     * 
-     *     for (i = 0; i < iters; ++i)
-     *         for (j = i; j < iters; ++j) {
-     *             t = (tcompleted[j] - tposted[i]) / (j - i + 1);
-     *             if (t < opt_delta) {
-     *                 opt_delta  = t;
-     *                 opt_posted = i;
-     *                 opt_completed = j;
-     *             }
-     *         }
-     *     cycles_to_units = get_cpu_mhz(no_cpu_freq_fail) * 1000000;
-     *     tsize = duplex ? 2 : 1;
-     *     tsize = tsize * size;
-     *     printf(REPORT_FMT,size,iters,tsize * cycles_to_units / opt_delta / 0x100000,
-     *             tsize * iters * cycles_to_units /(tcompleted[iters - 1] - tposted[0]) / 0x100000);
-     */
 }
 
 static void check_wc_status(enum ibv_wc_status status)

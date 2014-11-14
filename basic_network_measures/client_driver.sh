@@ -153,7 +153,7 @@ else
         # RUN RDMA EXPERIMENT
         for i in `seq 1 $POW`; do
           ./$EXEC -v $OP -i $ITER -b $i $ADDR >> $FILEPATH
-          sleep 1
+          sleep 0.1
         done
     else
         printheader >> $FILEPATH
@@ -163,7 +163,7 @@ else
         # RUN IP EXPERIMENT
         for i in `seq 1 $POW`; do
             ./$EXEC -b $i -i $ITER $ADDR >> $FILEPATH
-          sleep 1
+          sleep 0.1
         done
     fi
 
