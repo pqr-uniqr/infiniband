@@ -363,7 +363,7 @@ static void print_report( void )
 {
 
     double xfer_total = config.xfer_unit * config.iter;
-    long elapsed  (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
+    long elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
         (tposted.tv_sec * 1e6 + tposted.tv_usec);
     double avg_bw = xfer_total / elapsed;
     double cpu_usage = 0; //FIXME  hard-coded
