@@ -9,23 +9,23 @@ magenta='\E[35;200m'
 cyan='\E[36;200m'
 white='\E[37;200m'
 
-cecho ()                     # Color-echo.
-                             # Argument $1 = message
-                             # Argument $2 = color
-{
-local default_msg="No message passed."
-                             # Doesn't really need to be a local variable.
-
-message=${1:-$default_msg}   # Defaults to default message.
-color=${2:-$black}           # Defaults to black, if not specified.
-
+cecho (){
+    local default_msg="No message passed."
+    color=${2:-$black}
     echo -e "$color $message"
     tput sgr0
-
-return
+    return
 }
 
+ctrl_c (){
+    make clean
+    exit
+}
+
+
 EXEC=$1
+
+trap ctrl_c SIGINT
 
 
 if [ "${EXEC}" = "" ]

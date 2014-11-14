@@ -20,10 +20,8 @@ struct config_t config =
     NULL,
 };
 
-cycles_t *tposted; 
-cycles_t *tcompleted; 
-struct timeval ttposted; //FIXME temp
-struct timeval ttcompleted; //FIXME temp
+struct timeval tposted; //FIXME temp
+struct timeval tcompleted; //FIXME temp
 
 /* MAIN */
 int main ( int argc, char *argv[] )
@@ -150,9 +148,6 @@ int main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
     rc = 0;
 
-    ALLOCATE(tposted, cycles_t, config.iter);
-    ALLOCATE(tcompleted, cycles_t, config.iter);
-
     /* START ITERATIONS! */
     if(config.opcode != -1)
         run_iter(&res);
@@ -175,9 +170,6 @@ main_exit:
     /* REPORT ON EXPERIMENT TO STDOUT */
 
     print_report(config.iter, config.xfer_unit, 0, 0);
-
-    free(tposted);
-    free(tcompleted);
 
     return rc;
 }
@@ -217,7 +209,7 @@ static int run_iter(struct resources *res)
         sr.wr.rdma.rkey = res->remote_props.rkey;
     }
 
-    gettimeofday( &ttposted, NULL );
+    gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
         //TODO tx_depth hardcoded for now
@@ -226,7 +218,6 @@ static int run_iter(struct resources *res)
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
 
-            //tposted[scnt] = get_cycles(); FIXME
             if( ( rc = ibv_post_send(res->qp, &sr, &bad_wr) ) ){
                 perror("ibv_post_send");
                 fprintf(stderr, "Couldn't post send: scnt=%d\n", scnt);
@@ -248,12 +239,6 @@ static int run_iter(struct resources *res)
 
                         DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
                         ccnt += CQ_MODERATION;
-
-                        /*                         if(ccnt >= config.iter -1) FIXME
-                         *                             tcompleted[config.iter-1] = get_cycles();
-                         *                         else
-                         *                             tcompleted[ccnt-1] = get_cycles();
-                         */
                     }
                 }
 
@@ -266,7 +251,7 @@ static int run_iter(struct resources *res)
         }
 
     }
-    gettimeofday( &ttcompleted, NULL );
+    gettimeofday( &tcompleted, NULL );
 
     free(wc);
     return 0;
@@ -1045,8 +1030,8 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
     double xfer_total = config.xfer_unit * config.iter;
-    long elapsed = ( ttcompleted.tv_sec * 1e6 + ttcompleted.tv_usec )
-        - ( ttposted.tv_sec * 1e6 + ttposted.tv_usec );
+    long elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
+        - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
     double avg_bw = xfer_total / elapsed;
     double cpu_usage = 0; //FIXME hard-coded
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
