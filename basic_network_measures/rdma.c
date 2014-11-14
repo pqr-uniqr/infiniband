@@ -26,6 +26,8 @@ struct timeval tcompleted; //FIXME temp
 /* MAIN */
 int main ( int argc, char *argv[] )
 {
+
+
     int rc = 1;
     int i;
     int iter;
@@ -33,6 +35,8 @@ int main ( int argc, char *argv[] )
     struct resources res;
     char temp_char;
     struct timeval cur_time;
+    cpu_set_t cpuset;
+    pthread_t thread;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -126,6 +130,29 @@ int main ( int argc, char *argv[] )
 #ifdef DEBUG
     print_config();
 #endif
+
+
+    /* PIN MAIN THREAD TO A CPU (hardcoded to cpu 0 for now) */
+
+    thread = pthread_self();
+    CPU_ZERO( &cpuset );
+    CPU_SET( CPUNO, &cpuset );
+    if( 0 != pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
+        fprintf(stderr, RED "pthread_setaffinity_np() failed\n" RESET);
+        rc = 1;
+        goto main_exit;
+    }
+
+    if ( 0 != pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
+        fprintf(stderr, RED "pthread_getaffinity_np() failed\n" RESET);
+        rc = 1;
+        goto main_exit;
+    }
+
+    DEBUG_PRINT((stdout, GRN "getaffinity() returned set including:\n" RESET));
+    for(i = 0; i < CPU_SETSIZE; i++)
+        if(CPU_ISSET(i, &cpuset)) DEBUG_PRINT((stdout, GRN "\tcpu %d\n" RESET, i));
+
 
     /* INITIATE RESOURCES  */
     resources_init(&res);

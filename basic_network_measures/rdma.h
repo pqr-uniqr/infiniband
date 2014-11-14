@@ -19,8 +19,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <math.h>
+#include <pthread.h>
 
-#include "get_clock.c" 
+#define _GNU_SOURCE 
 
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
@@ -38,6 +39,8 @@
 #define MAX_RECV_WR 100 
 #define MAX_SEND_SGE 1
 #define MAX_RECV_SGE 1
+
+#define CPUNO 0
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )

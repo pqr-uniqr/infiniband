@@ -1,7 +1,7 @@
 CFLAGS= -O3 -g -Wall
 CC=gcc
 LD=gcc 
-LIB=-libverbs -lm
+LIB=-libverbs -lm -pthread
 
 all: rdma
 
