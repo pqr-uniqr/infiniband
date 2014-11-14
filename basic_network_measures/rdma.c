@@ -1051,7 +1051,7 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
 
     printf("posted: (sec) %lu, (usec) %lu, completed: (sec) %lu, (usec) %lu \n", 
             ttposted.tv_sec, ttposted.tv_usec, ttcompleted.tv_sec, ttcompleted.tv_usec);
-    printf("diff in sec: %lu, diff in usec: %lu\n", ttcompleted.tv_sec - ttposted.tv_sec, ttcompleted.tv_usec - ttposted.tv_usec);
+    printf("diff in sec: %ld, diff in usec: %ld\n", ttcompleted.tv_sec - ttposted.tv_sec, ttcompleted.tv_usec - ttposted.tv_usec);
     printf("elapsed (usec) : %f\n", elapsed);
     printf("xfer_total (bytes): %f\n", xfer_total);
 
