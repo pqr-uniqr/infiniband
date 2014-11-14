@@ -22,11 +22,11 @@ ctrl_c(){
     make clean
     exit
 }
+trap ctrl_c SIGINT
 
 
 EXEC=$1
 
-trap ctrl_c SIGINT
 
 
 if [ "${EXEC}" = "" ]

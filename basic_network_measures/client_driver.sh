@@ -22,6 +22,7 @@ ctrl_c(){
     make clean
     exit
 }
+trap ctrl_c SIGINT
 
 
 DATE=`date | sed 's/ /_/g'`
