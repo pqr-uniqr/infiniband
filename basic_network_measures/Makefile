@@ -1,7 +1,7 @@
-CFLAGS= -O3 -g -Wall -std=c99 -D_GNU_SOURCE -pthread
+CFLAGS= -O3 -g -Wall -std=c99 -D_GNU_SOURCE -pthread -L /lib64 
 CC=gcc
 LD=gcc 
-LIB=-libverbs -lm 
+LIB= -libverbs -lm -lpthread
 all: rdma
 
 rdma: rdma.c get_clock.c get_clock.h
