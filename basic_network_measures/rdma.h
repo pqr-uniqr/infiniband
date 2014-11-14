@@ -21,6 +21,8 @@
 #include <math.h>
 #include <pthread.h>
 
+#include "getusage.c"
+
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
 #define GRN  "\x1B[32m"

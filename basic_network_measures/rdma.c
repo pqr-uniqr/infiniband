@@ -23,15 +23,13 @@ struct config_t config =
 struct timeval tposted; 
 struct timeval tcompleted;
 
-struct proctime_t proc_start;
-struct proctime_t proc_end;
+struct pstat pstart;
+struct pstat pend;
 
 
 /* MAIN */
 int main ( int argc, char *argv[] )
 {
-
-
     int rc = 1;
     int i;
     int iter;
@@ -240,7 +238,7 @@ static int run_iter(struct resources *res)
         sr.wr.rdma.rkey = res->remote_props.rkey;
     }
 
-    get_proc_stat_time( &proc_start );
+    get_usage(getpid(), &pstart);
     gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
@@ -284,7 +282,7 @@ static int run_iter(struct resources *res)
 
     }
     gettimeofday( &tcompleted, NULL );
-    get_proc_stat_time( &proc_end );
+    get_usage(getpid(), &pend);
 
     free(wc);
     return 0;
@@ -1103,8 +1101,11 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
     double cpu_usage = 0; //FIXME hard-coded
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
 
-    printf("\tstart: utime - %f, stime - %f\n", proc_start.utime, proc_start.stime);
-    printf("\tend: utime - %f, stime - %f\n", proc_end.utime, proc_end.stime);
+    double ucpu;
+    double scpu;
+    calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
+    printf("ucpu %f scpu %f\n", ucpu, scpu);
+
 }
 
 static void check_wc_status(enum ibv_wc_status status)
