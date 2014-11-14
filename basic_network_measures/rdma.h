@@ -21,8 +21,6 @@
 #include <math.h>
 #include <pthread.h>
 
-#define _GNU_SOURCE 
-
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
 #define GRN  "\x1B[32m"
