@@ -17,7 +17,7 @@ cecho(){
     tput sgr0
     return
 }  
-printheader() { echo -e "#bytes\titer.\tAvg. BW\tCPU%"; }
+printheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
 ctrl_c(){
     make clean
     exit

@@ -214,7 +214,8 @@ static int run_iter(struct resources *res)
     int i;
 
     struct ibv_send_wr sr;
-    struct ibv_sge sge; //FIXME do we need to do scatter/gather? (what is it anyways?)
+    struct ibv_sge sge; 
+    //FIXME do we need to do scatter/gather? (what is it anyways?)
     struct ibv_send_wr *bad_wr = NULL;
     struct ibv_wc *wc = NULL;
 
@@ -287,7 +288,6 @@ static int run_iter(struct resources *res)
     free(wc);
     return 0;
 }
-
 
 /* IB OPERATIONS */
 static int post_send (struct resources *res, int opcode)
@@ -968,40 +968,6 @@ int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data
 
 /* UTILITY */
 
-//TODO  this whole thing is a hack
-static void get_proc_stat_time( struct proctime_t *time )
-{
-    FILE *input;
-    char *dir;
-    int i;
-    long long int x;
-    char y[200]; 
-    char z;
-    long long int utime;
-    long long int stime;
-    long tickspersec;
-
-    tickspersec = sysconf(_SC_CLK_TCK);
-
-    dir = (char *) malloc(strlen("/proc//stat") + sizeof(long int));
-    sprintf(dir, "/proc/%ld/stat", getpid());
-    input = fopen(dir, "r");
-    
-
-    fscanf(input, "%lld ", &x);
-    fscanf(input, "%s ", y);
-    fscanf(input, "%c ", &z);
-
-    for(i=0; i < 10; i++)
-        fscanf(input, "%lld ", &x);
-
-    fscanf(input, "%lld ", &utime);
-    fscanf(input, "%lld ", &stime);
-
-    time->utime = (double) utime / tickspersec;
-    time->stime = (double) stime / tickspersec;
-}
-
 static void usage (const char *argv0)
 {
 
@@ -1098,14 +1064,11 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
     long elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
         - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
     double avg_bw = xfer_total / elapsed;
-    double cpu_usage = 0; //FIXME hard-coded
-    printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
-
     double ucpu;
     double scpu;
     calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
-    printf("ucpu %f scpu %f\n", ucpu, scpu);
 
+    printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
 }
 
 static void check_wc_status(enum ibv_wc_status status)
