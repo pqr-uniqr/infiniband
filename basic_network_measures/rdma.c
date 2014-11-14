@@ -1000,8 +1000,8 @@ static void get_proc_stat_time( struct proctime_t *time )
     fscanf(input, "%lld ", &utime);
     fscanf(input, "%lld ", &stime);
 
-    time->utime = utime;
-    time->stime = stime;
+    time->utime = (double) utime / tickspersec;
+    time->stime = (double) stime / tickspersec;
 }
 
 static void usage (const char *argv0)
