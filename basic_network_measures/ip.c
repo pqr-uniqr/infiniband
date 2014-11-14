@@ -372,7 +372,8 @@ static void print_report( void )
     double scpu;
     calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu );
 
-    printf( REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
+    printf( REPORT_FMT, (int) config.xfer_unit, 
+            config.iter, avg_bw, ucpu, scpu);
 }
 
 static uint16_t checksum(void *vdata, size_t length)
