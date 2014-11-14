@@ -1048,6 +1048,13 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
     double elapsed= (ttcompleted.tv_sec - ttposted.tv_sec) * 0x1000000 +
         (ttcompleted.tv_usec - ttposted.tv_usec);
     double avg_bw = xfer_total / elapsed;
+
+    printf("posted: (sec) %lu, (usec) %lu, completed: (sec) %lu, (usec) %lu \n", 
+            ttposted.tv_sec, ttposted.tv_usec, ttcompleted.tv_sec, ttcompleted.tv_usec);
+    printf("diff in sec: %lu, diff in usec: %lu\n", ttcompleted.tv_sec - ttposted.tv_sec, ttcompleted.tv_usec - ttposted.tv_usec);
+    printf("elapsed (usec) : %f\n", elapsed);
+    printf("xfer_total (bytes): %f\n", xfer_total);
+
     double cpu_usage = 0; //FIXME hard-coded
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
 
