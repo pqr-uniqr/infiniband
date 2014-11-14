@@ -112,6 +112,12 @@ struct resources
     int sock;			/* TCP socket file descriptor */
 };
 
+struct proctime_t
+{
+    double utime;
+    double stime;
+};
+
 
 /*  */
 static int run_iter(struct resources *res);
@@ -139,6 +145,7 @@ static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
 
 /* UTIL */
+static void get_proc_stat_time( struct proctime_t *time);
 static void print_report(unsigned int iters, unsigned size, int duplex, int no_cpu_freq_fail);
 static void usage(const char *argv0);
 static void opcode_to_str(int code, char **str);

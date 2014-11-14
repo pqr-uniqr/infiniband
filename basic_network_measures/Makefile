@@ -1,4 +1,4 @@
-CFLAGS= -O3 -g -Wall -std=c99 -D_GNU_SOURCE -pthread -L /lib64 
+CFLAGS= -O3 -g -std=c99 -D_GNU_SOURCE -pthread -L /lib64 
 CC=gcc
 LD=gcc 
 LIB= -libverbs -lm -lpthread

@@ -20,8 +20,12 @@ struct config_t config =
     NULL,
 };
 
-struct timeval tposted; //FIXME temp
-struct timeval tcompleted; //FIXME temp
+struct timeval tposted; 
+struct timeval tcompleted;
+
+struct proctime_t proc_start;
+struct proctime_t proc_end;
+
 
 /* MAIN */
 int main ( int argc, char *argv[] )
@@ -236,6 +240,7 @@ static int run_iter(struct resources *res)
         sr.wr.rdma.rkey = res->remote_props.rkey;
     }
 
+    get_proc_stat_time( &proc_start );
     gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
@@ -279,6 +284,7 @@ static int run_iter(struct resources *res)
 
     }
     gettimeofday( &tcompleted, NULL );
+    get_proc_stat_time( &proc_end );
 
     free(wc);
     return 0;
@@ -964,6 +970,40 @@ int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data
 
 /* UTILITY */
 
+//TODO  this whole thing is a hack
+static void get_proc_stat_time( struct proctime_t *time )
+{
+    FILE *input;
+    char *dir;
+    int i;
+    long long int x;
+    char y[200]; 
+    char z;
+    long long int utime;
+    long long int stime;
+    long tickspersec;
+
+    tickspersec = sysconf(_SC_CLK_TCK);
+
+    dir = (char *) malloc(strlen("/proc//stat") + sizeof(long int));
+    sprintf(dir, "/proc/%ld/stat", getpid());
+    input = fopen(dir, "r");
+    
+
+    fscanf(input, "%lld ", &x);
+    fscanf(input, "%s ", y);
+    fscanf(input, "%c ", &z);
+
+    for(i=0; i < 10; i++)
+        fscanf(input, "%lld ", &x);
+
+    fscanf(input, "%lld ", &utime);
+    fscanf(input, "%lld ", &stime);
+
+    time->utime = utime;
+    time->stime = stime;
+}
+
 static void usage (const char *argv0)
 {
 
@@ -1062,6 +1102,9 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
     double avg_bw = xfer_total / elapsed;
     double cpu_usage = 0; //FIXME hard-coded
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, cpu_usage);
+
+    printf("\tstart: utime - %f, stime - %f\n", proc_start.utime, proc_start.stime);
+    printf("\tend: utime - %f, stime - %f\n", proc_end.utime, proc_end.stime);
 }
 
 static void check_wc_status(enum ibv_wc_status status)
