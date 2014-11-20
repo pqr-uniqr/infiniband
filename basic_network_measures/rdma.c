@@ -135,7 +135,6 @@ int main ( int argc, char *argv[] )
 
 
     /* PIN MAIN THREAD TO A CPU (hardcoded to cpu 0 for now) */
-
     thread = pthread_self();
     CPU_ZERO( &cpuset );
     CPU_SET( CPUNO, &cpuset );
@@ -154,7 +153,6 @@ int main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "getaffinity() returned set including:\n" RESET));
     for(i = 0; i < CPU_SETSIZE; i++)
         if(CPU_ISSET(i, &cpuset)) DEBUG_PRINT((stdout, GRN "\tcpu %d\n" RESET, i));
-
 
     /* INITIATE RESOURCES  */
     resources_init(&res);
@@ -203,7 +201,6 @@ main_exit:
     return rc;
 }
 
-/*  */
 static int run_iter(struct resources *res)
 {
     char temp_char;
@@ -215,7 +212,6 @@ static int run_iter(struct resources *res)
 
     struct ibv_send_wr sr;
     struct ibv_sge sge; 
-    //FIXME do we need to do scatter/gather? (what is it anyways?)
     struct ibv_send_wr *bad_wr = NULL;
     struct ibv_wc *wc = NULL;
 
@@ -233,7 +229,6 @@ static int run_iter(struct resources *res)
     sge.length = config.xfer_unit;
     sge.lkey = res->mr->lkey;
 
-
     if( config.opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = res->remote_props.addr;
         sr.wr.rdma.rkey = res->remote_props.rkey;
@@ -243,7 +238,6 @@ static int run_iter(struct resources *res)
     gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
-        //TODO tx_depth hardcoded for now
         while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR ){
 
             if((scnt % CQ_MODERATION) == 0)
@@ -283,7 +277,7 @@ static int run_iter(struct resources *res)
 
     }
     gettimeofday( &tcompleted, NULL );
-    get_usage(getpid(), &pend);
+    get_usage( getpid(), &pend );
 
     free(wc);
     return 0;
