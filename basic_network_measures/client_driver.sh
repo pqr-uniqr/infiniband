@@ -70,6 +70,7 @@ else
             then
                 # we can order redirection to command line tools (e.g. /dev/null)
                 FILEPATH="${FILENAME}"
+                break
             else
                 FILENAME="${EXEC}_$FILENAME"
                 FILEPATH="$DIR/$FILENAME"
