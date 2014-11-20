@@ -66,6 +66,9 @@ else
             if [ -e "$DIR/$FILENAME" ]
             then
                 cecho "> file already exists" $red
+            elif [ `expr index ${FILENAME} /` = 1 ] 
+                # we can order redirection to command line tools (e.g. /dev/null)
+                FILEPATH="${FILENAME}"
             else
                 FILENAME="${EXEC}_$FILENAME"
                 FILEPATH="$DIR/$FILENAME"
@@ -123,6 +126,7 @@ else
         mkdir $DIR
     fi
 
+    # if this is called on an existing file (such as /dev/null), won't really hurt
     touch "$FILEPATH"
     echo "#$EXEC experiment: Up to 2^$POW bytes, each $ITER iterations (server addr: $ADDR)" > $FILEPATH
     echo "#* to reproduce this result, use $GITVER *" >> $FILEPATH
