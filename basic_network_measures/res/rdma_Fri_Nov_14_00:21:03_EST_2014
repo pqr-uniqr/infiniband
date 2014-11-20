@@ -1,0 +1,153 @@
+#rdma experiment: Up to 2^25 bytes, each 10000 iterations (server addr: 192.168.1.1)
+#* to reproduce this result, use commit c3dc31fc1c5f8482de26f502502f0e7c63e71b4b *
+#verb: r
+#bytes	iter.	Avg. BW	CPU%
+posted: (sec) 1415942489, (usec) 865947, completed: (sec) 1415942489, (usec) 867439 
+diff in sec: 0, diff in usec: 1492
+elapsed (usec) : 1492.000000
+xfer_total (bytes): 20000.000000
+2      	10000	13.40  	0.00   
+
+posted: (sec) 1415942490, (usec) 883294, completed: (sec) 1415942490, (usec) 884647 
+diff in sec: 0, diff in usec: 1353
+elapsed (usec) : 1353.000000
+xfer_total (bytes): 40000.000000
+4      	10000	29.56  	0.00   
+
+posted: (sec) 1415942491, (usec) 907070, completed: (sec) 1415942491, (usec) 908529 
+diff in sec: 0, diff in usec: 1459
+elapsed (usec) : 1459.000000
+xfer_total (bytes): 80000.000000
+8      	10000	54.83  	0.00   
+
+posted: (sec) 1415942492, (usec) 926887, completed: (sec) 1415942492, (usec) 928358 
+diff in sec: 0, diff in usec: 1471
+elapsed (usec) : 1471.000000
+xfer_total (bytes): 160000.000000
+16     	10000	108.77 	0.00   
+
+posted: (sec) 1415942493, (usec) 947099, completed: (sec) 1415942493, (usec) 948571 
+diff in sec: 0, diff in usec: 1472
+elapsed (usec) : 1472.000000
+xfer_total (bytes): 320000.000000
+32     	10000	217.39 	0.00   
+
+posted: (sec) 1415942494, (usec) 971552, completed: (sec) 1415942494, (usec) 973023 
+diff in sec: 0, diff in usec: 1471
+elapsed (usec) : 1471.000000
+xfer_total (bytes): 640000.000000
+64     	10000	435.08 	0.00   
+
+posted: (sec) 1415942495, (usec) 991974, completed: (sec) 1415942495, (usec) 993441 
+diff in sec: 0, diff in usec: 1467
+elapsed (usec) : 1467.000000
+xfer_total (bytes): 1280000.000000
+128    	10000	872.53 	0.00   
+
+posted: (sec) 1415942497, (usec) 53927, completed: (sec) 1415942497, (usec) 55419 
+diff in sec: 0, diff in usec: 1492
+elapsed (usec) : 1492.000000
+xfer_total (bytes): 2560000.000000
+256    	10000	1715.82	0.00   
+
+posted: (sec) 1415942498, (usec) 71623, completed: (sec) 1415942498, (usec) 73305 
+diff in sec: 0, diff in usec: 1682
+elapsed (usec) : 1682.000000
+xfer_total (bytes): 5120000.000000
+512    	10000	3044.00	0.00   
+
+posted: (sec) 1415942499, (usec) 91362, completed: (sec) 1415942499, (usec) 93231 
+diff in sec: 0, diff in usec: 1869
+elapsed (usec) : 1869.000000
+xfer_total (bytes): 10240000.000000
+1024   	10000	5478.87	0.00   
+
+posted: (sec) 1415942500, (usec) 111549, completed: (sec) 1415942500, (usec) 114767 
+diff in sec: 0, diff in usec: 3218
+elapsed (usec) : 3218.000000
+xfer_total (bytes): 20480000.000000
+2048   	10000	6364.20	0.00   
+
+posted: (sec) 1415942501, (usec) 131272, completed: (sec) 1415942501, (usec) 137590 
+diff in sec: 0, diff in usec: 6318
+elapsed (usec) : 6318.000000
+xfer_total (bytes): 40960000.000000
+4096   	10000	6483.06	0.00   
+
+posted: (sec) 1415942502, (usec) 155015, completed: (sec) 1415942502, (usec) 167656 
+diff in sec: 0, diff in usec: 12641
+elapsed (usec) : 12641.000000
+xfer_total (bytes): 81920000.000000
+8192   	10000	6480.50	0.00   
+
+posted: (sec) 1415942503, (usec) 183570, completed: (sec) 1415942503, (usec) 208814 
+diff in sec: 0, diff in usec: 25244
+elapsed (usec) : 25244.000000
+xfer_total (bytes): 163840000.000000
+16384  	10000	6490.26	0.00   
+
+posted: (sec) 1415942504, (usec) 227649, completed: (sec) 1415942504, (usec) 278157 
+diff in sec: 0, diff in usec: 50508
+elapsed (usec) : 50508.000000
+xfer_total (bytes): 327680000.000000
+32768  	10000	6487.69	0.00   
+
+posted: (sec) 1415942505, (usec) 299973, completed: (sec) 1415942505, (usec) 400954 
+diff in sec: 0, diff in usec: 100981
+elapsed (usec) : 100981.000000
+xfer_total (bytes): 655360000.000000
+65536  	10000	6489.93	0.00   
+
+posted: (sec) 1415942506, (usec) 419203, completed: (sec) 1415942506, (usec) 621136 
+diff in sec: 0, diff in usec: 201933
+elapsed (usec) : 201933.000000
+xfer_total (bytes): 1310720000.000000
+131072 	10000	6490.87	0.00   
+
+posted: (sec) 1415942507, (usec) 647946, completed: (sec) 1415942508, (usec) 51788 
+diff in sec: 1, diff in usec: 18446744073708955458
+elapsed (usec) : 16181058.000000
+xfer_total (bytes): 2621440000.000000
+262144 	10000	162.01 	0.00   
+
+posted: (sec) 1415942509, (usec) 117921, completed: (sec) 1415942509, (usec) 925535 
+diff in sec: 0, diff in usec: 807614
+elapsed (usec) : 807614.000000
+xfer_total (bytes): 5242880000.000000
+524288 	10000	6491.81	0.00   
+
+posted: (sec) 1415942510, (usec) 956051, completed: (sec) 1415942512, (usec) 571216 
+diff in sec: 2, diff in usec: 18446744073709166781
+elapsed (usec) : 33169597.000000
+xfer_total (bytes): 10485760000.000000
+1048576	10000	316.13 	0.00   
+
+posted: (sec) 1415942513, (usec) 596382, completed: (sec) 1415942516, (usec) 826930 
+diff in sec: 3, diff in usec: 230548
+elapsed (usec) : 50562196.000000
+xfer_total (bytes): 20971520000.000000
+2097152	10000	414.77 	0.00   
+
+posted: (sec) 1415942517, (usec) 889918, completed: (sec) 1415942524, (usec) 350840 
+diff in sec: 7, diff in usec: 18446744073709012538
+elapsed (usec) : 116901434.000000
+xfer_total (bytes): 41943040000.000000
+4194304	10000	358.79 	0.00   
+
+posted: (sec) 1415942525, (usec) 378761, completed: (sec) 1415942538, (usec) 300723 
+diff in sec: 13, diff in usec: 18446744073709473578
+elapsed (usec) : 218025770.000000
+xfer_total (bytes): 83886080000.000000
+8388608	10000	384.75 	0.00   
+
+posted: (sec) 1415942539, (usec) 332580, completed: (sec) 1415942565, (usec) 176960 
+diff in sec: 26, diff in usec: 18446744073709395996
+elapsed (usec) : 436051996.000000
+xfer_total (bytes): 167772160000.000000
+16777216	10000	384.75 	0.00   
+
+posted: (sec) 1415942566, (usec) 213845, completed: (sec) 1415942617, (usec) 903212 
+diff in sec: 51, diff in usec: 689367
+elapsed (usec) : 856327383.000000
+xfer_total (bytes): 335544320000.000000
+33554432	10000	391.84 	0.00   

@@ -1,0 +1,34 @@
+#rdma experiment: Up to 2^10 bytes, each 10 iterations (server addr: 192.168.1.1)
+#* to reproduce this result, use commit 722177e0adc042a4dbb2f7d184ffc477a23da68b *
+#verb: r
+#bytes	iter.	Avg. BW	CPU%
+2      	10	0.95   	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+4      	10	3.64   	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+8      	10	6.67   	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+16     	10	9.41   	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+32     	10	35.56  	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+64     	10	49.23  	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+128    	10	64.00  	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+256    	10	170.67 	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+512    	10	426.67 	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
+1024   	10	731.43 	0.00   
+	start: utime - 0.000000, stime - 0.000000
+	end: utime - 0.000000, stime - 0.000000
