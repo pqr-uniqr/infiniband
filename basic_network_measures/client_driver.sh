@@ -67,6 +67,7 @@ else
             then
                 cecho "> file already exists" $red
             elif [ `expr index ${FILENAME} /` = 1 ] 
+            then
                 # we can order redirection to command line tools (e.g. /dev/null)
                 FILEPATH="${FILENAME}"
             else
