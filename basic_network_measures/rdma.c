@@ -483,8 +483,7 @@ connect_qp (struct resources *res)
         DEBUG_PRINT((stdout, "QP state was change to RTS\n"));
 
         /* sync to make sure that both sides are in states that they can connect */
-        if (sock_sync_data (res->sock, 1, "Q", &temp_char))	/* just send a dummy char back and forth */
-        {
+        if (sock_sync_data(res->sock, 1, "Q", &temp_char)){
             fprintf (stderr, "sync error after QPs are were moved to RTS\n");
             rc = 1;
         }
@@ -750,18 +749,18 @@ sock_connect_exit:
     int
 sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data)
 {
-    int rc = 0, total_read_bytes = 0;
+    int rc; total_read_bytes = 0;
 
     if( 0 > (rc = write (sock, local_data, xfer_size)) )
-        ERR_RETURN_EN(errno, "write(); sock_sync_data();");
+        ERR_RETURN_EN(errno, "write(); sock_sync_data();\n");
 
     while (total_read_bytes < xfer_size){
-        if(0 > (rc = read(sock, remote_data, xfer_size)))
-            ERR_RETURN_EN(errno, "read(); sock_sync_data();");
+        if( 0 > (rc = read(sock, remote_data, xfer_size)) )
+            ERR_RETURN_EN(errno, "read(); sock_sync_data();\n");
         total_read_bytes += rc;
     }
 
-    return rc;
+    return 0;
 }
 
 /* UTILITY */
