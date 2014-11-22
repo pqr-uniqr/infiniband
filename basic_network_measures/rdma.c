@@ -182,6 +182,8 @@ main ( int argc, char *argv[] )
             }
         }
 
+    DEBUG_PRINT((stdout, GRN "threads created\n" RESET));
+
     int wait = 1;
     do{
         pthread_mutex_lock( &start_mutex );
@@ -189,11 +191,16 @@ main ( int argc, char *argv[] )
         pthread_mutex_unlock( &start_mutex );
     } while (wait);
 
+    DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
+
     pthread_cond_broadcast(&start_cond);
 
     for(i=0; i<config.threads; i++){
-        pthread_join(threads[i], NULL);
+        if( rc = pthread_join(threads[i], NULL) )
+            ERR_RETURN_EN(rc, "pthread_join");
     }
+
+    DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
 
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&start_mutex);
