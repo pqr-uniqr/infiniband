@@ -749,7 +749,7 @@ sock_connect_exit:
     int
 sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data)
 {
-    int rc; total_read_bytes = 0;
+    int rc, total_read_bytes = 0;
 
     if( 0 > (rc = write (sock, local_data, xfer_size)) )
         ERR_RETURN_EN(errno, "write(); sock_sync_data();\n");
