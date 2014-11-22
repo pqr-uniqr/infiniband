@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -41,12 +42,23 @@
 #define MAX_RECV_SGE 1
 
 #define CPUNO 0
+#define CQ_SIZE 1
+
+#define FAILURE -1
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
+#define ERR_RETURN_EN(en, msg) \
+    do { if(errno < 0){errno = en; perror(msg);}\
+        else fprintf(stderr,msg); \
+        return(FAILURE); } while (0)
 
-#define REPORT_FMT     "%-7d\t%d\t%-7.2f\t%-7.5f\t%7.5f\n"
+#define MAIN_TOEXIT(msg) \
+    do { fprintf(stderr, RED msg RESET ); goto main_exit;} while(0)
+
+
+#define REPORT_FMT "%-7d\t%d\t%-7.2f\t%-7.5f\t%7.5f\n"
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
         { fprintf(stderr," Cannot Allocate\n"); exit(1);}}
@@ -84,6 +96,7 @@ struct config_t
     int iter;             /* number of times we are going to transfer */
     enum ibv_wr_opcode opcode;     /* requested op */
     int crt;            /* what to test for */
+    int threads;        /* number of threads to use */
     struct config_t *config_other;
 };
 
@@ -97,22 +110,28 @@ struct cm_con_data_t
     uint8_t gid[16];		/* gid */
 } __attribute__ ((packed));
 
-// store all resources: device, port, remote connection data, context, protection domain, queue pair, memory registration, data buffer, tcp socket for connection establishment
-struct resources 
+// one for every ib connection
+struct ib_assets
 {
-    struct ibv_device_attr device_attr;
-    /* Device attributes */
-    struct ibv_port_attr port_attr;	/* IB port attributes */
-    struct cm_con_data_t remote_props;	/* values to connect to remote side */
-    struct ibv_context *ib_ctx;	/* device handle */
     struct ibv_pd *pd;		/* PD handle */
     struct ibv_cq *cq;		/* CQ handle */
     struct ibv_qp *qp;		/* QP handle */
     struct ibv_mr *mr;		/* MR handle for buf */
-    char *buf;			/* memory buffer pointer, used for RDMA and send
-                           ops */
-    int sock;			/* TCP socket file descriptor */
+    char *buf;			    /* memory buffer pointer */
+    struct cm_con_data_t remote_props;	/* values to connect to remote side */
 };
+
+struct resources 
+{
+    /* Device attributes */
+    struct ibv_device_attr device_attr;
+    struct ibv_port_attr port_attr;	/* IB port attributes */
+    struct ibv_context *ib_ctx;	/* device handle */
+    int sock;			/* TCP socket file descriptor */
+    struct ib_assets **assets;
+};
+
+
 
 struct proctime_t
 {
@@ -122,11 +141,7 @@ struct proctime_t
 
 
 /*  */
-static int run_iter(struct resources *res);
-
-/* IB OPERATIONS */
-static int post_send(struct resources *res, int opcode);
-static int poll_completion(struct resources *res);
+static int run_iter( void *param );
 
 /* QUEUE PAIR STATE MODIFICATION */
 static int modify_qp_to_init(struct ibv_qp *qp);
@@ -139,8 +154,9 @@ static int post_receive(struct resources *res);
 
 /* RESOURCE MANAGEMENT */
 static void resources_init( struct resources *res);
-static int resources_create(struct resources *res);
+static int resources_create( struct resources *res);
 static int resources_destroy( struct resources *res);
+static int conn_destroy( struct ib_assets *conn);
 
 /* SOCKET OPERATION WRAPPERS (TCP) */
 static int sock_connect(const char *servername, int port);

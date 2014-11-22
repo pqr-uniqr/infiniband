@@ -17,6 +17,7 @@ struct config_t config =
     0,              /* iter */
     -1,             /* opcode */
     CRT_DEF,       /* criteria */
+    1,              /* number of threads */
     NULL,
 };
 
@@ -26,19 +27,25 @@ struct timeval tcompleted;
 struct pstat pstart;
 struct pstat pend;
 
+pthread_mutex_t start_mutex;
+pthread_cond_t start_cond;
+cpu_set_t cpuset;
+int cnt_threads;
+pthread_t *threads;
 
 /* MAIN */
-int main ( int argc, char *argv[] )
+int
+main ( int argc, char *argv[] )
 {
-    int rc = 1;
-    int i;
-    int iter;
+    int rc = 1, i, iter;
     uint16_t csum;
     struct resources res;
     char temp_char;
     struct timeval cur_time;
-    cpu_set_t cpuset;
-    pthread_t thread;
+
+    CPU_ZERO( &cpuset );
+    CPU_SET( CPUNO, &cpuset );
+    cnt_threads = 0;
 
     /* PROCESS CL ARGUMENTS */
 
@@ -54,10 +61,11 @@ int main ( int argc, char *argv[] )
             {.name = "iter", .has_arg = 1, .val = 'i'},
             {.name = "verb", .has_arg=1, .val= 'v'},
             {.name = "criteria", .has_arg=1, .val='c'},
-            {.name = NULL,.has_arg = 0,.val = '\0'}
+            {.name = "threads", .has_arg = 1, .val='t'},
+            {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:t:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -69,24 +77,23 @@ int main ( int argc, char *argv[] )
                 break;
             case 'g':
                 config.gid_idx = strtoul (optarg, NULL, 0);
-                if (config.gid_idx < 0)
-                {
+                if (config.gid_idx < 0){
                     usage (argv[0]);
-                    return 1;
+                    return EXIT_FAILURE;
                 }
                 break;
             case 'b':
                 config.xfer_unit = pow(2,strtoul(optarg,NULL,0));
                 if(config.xfer_unit < 0){
                     usage(argv[0]);
-                    return 1;
+                    return EXIT_FAILURE;
                 }
                 break;
             case 'i':
                 config.iter = strtoul(optarg, NULL, 0);
                 if(config.iter < 0){
                     usage(argv[0]);
-                    return 1;
+                    return EXIT_FAILURE;
                 }
                 break;
             case 'v':
@@ -99,7 +106,7 @@ int main ( int argc, char *argv[] )
                     config.opcode = IBV_WR_SEND; 
                 } else {
                     usage(argv[0]);
-                    return 1;
+                    return EXIT_FAILURE;
                 }
                 break;
             case 'c':
@@ -114,9 +121,16 @@ int main ( int argc, char *argv[] )
                     config.crt = CRT_DEF;
                 }
                 break;
+            case 't':
+                config.threads = strtoul(optarg, NULL, 0);
+                if( config.threads < 0){
+                    usage(argv[0]);
+                    return EXIT_FAILURE;
+                }
+                break;
             default:
                 usage (argv[0]);
-                return 1;
+                return EXIT_FAILURE;
         }
     }
 
@@ -125,7 +139,7 @@ int main ( int argc, char *argv[] )
         config.server_name = argv[optind];
     } else if (optind < argc - 1){
         usage (argv[0]);
-        return 1;
+        return EXIT_FAILURE;
     }
 
     /* SUM UP CONFIG */
@@ -133,108 +147,126 @@ int main ( int argc, char *argv[] )
     print_config();
 #endif
 
-
-    /* PIN MAIN THREAD TO A CPU (hardcoded to cpu 0 for now) */
-    thread = pthread_self();
-    CPU_ZERO( &cpuset );
-    CPU_SET( CPUNO, &cpuset );
-    if( 0 != pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
-        fprintf(stderr, RED "pthread_setaffinity_np() failed\n" RESET);
-        rc = 1;
-        goto main_exit;
-    }
-
-    if ( 0 != pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
-        fprintf(stderr, RED "pthread_getaffinity_np() failed\n" RESET);
-        rc = 1;
-        goto main_exit;
-    }
-
-    DEBUG_PRINT((stdout, GRN "getaffinity() returned set including:\n" RESET));
-    for(i = 0; i < CPU_SETSIZE; i++)
-        if(CPU_ISSET(i, &cpuset)) DEBUG_PRINT((stdout, GRN "\tcpu %d\n" RESET, i));
-
-    /* INITIATE RESOURCES  */
-    resources_init(&res);
+    /* INITIALIZE RESOURCES  */
+    resources_init( &res );
     DEBUG_PRINT((stdout, GRN "resources_init() successful\n" RESET));
 
-    /* SET UP RESOURCES  */
-    if( resources_create(&res) ){
-        fprintf(stderr, RED "resources_create() failed\n" RESET);
-        rc = 1;
-        goto main_exit;
-    }
+    // FROM HERE ON: malloc is used. -------------------------------------------
+
+    if( rc = resources_create( &res ) )
+        MAIN_TOEXIT("resources_create() failed\n");
+
     DEBUG_PRINT((stdout,GRN "resources_create() successful\n" RESET));
 
-    /* CONNECT QUEUE PAIRS */
-    if( connect_qp(&res) ){
-        fprintf(stderr, RED "connect_qp() failed\n" RESET);
-        rc = 1;
-        goto main_exit;
-    }
+    if( rc = connect_qp(&res) )
+        MAIN_TOEXIT("connect_qp() failed\n");
+
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
-    rc = 0;
+
+
+    pthread_mutex_init(&start_mutex, NULL);
+    pthread_cond_init(&start_cond, NULL);
+
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     /* START ITERATIONS! */
     if(config.opcode != -1)
-        run_iter(&res);
+        for(i = 0; i< config.threads; i++){
+            if( rc = pthread_create( &threads[i], &attr, 
+                        (void * (*)(void *)) run_iter, (void *) res.assets[i]) ){
+                ERR_RETURN_EN(rc, "pthread_create\n");
+                rc = -1;
+                goto main_exit;
+            }
+        }
 
-    if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
-        fprintf(stderr, "sync error while in data transfer\n");
-        return 1;
+    int wait = 1;
+    do{
+        pthread_mutex_lock( &start_mutex );
+        wait = (cnt_threads < config.threads);
+        pthread_mutex_unlock( &start_mutex );
+    } while (wait);
+
+    pthread_cond_broadcast(&start_cond);
+
+    for(i=0; i<config.threads; i++){
+        pthread_join(threads[i], NULL);
     }
+
+    pthread_attr_destroy(&attr);
+    pthread_mutex_destroy(&start_mutex);
+    pthread_cond_destroy(&start_cond);
+
+    if( rc = sock_sync_data(res.sock, 1, "R", &temp_char ) )
+        MAIN_TOEXIT("final sync failed\n");
 
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
 main_exit:
-    if (resources_destroy (&res)){
+    if( rc = resources_destroy( &res ) ){
         fprintf (stderr, "failed to destroy resources\n");
-        rc = 1;
+        rc = -1;
     }
+
     if (config.dev_name) free ((char *) config.dev_name);
     if (config.config_other) free((char *)config.config_other);
+    if (threads) free((char *) threads);
 
     /* REPORT ON EXPERIMENT TO STDOUT */
 
     print_report(config.iter, config.xfer_unit, 0, 0);
 
-    return rc;
+    if( 0 > rc ) return EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }
 
-static int run_iter(struct resources *res)
+static int
+run_iter(void *param)
 {
-    char temp_char;
-    int scnt = 0;
-    int ccnt = 0;
-    int rc = 0;
-    int ne;
-    int i;
 
-    struct ibv_send_wr sr;
-    struct ibv_sge sge; 
-    struct ibv_send_wr *bad_wr = NULL;
-    struct ibv_wc *wc = NULL;
+    /* DECLARE AND INITIALIZE */
+
+    int rc, scnt=0, ccnt=0, ne, i;
+
+    struct ibv_send_wr sr, *bad_wr=NULL;
+    struct ibv_wc *wc;
+    struct ibv_sge sge;
+    struct ib_assets *conn = (struct ib_assets *) param;
 
     ALLOCATE(wc, struct ibv_wc, 1);
 
     memset(&sr, 0, sizeof(sr));
-    sr.next = NULL; 
+    sr.next = NULL;
     sr.wr_id = 0;
     sr.sg_list = &sge;
     sr.num_sge = 1;
     sr.opcode = config.opcode;
 
     memset(&sge, 0, sizeof(sge));
-    sge.addr = (uintptr_t) res->buf;
+    sge.addr = (uintptr_t) conn->buf;
     sge.length = config.xfer_unit;
-    sge.lkey = res->mr->lkey;
+    sge.lkey = conn->mr->lkey;
 
     if( config.opcode != IBV_WR_SEND ){
-        sr.wr.rdma.remote_addr = res->remote_props.addr;
-        sr.wr.rdma.rkey = res->remote_props.rkey;
+        sr.wr.rdma.remote_addr = conn->remote_props.addr;
+        sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
 
-    get_usage(getpid(), &pstart);
+    /* WAIT TO SYNCHRONIZE */
+
+    pthread_mutex_lock( &start_mutex );
+    pthread_t thread = pthread_self();
+    if ( rc = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) )
+        ERR_RETURN_EN(rc, "pthrad_setaffinity_np");
+    cnt_threads++;
+    pthread_cond_wait( &start_cond, &start_mutex );
+    pthread_mutex_unlock( &start_mutex );
+
+    /* GO! */
+
+    get_usage( getpid(), &pstart );
     gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
@@ -243,11 +275,9 @@ static int run_iter(struct resources *res)
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
 
-            if( ( rc = ibv_post_send(res->qp, &sr, &bad_wr) ) ){
-                perror("ibv_post_send");
-                fprintf(stderr, "Couldn't post send: scnt=%d\n", scnt);
-                return 1;
-            }
+            if( ( rc = ibv_post_send(conn->qp, &sr, &bad_wr) ) )
+                ERR_RETURN_EN(rc, "post_send");
+
             ++scnt;
 
             if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
@@ -256,7 +286,7 @@ static int run_iter(struct resources *res)
 
         if( ccnt < config.iter ){
             do {
-                ne = ibv_poll_cq(res->cq, 1, wc);
+                ne = ibv_poll_cq(conn->cq, 1, wc);
                 if( ne > 0 ){
                     for( i = 0; i < ne; i++){
                         if(wc[i].status != IBV_WC_SUCCESS)
@@ -269,10 +299,8 @@ static int run_iter(struct resources *res)
 
             } while (ne > 0);
 
-            if( ne < 0){
-                fprintf(stderr, "poll CQ failed %d\n", ne);
-                return 1;
-            }
+            if( ne < 0 )
+                ERR_RETURN_EN(-1, "poll_cq");
         }
 
     }
@@ -280,114 +308,15 @@ static int run_iter(struct resources *res)
     get_usage( getpid(), &pend );
 
     free(wc);
-    return 0;
-}
 
-/* IB OPERATIONS */
-static int post_send (struct resources *res, int opcode)
-{
-    struct ibv_send_wr sr;
-    struct ibv_sge sge;
-    struct ibv_send_wr *bad_wr = NULL;
-    int rc;
-    /* prepare the scatter/gather entry */
-    memset (&sge, 0, sizeof (sge));
-    sge.addr = (uintptr_t) res->buf;
-    sge.length = config.xfer_unit;
-    sge.lkey = res->mr->lkey;
+    
 
-    /* prepare the send work request */
-    memset (&sr, 0, sizeof (sr));
-    sr.next = NULL;
-    sr.wr_id = 0;
-    sr.sg_list = &sge;
-    sr.num_sge = 1;
-    sr.opcode = opcode;
-    sr.send_flags = IBV_SEND_SIGNALED;
-    if (opcode != IBV_WR_SEND)
-    {
-        sr.wr.rdma.remote_addr = res->remote_props.addr;
-        sr.wr.rdma.rkey = res->remote_props.rkey;
-    }
-    /* there is a Receive Request in the responder side, so we won't get any into RNR flow */
-    rc = ibv_post_send (res->qp, &sr, &bad_wr);
-    if (rc)
-        fprintf (stderr, "failed to post SR\n");
-    else
-    {
-        switch (opcode)
-        {
-            case IBV_WR_SEND:
-                DEBUG_PRINT((stdout, "Send Request was posted\n"));
-                break;
-            case IBV_WR_RDMA_READ:
-                DEBUG_PRINT((stdout, "RDMA Read Request was posted\n"));
-                break;
-            case IBV_WR_RDMA_WRITE:
-                DEBUG_PRINT((stdout, "RDMA Write Request was posted\n"));
-                break;
-            default:
-                DEBUG_PRINT((stdout, "Unknown Request was posted\n"));
-                break;
-        }
-    }
-    return rc;
-}
-static int poll_completion (struct resources *res)
-{
-    struct ibv_wc wc;
-    unsigned long start_time_msec;
-    unsigned long cur_time_msec;
-    struct timeval cur_time;
-    int poll_result;
-    int rc = 0;
-    /* poll the completion for a while before giving up of doing it .. */
-    gettimeofday (&cur_time, NULL);
-    start_time_msec = (cur_time.tv_sec * 1000) + (cur_time.tv_usec / 1000);
-    do
-    {
-        poll_result = ibv_poll_cq (res->cq, 1, &wc);
-        gettimeofday (&cur_time, NULL);
-        cur_time_msec = (cur_time.tv_sec * 1000) + (cur_time.tv_usec / 1000);
-    }
-    while ((poll_result == 0)
-            && ((cur_time_msec - start_time_msec) < MAX_POLL_CQ_TIMEOUT));
-    if (poll_result < 0)
-    {
-        /* poll CQ failed */
-        fprintf (stderr, "poll CQ failed\n");
-        rc = 1;
-    }
-    else if (poll_result == 0)
-    {
-        /* the CQ is empty */
-        fprintf (stderr, "completion wasn't found in the CQ after timeout\n");
-        rc = 1;
-    }
-    else
-    {
-        /* CQE found */
-        DEBUG_PRINT((stdout, "completion was found in CQ with status 0x%x\n", wc.status));
-#ifdef DEBUG
-        check_wc_status(wc.status);
-#endif
-
-        /* check the completion status (here we don't care about the completion opcode */
-        if (wc.status != IBV_WC_SUCCESS)
-        {
-
-            fprintf (stderr,
-                    "got bad completion with status: 0x%x, vendor syndrome: 0x%x\n",
-                    wc.status, wc.vendor_err);
-            rc = 1;
-        }
-    }
-    return rc;
 }
 
 /* QUEUE PAIR STATE MODIFICATION */
 
-static int modify_qp_to_init (struct ibv_qp *qp)
+static int
+modify_qp_to_init (struct ibv_qp *qp)
 {
     struct ibv_qp_attr attr;
     int flags;
@@ -406,7 +335,8 @@ static int modify_qp_to_init (struct ibv_qp *qp)
     return rc;
 }
 
-static int modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t * dgid)
+static int
+modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t * dgid)
 {
     struct ibv_qp_attr attr;
     int flags;
@@ -423,8 +353,7 @@ static int modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dl
     attr.ah_attr.sl = 0;
     attr.ah_attr.src_path_bits = 0;
     attr.ah_attr.port_num = config.ib_port;
-    if (config.gid_idx >= 0)
-    {
+    if (config.gid_idx >= 0){
         attr.ah_attr.is_global = 1;
         attr.ah_attr.port_num = 1;
         memcpy (&attr.ah_attr.grh.dgid, dgid, 16);
@@ -441,7 +370,8 @@ static int modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dl
     return rc;
 }
 
-static int modify_qp_to_rts (struct ibv_qp *qp)
+static int
+modify_qp_to_rts (struct ibv_qp *qp)
 {
     struct ibv_qp_attr attr;
     int flags;
@@ -461,454 +391,332 @@ static int modify_qp_to_rts (struct ibv_qp *qp)
     return rc;
 }
 
-static int connect_qp (struct resources *res)
+static int
+connect_qp (struct resources *res)
 {
     struct cm_con_data_t local_con_data;
     struct cm_con_data_t remote_con_data;
     struct cm_con_data_t tmp_con_data;
     int rc = 0;
+    int i;
     char temp_char;
     union ibv_gid my_gid;
 
 
     /* GET AN INDEX FROM THE PORT, IF SPECIFIED */
     if (config.gid_idx >= 0){
-        rc =
-            ibv_query_gid (res->ib_ctx, config.ib_port, config.gid_idx, &my_gid);
-        if (rc)
-        {
+        rc = ibv_query_gid ( res->ib_ctx, 
+                config.ib_port, config.gid_idx, &my_gid );
+        if (rc){
             fprintf (stderr, "could not get gid for port %d, index %d\n",
                     config.ib_port, config.gid_idx);
-            return rc;
+            goto connect_qp_exit;
         }
     } else {
         memset (&my_gid, 0, sizeof my_gid);
     }
 
+    /* CONNECT EACH QP */
+    for(i=0; i<config.threads; i++){
+        DEBUG_PRINT((stdout, "connecting qp for thread %d\n", i));
 
-    /* EXCHANGE IB CONNECTION DATA USING TCP SOCKETS */
-    local_con_data.addr = htonll ((uintptr_t) res->buf);
-    local_con_data.rkey = htonl (res->mr->rkey);
-    local_con_data.qp_num = htonl (res->qp->qp_num);
-    local_con_data.lid = htons (res->port_attr.lid);
-    memcpy (local_con_data.gid, &my_gid, 16);
-    DEBUG_PRINT((stdout, "\nLocal LID = 0x%x\n", res->port_attr.lid));
+        char *buf = res->assets[i]->buf;
+        struct ibv_pd *pd = res->assets[i]->pd;
+        struct ibv_cq *cq = res->assets[i]->cq;
+        struct ibv_qp *qp = res->assets[i]->qp;
+        struct ibv_mr *mr = res->assets[i]->mr;
+        struct cm_con_data_t *remote_props =  &(res->assets[i]->remote_props);
 
-    if (sock_sync_data
-            (res->sock, sizeof (struct cm_con_data_t), (char *) &local_con_data,
-             (char *) &tmp_con_data) < 0)
-    {
-        fprintf (stderr, "failed to exchange connection data between sides\n");
-        rc = 1;
-        goto connect_qp_exit;
+        local_con_data.addr = htonll( (uintptr_t) buf);
+        local_con_data.rkey = htonl(mr->rkey);
+        local_con_data.qp_num = htonl(qp->qp_num);
+        memcpy(local_con_data.gid, &my_gid, 16);
+
+
+        if( (rc = sock_sync_data( res->sock, sizeof(struct cm_con_data_t), (char *)
+                    &local_con_data, (char *) &tmp_con_data ) < 0) ){
+            fprintf (stderr, "failed to exchange connection data between sides\n");
+            goto connect_qp_exit;
+        }
+        remote_con_data.addr = ntohll( tmp_con_data.addr );
+        remote_con_data.rkey = ntohl( tmp_con_data.rkey );
+        remote_con_data.qp_num = ntohl( tmp_con_data.qp_num );
+        remote_con_data.lid = ntohs( tmp_con_data.lid );
+        memcpy( remote_con_data.gid, tmp_con_data.gid, 16);
+        *remote_props = remote_con_data;
+
+        DEBUG_PRINT((stdout, 
+                    "Remote address = 0x%" PRIx64 "\n", remote_con_data.addr));
+        DEBUG_PRINT((stdout, 
+                    "Remote rkey = 0x%x\n", remote_con_data.rkey));
+        DEBUG_PRINT((stdout, 
+                    "Remote QP number = 0x%x\n", remote_con_data.qp_num));
+        DEBUG_PRINT((stdout, "Remote LID = 0x%x\n", remote_con_data.lid));
+
+        if ( config.gid_idx >= 0 ){
+            uint8_t *p = remote_con_data.gid;
+            DEBUG_PRINT((stdout,
+                        "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+                        p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
+                        p[10], p[11], p[12], p[13], p[14], p[15]));
+        }
+
+        if ((rc = modify_qp_to_init(qp))){
+            fprintf (stderr, "change QP state to INIT failed\n");
+            goto connect_qp_exit;
+        }
+        DEBUG_PRINT((stdout, "Modified QP state to INIT\n"));
+
+        if (rc = modify_qp_to_rtr(qp, remote_con_data.qp_num, remote_con_data.lid,
+                remote_con_data.gid)){
+            fprintf (stderr, "failed to modify QP state to RTR\n");
+            goto connect_qp_exit;
+        }
+
+        DEBUG_PRINT((stdout, "Modified QP state to RTR\n"));
+
+        if((rc = modify_qp_to_rts (qp))){
+            fprintf (stderr, "failed to modify QP state to RTR\n");
+            goto connect_qp_exit;
+        }
+
+        DEBUG_PRINT((stdout, "QP state was change to RTS\n"));
+
+        /* sync to make sure that both sides are in states that they can connect */
+        if (sock_sync_data (res->sock, 1, "Q", &temp_char))	/* just send a dummy char back and forth */
+        {
+            fprintf (stderr, "sync error after QPs are were moved to RTS\n");
+            rc = 1;
+        }
     }
 
-
-    /* SAVE REMOTE CONNECTION DATA  */
-    remote_con_data.addr = ntohll (tmp_con_data.addr);
-    remote_con_data.rkey = ntohl (tmp_con_data.rkey);
-    remote_con_data.qp_num = ntohl (tmp_con_data.qp_num);
-    remote_con_data.lid = ntohs (tmp_con_data.lid);
-    memcpy (remote_con_data.gid, tmp_con_data.gid, 16);
-    res->remote_props = remote_con_data;
-    DEBUG_PRINT((stdout, "Remote address = 0x%" PRIx64 "\n", remote_con_data.addr));
-    DEBUG_PRINT((stdout, "Remote rkey = 0x%x\n", remote_con_data.rkey));
-    DEBUG_PRINT((stdout, "Remote QP number = 0x%x\n", remote_con_data.qp_num));
-    DEBUG_PRINT((stdout, "Remote LID = 0x%x\n", remote_con_data.lid));
-
-    if (config.gid_idx >= 0){
-        uint8_t *p = remote_con_data.gid;
-        DEBUG_PRINT((stdout,
-                    "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
-                    p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
-                    p[10], p[11], p[12], p[13], p[14], p[15]));
-    }
-
-    /* MODIFY QP STATE TO INIT */
-    rc = modify_qp_to_init (res->qp);
-    if (rc){
-        fprintf (stderr, "change QP state to INIT failed\n");
-        goto connect_qp_exit;
-    }
-
-
-    /* modify the QP to RTR */
-    rc =
-        modify_qp_to_rtr (res->qp, remote_con_data.qp_num, remote_con_data.lid,
-                remote_con_data.gid);
-    if (rc)
-    {
-        fprintf (stderr, "failed to modify QP state to RTR\n");
-        goto connect_qp_exit;
-    }
-
-    DEBUG_PRINT((stdout, "Modified QP state to RTR\n"));
-
-    rc = modify_qp_to_rts (res->qp);
-    if (rc){
-        fprintf (stderr, "failed to modify QP state to RTR\n");
-        goto connect_qp_exit;
-    }
-    DEBUG_PRINT((stdout, "QP state was change to RTS\n"));
-
-
-    /* sync to make sure that both sides are in states that they can connect to prevent packet loose */
-    if (sock_sync_data (res->sock, 1, "Q", &temp_char))	/* just send a dummy char back and forth */
-    {
-        fprintf (stderr, "sync error after QPs are were moved to RTS\n");
-        rc = 1;
-    }
-connect_qp_exit:
-    return rc;
+    connect_qp_exit:
+        return rc;
 }
 
-static int post_receive (struct resources *res)
-{
-    struct ibv_recv_wr rr;
-    struct ibv_sge sge;
-    struct ibv_recv_wr *bad_wr;
-    int rc;
-    /* prepare the scatter/gather entry */
-    memset (&sge, 0, sizeof (sge));
-    sge.addr = (uintptr_t) res->buf;
-    sge.length = config.xfer_unit;
-    sge.lkey = res->mr->lkey;
-    /* prepare the receive work request */
-    memset (&rr, 0, sizeof (rr));
-    rr.next = NULL;
-    rr.wr_id = 0;
-    rr.sg_list = &sge;
-    rr.num_sge = 1;
-    /* post the Receive Request to the RQ */
-    rc = ibv_post_recv (res->qp, &rr, &bad_wr);
-    if (rc){
-        fprintf (stderr, "failed to post RR\n");
-    } else {
-        DEBUG_PRINT((stdout, "Receive Request was posted\n"));
-    }
-    return rc;
-}
 
 /* RESOURCE MANAGEMENT */
-
-static void resources_init (struct resources *res)                                         
+static void
+resources_init (struct resources *res)                                         
 {
     memset (res, 0, sizeof *res);                                              
     res->sock = -1; 
 }   
 
-static int resources_create (struct resources *res)
+// -1 on error, 0 on success
+static int
+resources_create (struct resources *res)
 {
-    struct ibv_device **dev_list = NULL;
+    struct ibv_device **dev_list=NULL, *ib_dev=NULL;
     struct ibv_qp_init_attr qp_init_attr;
-    struct ibv_device *ib_dev = NULL;
     size_t size;
-    int i;
-    int mr_flags = 0;
-    int cq_size = 0;
-    int num_devices;
-    int rc = 0;
+    int i, j, rc, mr_flags = 0, cq_size = 0, num_devices;
 
     /* ESTABLISH TCP CONNECTION */
     if (config.server_name) {
-        res->sock = sock_connect(config.server_name, config.tcp_port);
-        if (res->sock < 0){
-            fprintf (stderr,
-                    "failed to establish TCP connection to server %s, port %d\n",
-                    config.server_name, config.tcp_port);
-            rc = -1;
-            goto resources_create_exit;
-        }
+        if( 0 > (res->sock = sock_connect(config.server_name, config.tcp_port))) 
+            return FAILURE;
     } else {
         DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", config.tcp_port));
-        res->sock = sock_connect (NULL, config.tcp_port);
-        if (res->sock < 0){
-            fprintf (stderr,
-                    "failed to establish TCP connection with client on port %d\n",
-                    config.tcp_port);
-            rc = -1;
-            goto resources_create_exit;
-        }
+        if( 0 > (res->sock = sock_connect(NULL, config.tcp_port)) )
+            return FAILURE;
     }
     DEBUG_PRINT((stdout, "TCP connection was established\n"));
-
 
     /* EXCHANGE CONFIG INFO */
     struct config_t *config_other = (struct config_t *) malloc( sizeof(struct config_t) );
 
-    if( sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config, (char *) config_other) < 0){
-        fprintf(stderr, "failed to communicate demanded buffer size\n");
-        rc = -1;
-        goto resources_create_exit;
-    }
-    config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
-    config.iter = MAX(config.iter, config_other->iter);
+    if( 0 > sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config,
+                (char *) config_other) )
+        return -1;
+
+    config.xfer_unit =  MAX(config.xfer_unit, config_other->xfer_unit);
+    config.iter =       MAX(config.iter, config_other->iter);
+    config.threads =    MAX(config.threads, config_other->threads);
+    threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     config.config_other = config_other;
-    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations\n", config.xfer_unit, config.iter));
+    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations\n", config.xfer_unit, 
+                config.iter));
+
 
     /* GET IB DEVICES AND SELECT ONE */
+
     DEBUG_PRINT((stdout, "searching for IB devices in host\n"));
-    dev_list = ibv_get_device_list (&num_devices);
-    if (!dev_list){
-        fprintf (stderr, "failed to get IB devices list\n");
-        rc = 1;
-        goto resources_create_exit;
+
+    if( ! (dev_list = ibv_get_device_list(&num_devices)) || !num_devices ){
+        ibv_free_device_list(dev_list);
+        ERR_RETURN_EN(errno, "get_device_list failed (or device not present)");
     }
 
-    if (!num_devices){
-        fprintf (stderr, "found %d device(s)\n", num_devices);
-        rc = 1;
-        goto resources_create_exit;
-    }
     DEBUG_PRINT((stdout, "found %d device(s)\n", num_devices));
 
-    for (i = 0; i < num_devices; i++)
-    {
-        if (!config.dev_name)
-        {
-            config.dev_name = strdup (ibv_get_device_name (dev_list[i]));
+    for (i = 0; i < num_devices; i++){
+        if (!config.dev_name){
+            config.dev_name = strdup(ibv_get_device_name (dev_list[i]));
             DEBUG_PRINT((stdout,
                         "device not specified, using first one found: %s\n",
                         config.dev_name));
         }
-        if (!strcmp (ibv_get_device_name (dev_list[i]), config.dev_name))
-        {
+        if ( !strcmp(ibv_get_device_name(dev_list[i]), config.dev_name) ){
             ib_dev = dev_list[i];
             break;
         }
     }
-    if (!ib_dev)
-    {
-        fprintf (stderr, "IB device %s wasn't found\n", config.dev_name);
-        rc = 1;
-        goto resources_create_exit;
-    }
-    res->ib_ctx = ibv_open_device (ib_dev);
-    if (!res->ib_ctx)
-    {
-        fprintf (stderr, "failed to open device %s\n", config.dev_name);
-        rc = 1;
-        goto resources_create_exit;
-    }
-    ibv_free_device_list (dev_list);
+
+    if( !(res->ib_ctx = ibv_open_device(ib_dev)) )
+        ERR_RETURN_EN(-1, "open_device");
+
+    ibv_free_device_list(dev_list);
     dev_list = NULL;
     ib_dev = NULL;
 
-
     /* GET LOCAL PORT PROPERTIES */
-    if (ibv_query_port (res->ib_ctx, config.ib_port, &res->port_attr))
-    {
-        fprintf (stderr, "ibv_query_port on port %u failed\n", config.ib_port);
-        rc = 1;
-        goto resources_create_exit;
-    }
-
-    /* ALLOCATE PROTECTION DOMAIN */
-    res->pd = ibv_alloc_pd (res->ib_ctx);
-    if (!res->pd)
-    {
-        fprintf (stderr, "ibv_alloc_pd failed\n");
-        rc = 1;
-        goto resources_create_exit;
-    }
-
-    /* CREATE COMPLETION QUEUE */
-    cq_size = 1;
-    res->cq = ibv_create_cq (res->ib_ctx, cq_size, NULL, NULL, 0);
-    if (!res->cq)
-    {
-        fprintf (stderr, "failed to create CQ with %u entries\n", cq_size);
-        rc = 1;
-        goto resources_create_exit;
-    }
-
-    /* CREATE MEMORY BUFFER */
-    size = config.xfer_unit;
-    res->buf = (char *) malloc(size);
-    if (!res->buf){
-        fprintf (stderr, "failed to malloc %Zu bytes to memory buffer\n", size);
-        rc = 1;
-        goto resources_create_exit;
-    }
-    memset (res->buf, 0, size);
-
-    /* REGISTER MEMORY BUFFER */
-    mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ |
-        IBV_ACCESS_REMOTE_WRITE;
-    res->mr = ibv_reg_mr (res->pd, res->buf, size, mr_flags);
-    if (!res->mr){
-        fprintf (stderr, "ibv_reg_mr failed with mr_flags=0x%x\n", mr_flags);
-        rc = 1;
-        goto resources_create_exit;
-    }
-    DEBUG_PRINT((stdout,
-                "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
-                res->buf, res->mr->lkey, res->mr->rkey, mr_flags));
+    if( 0 > (rc = ibv_query_port(res->ib_ctx, config.ib_port, &res->port_attr)) )
+        ERR_RETURN_EN(rc, "query_port");
 
 
-    /* CREATE QUEUE PAIR */
-    memset (&qp_init_attr, 0, sizeof (qp_init_attr));
-    qp_init_attr.qp_type = IBV_QPT_RC;
-    //qp_init_attr.sq_sig_all = 0; 
-    qp_init_attr.send_cq = res->cq;
-    qp_init_attr.recv_cq = res->cq;
-    qp_init_attr.cap.max_send_wr = MAX_SEND_WR;
-    qp_init_attr.cap.max_recv_wr = MAX_RECV_WR;
-    qp_init_attr.cap.max_send_sge = MAX_SEND_SGE;
-    qp_init_attr.cap.max_recv_sge = MAX_RECV_SGE;
-    res->qp = ibv_create_qp (res->pd, &qp_init_attr);
-    if (!res->qp)
-    {
-        fprintf (stderr, "failed to create QP\n");
-        rc = 1;
-        goto resources_create_exit;
+    /* ALLOCATE SPACE ALL ASSETS FOR EACH CONNECTION */
+    res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) *
+            config.threads);
+
+    for( i = 0; i < config.threads; i++){
+
+        /* ALLOCATE PROTECTION DOMAIN */
+        if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)))
+            ERR_RETURN_EN(-1, "alloc_pd");
+
+        /* CREATE COMPLETION QUEUE */
+        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, CQ_SIZE, NULL,NULL, 0)) )
+            ERR_RETURN_EN(-1, "create_cq");
+
+        /* CREATE & REGISTER MEMORY BUFFER */
+        size = config.xfer_unit;
+
+        if( !( res->assets[i]->buf = (char *) malloc(size) ) )
+            ERR_RETURN_EN(-1, "malloc on buff");
+
+        mr_flags = IBV_ACCESS_LOCAL_WRITE | 
+            IBV_ACCESS_REMOTE_READ |
+            IBV_ACCESS_REMOTE_WRITE;
+
+        if( !( res->assets[i]->mr = ibv_reg_mr(res->assets[i]->pd, res->assets[i]->buf,
+                        size, mr_flags) ) )
+            ERR_RETURN_EN(-1, "reg_mr");
+
+        DEBUG_PRINT((stdout,
+                    "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
+                    res->assets[i]->buf, res->assets[i]->mr->lkey, 
+                    res->assets[i]->mr->rkey, mr_flags));
+            
+        /* CREATE QUEUE PAIR */
+        memset(&qp_init_attr, 0, sizeof (qp_init_attr));
+
+        qp_init_attr.qp_type = IBV_QPT_RC;
+        //qp_init_attr.sq_sig_all = 0; 
+        qp_init_attr.send_cq = res->assets[i]->cq;
+        qp_init_attr.recv_cq = res->assets[i]->cq;
+        qp_init_attr.cap.max_send_wr = MAX_SEND_WR;
+        qp_init_attr.cap.max_recv_wr = MAX_RECV_WR;
+        qp_init_attr.cap.max_send_sge = MAX_SEND_SGE;
+        qp_init_attr.cap.max_recv_sge = MAX_RECV_SGE;
+
+        if( !(res->assets[i]->qp = ibv_create_qp(res->assets[i]->pd, &qp_init_attr)))
+            ERR_RETURN_EN(-1, "create_qp");
+
+        DEBUG_PRINT((stdout, "QP was created, QP number=0x%x\n", res->assets[i]->qp->qp_num));
     }
-    DEBUG_PRINT((stdout, "QP was created, QP number=0x%x\n", res->qp->qp_num));
 
     /* FOR WHEN THINGS GO WRONG */
-resources_create_exit:
-    if (rc)
-    {
-        /* Error encountered, cleanup */
-        if (res->qp)
-        {
-            ibv_destroy_qp (res->qp);
-            res->qp = NULL;
-        }
-        if (res->mr)
-        {
-            ibv_dereg_mr (res->mr);
-            res->mr = NULL;
-        }
-        if (res->buf)
-        {
-            free (res->buf);
-            res->buf = NULL;
-        }
-        if (res->cq)
-        {
-            ibv_destroy_cq (res->cq);
-            res->cq = NULL;
-        }
-        if (res->pd)
-        {
-            ibv_dealloc_pd (res->pd);
-            res->pd = NULL;
-        }
-        if (res->ib_ctx)
-        {
-            ibv_close_device (res->ib_ctx);
-            res->ib_ctx = NULL;
-        }
-        if (dev_list)
-        {
-            ibv_free_device_list (dev_list);
-            dev_list = NULL;
-        }
-        if (res->sock >= 0)
-        {
-            if (close (res->sock))
-                fprintf (stderr, "failed to close socket\n");
-            res->sock = -1;
-        }
-    }
-
-    return rc;
+    return 0;
 }
 
-static int resources_destroy (struct resources *res)
+// -1 on error, 0 on success
+static int
+resources_destroy (struct resources *res)
+{
+    int i;
+    for(i = 0; i< config.threads; i++){
+        if( conn_destroy(res->assets[i]) )
+            ERR_RETURN_EN(-1, "failed to destroy IB assets\n");
+    }
+    
+    if (res->ib_ctx)
+        if ( ibv_close_device (res->ib_ctx))
+            ERR_RETURN_EN(-1, "failed to close IB device\n");
+
+    if (res->sock >= 0)
+        if ( close (res->sock) )
+            ERR_RETURN_EN(-1, "failed to close IB device\n");
+
+    return 0;
+}
+
+// -1 on error, 0 on success
+static int
+conn_destroy( struct ib_assets *conn)
 {
     int rc = 0;
-    if (res->qp)
-        if (ibv_destroy_qp (res->qp))
-        {
-            fprintf (stderr, "failed to destroy QP\n");
-            rc = 1;
-        }
-    if (res->mr)
-        if (ibv_dereg_mr (res->mr))
-        {
-            fprintf (stderr, "failed to deregister MR\n");
-            rc = 1;
-        }
-    if (res->buf)
-        free (res->buf);
-    if (res->cq)
-        if (ibv_destroy_cq (res->cq))
-        {
-            fprintf (stderr, "failed to destroy CQ\n");
-            rc = 1;
-        }
-    if (res->pd)
-        if (ibv_dealloc_pd (res->pd))
-        {
-            fprintf (stderr, "failed to deallocate PD\n");
-            rc = 1;
-        }
-    if (res->ib_ctx)
-        if (ibv_close_device (res->ib_ctx))
-        {
-            fprintf (stderr, "failed to close device context\n");
-            rc = 1;
-        }
-    if (res->sock >= 0)
-        if (close (res->sock))
-        {
-            fprintf (stderr, "failed to close socket\n");
-            rc = 1;
-        }
-    return rc;
+    if (conn->qp)
+        if (ibv_destroy_qp (conn->qp))
+            ERR_RETURN_EN(-1, "destroy_qp\n");
+
+    if (conn->mr)
+        if (ibv_dereg_mr (conn->mr))
+            ERR_RETURN_EN(-1, "dereg_mr\n");
+
+    if (conn->buf)
+        free (conn->buf);
+
+    if (conn->cq)
+        if (ibv_destroy_cq (conn->cq))
+            ERR_RETURN_EN(-1, "destroy_cq\n");
+
+    if (conn->pd)
+        if (ibv_dealloc_pd (conn->pd))
+            ERR_RETURN_EN(-1, "dealloc_pd\n");
+
+    return 0;
 }
 
 /* SOCKET OPERATION WRAPPERS */
 
-static int sock_connect (const char *servername, int port)
+// -1 on error, socket fd on success
+static int
+sock_connect (const char *servername, int port)
 {
-    struct addrinfo *resolved_addr = NULL;
-    struct addrinfo *iterator;
+    struct addrinfo *resolved_addr = NULL, *iterator;
     char service[6];
-    int sockfd = -1;
-    int listenfd = 0;
-    int tmp;
-    int so_reuseaddr = 1;
+    int sockfd = -1, listenfd=0, tmp, so_reuseaddr=1, rc;
     struct addrinfo hints = {
         .ai_flags = AI_PASSIVE,
         .ai_family = AF_INET,
         .ai_socktype = SOCK_STREAM
     };
-    if (sprintf (service, "%d", port) < 0)
-        goto sock_connect_exit;
+    sprintf(service, "%d", port);
 
-    sockfd = getaddrinfo (servername, service, &hints, &resolved_addr);
-
-    if (sockfd < 0)
-    {
-        fprintf (stderr, "%s for %s:%d\n", gai_strerror (sockfd), servername,
-                port);
+    if( 0 > (rc = getaddrinfo(servername, service, &hints, &resolved_addr)) ){
+        fprintf(stderr, "%s for %s:%d\n", gai_strerror (rc), servername, port);
         goto sock_connect_exit;
     }
+        
     /* Search through results and find the one we want */
-    for (iterator = resolved_addr; iterator; iterator = iterator->ai_next)
-    {
-        sockfd = socket(iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
+    for (iterator = resolved_addr; iterator; iterator = iterator->ai_next){
+        sockfd = socket(iterator->ai_family, iterator->ai_socktype, 
+                iterator->ai_protocol);
 
-        setsockopt(sockfd, SOL_SOCKET ,SO_REUSEADDR, &so_reuseaddr, sizeof(so_reuseaddr));
+        if (sockfd >= 0){
+            setsockopt(sockfd, SOL_SOCKET ,SO_REUSEADDR, &so_reuseaddr, 
+                    sizeof(so_reuseaddr));
 
-        if (sockfd >= 0)
-        {
-            if (servername)
-            {
+            if (servername){
                 /* Client mode. Initiate connection to remote */
-                if ((tmp =
-                            connect (sockfd, iterator->ai_addr, iterator->ai_addrlen)))
-                {
+                if ( tmp = connect (sockfd, iterator->ai_addr, iterator->ai_addrlen) ){
                     fprintf (stderr, "failed connect \n");
-                    close (sockfd);
+                    close(sockfd);
                     sockfd = -1;
                 }
             }
-            else
-            {
+            else{
                 /* Server mode. Set up listening socket an accept a connection */
                 listenfd = sockfd;
                 sockfd = -1;
@@ -919,17 +727,16 @@ static int sock_connect (const char *servername, int port)
             }
         }
     }
+
 sock_connect_exit:
     if (listenfd)
         close (listenfd);
     if (resolved_addr)
         freeaddrinfo (resolved_addr);
-    if (sockfd < 0)
-    {
+    if (sockfd < 0){
         if (servername)
             fprintf (stderr, "Couldn't connect to %s:%d\n", servername, port);
-        else
-        {
+        else {
             perror ("server accept");
             fprintf (stderr, "accept() failed\n");
         }
@@ -937,32 +744,27 @@ sock_connect_exit:
     return sockfd;
 }
 
-int sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data)
+// -1 on error, 0 on success
+    int
+sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data)
 {
-    int rc;
-    int read_bytes = 0;
-    int total_read_bytes = 0;
+    int rc = 0, total_read_bytes = 0;
 
-    rc = write (sock, local_data, xfer_size);
+    if( 0 > (rc = write (sock, local_data, xfer_size)) )
+        ERR_RETURN_EN(errno, "write(); sock_sync_data();");
 
-    if (rc < xfer_size)
-        fprintf (stderr, "Failed writing data during sock_sync_data\n");
-    else
-        rc = 0;
-
-    while (!rc && total_read_bytes < xfer_size){
-        read_bytes = read (sock, remote_data, xfer_size);
-        if (read_bytes > 0)
-            total_read_bytes += read_bytes;
-        else
-            rc = read_bytes;
+    while (total_read_bytes < xfer_size){
+        if(0 > (rc = read(sock, remote_data, xfer_size)))
+            ERR_RETURN_EN(errno, "read(); sock_sync_data();");
+        total_read_bytes += rc;
     }
+
     return rc;
 }
 
 /* UTILITY */
-
-static void usage (const char *argv0)
+static void
+usage (const char *argv0)
 {
 
     fprintf (stderr, "Usage:\n");
@@ -980,7 +782,8 @@ static void usage (const char *argv0)
             " -g, --gid_idx <git index> gid index to be used in GRH (default not used)\n");
 }
 
-static void print_config (void)
+static void
+print_config (void)
 {
     char *op;
     char *crt;
@@ -1006,7 +809,8 @@ static void print_config (void)
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
 
-static void crt_to_str(int code, char **str)
+static void
+crt_to_str(int code, char **str)
 {
     char *s;
     switch( code ){
@@ -1027,7 +831,8 @@ static void crt_to_str(int code, char **str)
     return;
 }
 
-static void opcode_to_str(int opcode, char **str)
+static void
+opcode_to_str(int opcode, char **str)
 {
     char *s;
     switch( opcode ){
@@ -1051,7 +856,8 @@ static void opcode_to_str(int opcode, char **str)
 /*  note on units: bytes/microseconds turns out to be the same as MB/sec
  *
  * */
-static void print_report(unsigned int iters, unsigned size, int duplex,
+static void
+print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
     double xfer_total = config.xfer_unit * config.iter;
@@ -1065,7 +871,8 @@ static void print_report(unsigned int iters, unsigned size, int duplex,
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
 }
 
-static void check_wc_status(enum ibv_wc_status status)
+static void
+check_wc_status(enum ibv_wc_status status)
 {
     switch(status){
         case IBV_WC_SUCCESS:
@@ -1140,7 +947,8 @@ static void check_wc_status(enum ibv_wc_status status)
     }
 }
 
-static uint16_t checksum(void *vdata, size_t length)
+static uint16_t 
+checksum(void *vdata, size_t length)
 {
     // Cast the data pointer to one that can be indexed.
     char* data = (char*)vdata;
@@ -1174,23 +982,27 @@ static uint16_t checksum(void *vdata, size_t length)
 }
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-static inline uint64_t htonll (uint64_t x)
+static inline uint64_t
+htonll (uint64_t x)
 {
     return bswap_64 (x);
 }
 
-static inline uint64_t ntohll (uint64_t x)
+static inline uint64_t 
+ntohll (uint64_t x)
 {
     return bswap_64 (x);
 }
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
-static inline uint64_t htonll (uint64_t x)
+static inline uint64_t 
+htonll (uint64_t x)
 {
     return x;
 }
 
-static inline uint64_t ntohll (uint64_t x)
+static inline uint64_t 
+ntohll (uint64_t x)
 {
     return x;
 }
