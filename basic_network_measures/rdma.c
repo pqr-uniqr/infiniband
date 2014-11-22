@@ -581,6 +581,8 @@ resources_create (struct resources *res)
 
     for( i = 0; i < config.threads; i++){
 
+        res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
+
         /* ALLOCATE PROTECTION DOMAIN */
         if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)))
             ERR_RETURN_EN(-1, "alloc_pd");
