@@ -263,16 +263,21 @@ run_iter(void *param)
 
     /* WAIT TO SYNCHRONIZE */
 
+    DEBUG_PRINT((stdout, "[thread %d] ready\n", thread));
+    
     pthread_mutex_lock( &start_mutex );
     pthread_t thread = pthread_self();
-    if ( rc = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) )
-        ERR_RETURN_EN(rc, "pthrad_setaffinity_np");
+    if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
+        perror("pthread_setaffinity");
+        return -1;
+    }
     cnt_threads++;
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
 
-    /* GO! */
+    DEBUG_PRINT((stdout, "[thread %d] starting\n", thread));
 
+    /* GO! */
     get_usage( getpid(), &pstart );
     gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
@@ -282,8 +287,10 @@ run_iter(void *param)
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
 
-            if( ( rc = ibv_post_send(conn->qp, &sr, &bad_wr) ) )
-                ERR_RETURN_EN(rc, "post_send");
+            if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
+                perror("post_send");
+                return -1;
+            }
 
             ++scnt;
 
@@ -306,8 +313,10 @@ run_iter(void *param)
 
             } while (ne > 0);
 
-            if( ne < 0 )
-                ERR_RETURN_EN(-1, "poll_cq");
+            if( ne < 0 ){
+                fprintf(stderr, RED "poll cq\n" RESET);
+                return -1;
+            }
         }
 
     }
@@ -316,8 +325,8 @@ run_iter(void *param)
 
     free(wc);
 
-    
-
+    DEBUG_PRINT((stdout, "finishing run_iter\n"));
+    return 0;
 }
 
 /* QUEUE PAIR STATE MODIFICATION */
