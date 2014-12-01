@@ -27,10 +27,10 @@ struct timeval tcompleted;
 struct pstat pstart;
 struct pstat pend;
 
+int cnt_threads;
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
 cpu_set_t cpuset;
-int cnt_threads;
 pthread_t *threads;
 
 /* MAIN */
@@ -43,6 +43,7 @@ main ( int argc, char *argv[] )
     char temp_char;
     struct timeval cur_time;
 
+    pthread_attr_t attr;
     CPU_ZERO( &cpuset );
     CPU_SET( CPUNO, &cpuset );
     cnt_threads = 0;
@@ -151,13 +152,23 @@ main ( int argc, char *argv[] )
     resources_init( &res );
     DEBUG_PRINT((stdout, GRN "resources_init() successful\n" RESET));
 
-    // FROM HERE ON: malloc is used. -------------------------------------------
+    // UP TO HERE: print usage and return with EXIT_FAILURE
 
+    // FROM HERE ON: malloc is used. -------------------------------------------
+    
+    // FROM HERE ON: when something goes wrong, free before exiting (goto exit)
+    // if it's one of my functions, no perror necessary.. print message and go to main_exit
+    // if it's a syscall, depends on the behavior:
+    //  1) 
+
+
+    // TODO my function
     if( rc = resources_create( &res ) )
         MAIN_TOEXIT("resources_create() failed\n");
 
     DEBUG_PRINT((stdout,GRN "resources_create() successful\n" RESET));
 
+    // TODO my function 
     if( rc = connect_qp(&res) )
         MAIN_TOEXIT("connect_qp() failed\n");
 
@@ -166,8 +177,6 @@ main ( int argc, char *argv[] )
 
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
-
-    pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
@@ -206,6 +215,7 @@ main ( int argc, char *argv[] )
     pthread_mutex_destroy(&start_mutex);
     pthread_cond_destroy(&start_cond);
 
+    // TODO my function
     if( rc = sock_sync_data(res.sock, 1, "R", &temp_char ) )
         MAIN_TOEXIT("final sync failed\n");
 
@@ -515,34 +525,40 @@ resources_create (struct resources *res)
 {
     struct ibv_device **dev_list=NULL, *ib_dev=NULL;
     struct ibv_qp_init_attr qp_init_attr;
+    struct config_t *config_other;
     size_t size;
     int i, j, rc, mr_flags = 0, cq_size = 0, num_devices;
 
     /* ESTABLISH TCP CONNECTION */
     if (config.server_name) {
-        if( 0 > (res->sock = sock_connect(config.server_name, config.tcp_port))) 
-            return FAILURE;
+        if( 0 > (res->sock = sock_connect(config.server_name, config.tcp_port))) {
+            fprintf(stderr, RED "sock_connect\n" RESET);
+            return -1;
+        }
     } else {
         DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", config.tcp_port));
-        if( 0 > (res->sock = sock_connect(NULL, config.tcp_port)) )
-            return FAILURE;
+        if( 0 > (res->sock = sock_connect(NULL, config.tcp_port)) ){
+            fprintf(stderr, RED "sock_connect\n" RESET);
+            return -1;
+        }
     }
     DEBUG_PRINT((stdout, "TCP connection was established\n"));
 
+
     /* EXCHANGE CONFIG INFO */
-    struct config_t *config_other = (struct config_t *) malloc( sizeof(struct config_t) );
+    config_other = (struct config_t *) malloc( sizeof(struct config_t) );
 
     if( 0 > sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config,
                 (char *) config_other) )
-        return -1;
+        return FAILURE;
 
     config.xfer_unit =  MAX(config.xfer_unit, config_other->xfer_unit);
     config.iter =       MAX(config.iter, config_other->iter);
     config.threads =    MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     config.config_other = config_other;
-    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations\n", config.xfer_unit, 
-                config.iter));
+    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
+                config.xfer_unit, config.iter, config.threads));
 
 
     /* GET IB DEVICES AND SELECT ONE */
@@ -582,8 +598,7 @@ resources_create (struct resources *res)
 
 
     /* ALLOCATE SPACE ALL ASSETS FOR EACH CONNECTION */
-    res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) *
-            config.threads);
+    res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) * config.threads);
 
     for( i = 0; i < config.threads; i++){
 
@@ -688,13 +703,13 @@ conn_destroy( struct ib_assets *conn)
 
 /* SOCKET OPERATION WRAPPERS */
 
-// -1 on error, socket fd on success
+// -1 on error, 0 on success
 static int
-sock_connect (const char *servername, int port)
+sock_connect( const char *servername, int port)
 {
     struct addrinfo *resolved_addr = NULL, *iterator;
     char service[6];
-    int sockfd = -1, listenfd=0, tmp, so_reuseaddr=1, rc;
+    int sockfd = -1, listenfd=0, so_reuseaddr=1, rc;
     struct addrinfo hints = {
         .ai_flags = AI_PASSIVE,
         .ai_family = AF_INET,
@@ -702,53 +717,49 @@ sock_connect (const char *servername, int port)
     };
     sprintf(service, "%d", port);
 
-    if( 0 > (rc = getaddrinfo(servername, service, &hints, &resolved_addr)) ){
-        fprintf(stderr, "%s for %s:%d\n", gai_strerror (rc), servername, port);
-        goto sock_connect_exit;
+    if( 0 != (rc = getaddrinfo(servername, service, &hints, &resolved_addr)) ) {
+        fprintf(stderr, "%s for %s : %d\n", gai_strerror(rc), servername, port);
+        return -1;
     }
-        
-    /* Search through results and find the one we want */
-    for (iterator = resolved_addr; iterator; iterator = iterator->ai_next){
-        sockfd = socket(iterator->ai_family, iterator->ai_socktype, 
-                iterator->ai_protocol);
 
-        if (sockfd >= 0){
-            setsockopt(sockfd, SOL_SOCKET ,SO_REUSEADDR, &so_reuseaddr, 
-                    sizeof(so_reuseaddr));
+    for(iterator = resolved_addr; iterator; iterator = iterator->ai_next){
+        if(-1 != (sockfd = socket(iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol))){
+            setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &so_reuseaddr, sizeof(so_reuseaddr));
 
-            if (servername){
-                /* Client mode. Initiate connection to remote */
-                if ( tmp = connect (sockfd, iterator->ai_addr, iterator->ai_addrlen) ){
-                    fprintf (stderr, "failed connect \n");
+            if(servername){
+                if( -1 == connect(sockfd, iterator->ai_addr, iterator->ai_addrlen) ){
+                    perror("connect failure");
+                    freeaddrinfo(resolved_addr);
                     close(sockfd);
-                    sockfd = -1;
+                    return -1;
                 }
-            }
-            else{
-                /* Server mode. Set up listening socket an accept a connection */
+            } else {
                 listenfd = sockfd;
                 sockfd = -1;
-                if (bind (listenfd, iterator->ai_addr, iterator->ai_addrlen))
-                    goto sock_connect_exit;
-                listen (listenfd, 1);
-                sockfd = accept (listenfd, NULL, 0);
+
+                if( -1 == bind(listenfd, iterator->ai_addr, iterator->ai_addrlen) ){
+                    perror("bind failure");
+                    freeaddrinfo(resolved_addr);
+                    close(listenfd);
+                    return -1;
+                }
+                if( -1 == listen(listenfd, 1) ){
+                    perror("listen failure");
+                    freeaddrinfo(resolved_addr);
+                    close(listenfd);
+                    return -1;
+                }
+
+                if( -1 == (sockfd = accept(listenfd, NULL, 0)) ){
+                    perror("accept failure");
+                    freeaddrinfo(resolved_addr);
+                    close(listenfd);
+                    return -1;
+                }
             }
         }
     }
 
-sock_connect_exit:
-    if (listenfd)
-        close (listenfd);
-    if (resolved_addr)
-        freeaddrinfo (resolved_addr);
-    if (sockfd < 0){
-        if (servername)
-            fprintf (stderr, "Couldn't connect to %s:%d\n", servername, port);
-        else {
-            perror ("server accept");
-            fprintf (stderr, "accept() failed\n");
-        }
-    }
     return sockfd;
 }
 
