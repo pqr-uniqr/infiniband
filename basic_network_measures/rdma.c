@@ -241,6 +241,7 @@ run_iter(void *param)
     struct ibv_wc *wc;
     struct ibv_sge sge;
     struct ib_assets *conn = (struct ib_assets *) param;
+    pthread_t thread = pthread_self();
 
     ALLOCATE(wc, struct ibv_wc, 1);
 
@@ -263,10 +264,9 @@ run_iter(void *param)
 
     /* WAIT TO SYNCHRONIZE */
 
-    DEBUG_PRINT((stdout, "[thread %d] ready\n", thread));
+    DEBUG_PRINT((stdout, "[thread %d] ready\n", (int) thread));
     
     pthread_mutex_lock( &start_mutex );
-    pthread_t thread = pthread_self();
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
         return -1;
