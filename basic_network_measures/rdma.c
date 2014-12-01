@@ -652,12 +652,12 @@ resources_destroy( struct resources *res )
             return -1;
         }
 
-        if( res->ibv_ctx && (-1 == ibv_close_device(res->ib_ctx)) ){
+        if( res->ib_ctx && (-1 == ibv_close_device(res->ib_ctx)) ){
             fprintf(stderr, RED "close_device failed\n" RESET);
             return -1;
         }
 
-        if( 0 <= res->sock && (-1 == close(res->sock)) ){{
+        if( 0 <= res->sock && (-1 == close(res->sock)) ){
             fprintf(stderr, RED "close failed\n" RESET);
             return -1;
         }
@@ -667,7 +667,7 @@ resources_destroy( struct resources *res )
 
 // -1 on error, 0 on success
 static int
-conn_destroy( struct ib_assets *conn)
+conn_destroy( struct ib_assets *conn )
 {
     if (conn->buf)
         free(conn->buf);
