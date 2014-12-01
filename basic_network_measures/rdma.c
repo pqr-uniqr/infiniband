@@ -37,7 +37,7 @@ pthread_t *threads;
 int
 main ( int argc, char *argv[] )
 {
-    int rc = 1, i, iter;
+    int i, iter, rc = 0;
     uint16_t csum;
     struct resources res;
     char temp_char;
@@ -152,80 +152,69 @@ main ( int argc, char *argv[] )
     resources_init( &res );
     DEBUG_PRINT((stdout, GRN "resources_init() successful\n" RESET));
 
-    // UP TO HERE: print usage and return with EXIT_FAILURE
-
-    // FROM HERE ON: malloc is used. -------------------------------------------
+    // FROM HERE ON: functions containing malloc -----------------------------------
     
-    // FROM HERE ON: when something goes wrong, free before exiting (goto exit)
-    // if it's one of my functions, no perror necessary.. print message and go to main_exit
-    // if it's a syscall, depends on the behavior:
-    //  1) 
-
-
-    // TODO my function
-    if( rc = resources_create( &res ) )
-        MAIN_TOEXIT("resources_create() failed\n");
-
+    if( -1 == resources_create(&res) ){
+        fprintf(stderr , RED "resources_create\n" RESET);
+        goto main_exit;
+    }
     DEBUG_PRINT((stdout,GRN "resources_create() successful\n" RESET));
 
-    // TODO my function 
-    if( rc = connect_qp(&res) )
-        MAIN_TOEXIT("connect_qp() failed\n");
-
+    if( -1 == connect_qp(&res) ){
+        fprintf(stderr, RED "connect_qp\n" RESET);
+        goto main_exit;
+    }
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
-
 
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    /* START ITERATIONS! */
-    if(config.opcode != -1)
-        for(i = 0; i< config.threads; i++){
-            if( rc = pthread_create( &threads[i], &attr, 
+    if( config.opcode != -1 )
+        for(i=0; i < config.threads; i++){
+            if( errno = pthread_create( &threads[i], &attr, 
                         (void * (*)(void *)) run_iter, (void *) res.assets[i]) ){
-                ERR_RETURN_EN(rc, "pthread_create\n");
-                rc = -1;
+                perror("pthread_create");
                 goto main_exit;
             }
         }
-
     DEBUG_PRINT((stdout, GRN "threads created\n" RESET));
 
-    int wait = 1;
     do{
         pthread_mutex_lock( &start_mutex );
-        wait = (cnt_threads < config.threads);
+        i = (cnt_threads < config.threads);
         pthread_mutex_unlock( &start_mutex );
-    } while (wait);
-
+    } while (i);
     DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
+
+    /* SIGNAL THREADS TO START WORK */
     pthread_cond_broadcast(&start_cond);
 
-    for(i=0; i<config.threads; i++){
-        if( rc = pthread_join(threads[i], NULL) )
-            ERR_RETURN_EN(rc, "pthread_join");
+    for(i=0; i < config.threads; i++){
+        if(errno = pthread_join(threads[i], NULL)){
+            perror("pthread_join");
+            goto main_exit;
+        }
     }
-
     DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
+
+    if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+        fprintf(stderr, RED "final sync failed\n" RESET);
+        goto main_exit;
+    }
+    DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
+
+    rc = 1;
+
+main_exit:
+    if( -1 == resources_destroy(&res) )
+        fprintf(stderr, RED "resources_destroy\n" RESET);
 
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&start_mutex);
     pthread_cond_destroy(&start_cond);
-
-    // TODO my function
-    if( rc = sock_sync_data(res.sock, 1, "R", &temp_char ) )
-        MAIN_TOEXIT("final sync failed\n");
-
-    DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
-
-main_exit:
-    if( rc = resources_destroy( &res ) ){
-        fprintf (stderr, "failed to destroy resources\n");
-        rc = -1;
-    }
 
     if (config.dev_name) free ((char *) config.dev_name);
     if (config.config_other) free((char *)config.config_other);
@@ -233,10 +222,11 @@ main_exit:
 
     /* REPORT ON EXPERIMENT TO STDOUT */
 
-    print_report(config.iter, config.xfer_unit, 0, 0);
-
-    if( 0 > rc ) return EXIT_FAILURE;
-    return EXIT_SUCCESS;
+    if(rc){
+        print_report(config.iter, config.xfer_unit, 0, 0);
+        return EXIT_SUCCESS;
+    }
+    return EXIT_FAILURE;
 }
 
 static int
@@ -333,31 +323,31 @@ run_iter(void *param)
 /* QUEUE PAIR STATE MODIFICATION */
 
 static int
-modify_qp_to_init (struct ibv_qp *qp)
+modify_qp_to_init(struct ibv_qp *qp)
 {
+    int flags = IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS;
     struct ibv_qp_attr attr;
-    int flags;
-    int rc;
-    memset (&attr, 0, sizeof (attr));
+
+    memset(&attr, 0, sizeof(attr));
     attr.qp_state = IBV_QPS_INIT;
     attr.port_num = config.ib_port;
     attr.pkey_index = 0;
     attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ |
         IBV_ACCESS_REMOTE_WRITE;
-    flags =
-        IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS;
-    rc = ibv_modify_qp (qp, &attr, flags);
-    if (rc)
-        fprintf (stderr, "failed to modify QP state to INIT\n");
-    return rc;
+
+    if( errno = ibv_modify_qp(qp, &attr, flags) ){
+        perror("modify_qp()");
+        return -1;
+    }
+    return 0;
 }
 
 static int
 modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t * dgid)
 {
     struct ibv_qp_attr attr;
-    int flags;
-    int rc;
+    int flags = IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN |
+        IBV_QP_RQ_PSN | IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER;
     memset (&attr, 0, sizeof (attr));
     attr.qp_state = IBV_QPS_RTR;
     attr.path_mtu = IBV_MTU_4096;
@@ -370,7 +360,7 @@ modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t
     attr.ah_attr.sl = 0;
     attr.ah_attr.src_path_bits = 0;
     attr.ah_attr.port_num = config.ib_port;
-    if (config.gid_idx >= 0){
+    if (-1 != config.gid_idx){
         attr.ah_attr.is_global = 1;
         attr.ah_attr.port_num = 1;
         memcpy (&attr.ah_attr.grh.dgid, dgid, 16);
@@ -379,20 +369,21 @@ modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t
         attr.ah_attr.grh.sgid_index = config.gid_idx;
         attr.ah_attr.grh.traffic_class = 0;
     }
-    flags = IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN |
-        IBV_QP_RQ_PSN | IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER;
-    rc = ibv_modify_qp (qp, &attr, flags);
-    if (rc)
-        fprintf (stderr, "failed to modify QP state to RTR\n");
-    return rc;
+
+    if( errno = ibv_modify_qp (qp, &attr, flags) ){
+        perror("modify_qp");
+        return -1;
+    }
+
+    return 0;
 }
 
 static int
 modify_qp_to_rts (struct ibv_qp *qp)
 {
     struct ibv_qp_attr attr;
-    int flags;
-    int rc;
+    int flags = IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
+        IBV_QP_RNR_RETRY | IBV_QP_SQ_PSN | IBV_QP_MAX_QP_RD_ATOMIC;
     memset (&attr, 0, sizeof (attr));
     attr.qp_state = IBV_QPS_RTS;
     attr.timeout = 0x12;
@@ -400,41 +391,35 @@ modify_qp_to_rts (struct ibv_qp *qp)
     attr.rnr_retry = 0;
     attr.sq_psn = 0;
     attr.max_rd_atomic = 16; //FIXME hardcoded!
-    flags = IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
-        IBV_QP_RNR_RETRY | IBV_QP_SQ_PSN | IBV_QP_MAX_QP_RD_ATOMIC;
-    rc = ibv_modify_qp (qp, &attr, flags);
-    if (rc)
-        fprintf (stderr, "failed to modify QP state to RTS\n");
-    return rc;
+
+    if( errno = ibv_modify_qp (qp, &attr, flags) ){
+        perror("modify_qp");
+        return -1;
+    }
+
+    return 0;
 }
 
+// -1 on error, 0 on success
 static int
-connect_qp (struct resources *res)
+connect_qp(struct resources *res)
 {
-    struct cm_con_data_t local_con_data;
-    struct cm_con_data_t remote_con_data;
-    struct cm_con_data_t tmp_con_data;
-    int rc = 0;
+    struct cm_con_data_t local_con_data, remote_con_data, tmp_con_data;
     int i;
     char temp_char;
     union ibv_gid my_gid;
 
-
-    /* GET AN INDEX FROM THE PORT, IF SPECIFIED */
-    if (config.gid_idx >= 0){
-        rc = ibv_query_gid ( res->ib_ctx, 
-                config.ib_port, config.gid_idx, &my_gid );
-        if (rc){
-            fprintf (stderr, "could not get gid for port %d, index %d\n",
+    if( -1 != config.gid_idx ){
+        if( -1 == ibv_query_gid(res->ib_ctx, config.ib_port, config.gid_idx, &my_gid) ){
+            fprintf(stderr, "gid for port %d, index %d failed\n",
                     config.ib_port, config.gid_idx);
-            goto connect_qp_exit;
+            return -1;
         }
     } else {
-        memset (&my_gid, 0, sizeof my_gid);
+        memset(&my_gid, 0, sizeof my_gid);
     }
 
-    /* CONNECT EACH QP */
-    for(i=0; i<config.threads; i++){
+    for(i=0;i<config.threads;i++){
         DEBUG_PRINT((stdout, "connecting qp for thread %d\n", i));
 
         char *buf = res->assets[i]->buf;
@@ -449,11 +434,10 @@ connect_qp (struct resources *res)
         local_con_data.qp_num = htonl(qp->qp_num);
         memcpy(local_con_data.gid, &my_gid, 16);
 
-
-        if( (rc = sock_sync_data( res->sock, sizeof(struct cm_con_data_t), (char *)
-                    &local_con_data, (char *) &tmp_con_data ) < 0) ){
-            fprintf (stderr, "failed to exchange connection data between sides\n");
-            goto connect_qp_exit;
+        if( 0 > sock_sync_data(res->sock, sizeof(struct cm_con_data_t) , 
+                        (char *) &local_con_data, (char *) &tmp_con_data) ){
+            fprintf(stderr, RED "failed to exchange conn data\n" RESET);
+            return -1;
         }
         remote_con_data.addr = ntohll( tmp_con_data.addr );
         remote_con_data.rkey = ntohl( tmp_con_data.rkey );
@@ -470,44 +454,42 @@ connect_qp (struct resources *res)
                     "Remote QP number = 0x%x\n", remote_con_data.qp_num));
         DEBUG_PRINT((stdout, "Remote LID = 0x%x\n", remote_con_data.lid));
 
-        if ( config.gid_idx >= 0 ){
+        if( config.gid_idx != -1){
             uint8_t *p = remote_con_data.gid;
             DEBUG_PRINT((stdout,
-                        "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+                        "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x \
+                        :%02x:%02x:%02x:%02x:%02x:%02x\n",
                         p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9],
                         p[10], p[11], p[12], p[13], p[14], p[15]));
         }
 
-        if ((rc = modify_qp_to_init(qp))){
-            fprintf (stderr, "change QP state to INIT failed\n");
-            goto connect_qp_exit;
+        if( -1 == modify_qp_to_init(qp) ){
+            fprintf(stderr, RED "failed to modify qp to INIT\n" RESET);
+            return -1;
         }
         DEBUG_PRINT((stdout, "Modified QP state to INIT\n"));
 
-        if (rc = modify_qp_to_rtr(qp, remote_con_data.qp_num, remote_con_data.lid,
+        if (-1 == modify_qp_to_rtr(qp, remote_con_data.qp_num, remote_con_data.lid,
                 remote_con_data.gid)){
             fprintf (stderr, "failed to modify QP state to RTR\n");
-            goto connect_qp_exit;
+            return -1;
         }
-
         DEBUG_PRINT((stdout, "Modified QP state to RTR\n"));
 
-        if((rc = modify_qp_to_rts (qp))){
+        if( -1 == modify_qp_to_rts (qp) ){
             fprintf (stderr, "failed to modify QP state to RTR\n");
-            goto connect_qp_exit;
+            return -1;
         }
-
         DEBUG_PRINT((stdout, "QP state was change to RTS\n"));
 
         /* sync to make sure that both sides are in states that they can connect */
-        if (sock_sync_data(res->sock, 1, "Q", &temp_char)){
+        if ( -1 == sock_sync_data(res->sock, 1, "Q", &temp_char) ){
             fprintf (stderr, "sync error after QPs are were moved to RTS\n");
-            rc = 1;
+            return -1;
         }
     }
 
-    connect_qp_exit:
-        return rc;
+    return 0;
 }
 
 
@@ -547,11 +529,10 @@ resources_create (struct resources *res)
 
     /* EXCHANGE CONFIG INFO */
     config_other = (struct config_t *) malloc( sizeof(struct config_t) );
-
-    if( 0 > sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config,
-                (char *) config_other) )
-        return FAILURE;
-
+    if( 0 > sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config,(char *) config_other) ){
+        fprintf(stderr, RED "failed to exchange config data\n" RESET);
+        return -1;
+    }
     config.xfer_unit =  MAX(config.xfer_unit, config_other->xfer_unit);
     config.iter =       MAX(config.iter, config_other->iter);
     config.threads =    MAX(config.threads, config_other->threads);
@@ -565,9 +546,9 @@ resources_create (struct resources *res)
 
     DEBUG_PRINT((stdout, "searching for IB devices in host\n"));
 
-    if( ! (dev_list = ibv_get_device_list(&num_devices)) || !num_devices ){
-        ibv_free_device_list(dev_list);
-        ERR_RETURN_EN(errno, "get_device_list failed (or device not present)");
+    if( ! (dev_list = ibv_get_device_list(&num_devices)) || ! num_devices ){
+        perror("get_device_list (or device not present)");
+        return -1;
     }
 
     DEBUG_PRINT((stdout, "found %d device(s)\n", num_devices));
@@ -575,9 +556,7 @@ resources_create (struct resources *res)
     for (i = 0; i < num_devices; i++){
         if (!config.dev_name){
             config.dev_name = strdup(ibv_get_device_name (dev_list[i]));
-            DEBUG_PRINT((stdout,
-                        "device not specified, using first one found: %s\n",
-                        config.dev_name));
+            DEBUG_PRINT((stdout,"device not specified, using first one found: %s\n",config.dev_name));
         }
         if ( !strcmp(ibv_get_device_name(dev_list[i]), config.dev_name) ){
             ib_dev = dev_list[i];
@@ -585,17 +564,18 @@ resources_create (struct resources *res)
         }
     }
 
-    if( !(res->ib_ctx = ibv_open_device(ib_dev)) )
-        ERR_RETURN_EN(-1, "open_device");
-
     ibv_free_device_list(dev_list);
-    dev_list = NULL;
-    ib_dev = NULL;
+
+    if( ! (res->ib_ctx = ibv_open_device(ib_dev)) ){
+        fprintf(stderr,RED "open_device\n" RESET);
+        return -1;
+    }
 
     /* GET LOCAL PORT PROPERTIES */
-    if( 0 > (rc = ibv_query_port(res->ib_ctx, config.ib_port, &res->port_attr)) )
-        ERR_RETURN_EN(rc, "query_port");
-
+    if( 0 != (errno = ibv_query_port(res->ib_ctx, config.ib_port, &res->port_attr)) ){
+        perror("query_port");
+        return -1;
+    }
 
     /* ALLOCATE SPACE ALL ASSETS FOR EACH CONNECTION */
     res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) * config.threads);
@@ -604,27 +584,34 @@ resources_create (struct resources *res)
 
         res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
 
-        /* ALLOCATE PROTECTION DOMAIN */
-        if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)))
-            ERR_RETURN_EN(-1, "alloc_pd");
+
+        if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)) ){
+            fprintf(stderr, RED "alloc_pd\n" RESET);
+            return -1;
+        }
 
         /* CREATE COMPLETION QUEUE */
-        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, CQ_SIZE, NULL,NULL, 0)) )
-            ERR_RETURN_EN(-1, "create_cq");
+        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, CQ_SIZE, NULL,NULL, 0)) ){
+            fprintf(stderr, RED "alloc_pd\n" RESET);
+            return -1;
+        }
+
 
         /* CREATE & REGISTER MEMORY BUFFER */
-        size = config.xfer_unit;
-
-        if( !( res->assets[i]->buf = (char *) malloc(size) ) )
-            ERR_RETURN_EN(-1, "malloc on buff");
+        if( ! (res->assets[i]->buf = (char *) malloc(config.xfer_unit)) ){
+            fprintf(stderr, RED "malloc on buf\n" RESET);
+            return -1;
+        }
 
         mr_flags = IBV_ACCESS_LOCAL_WRITE | 
             IBV_ACCESS_REMOTE_READ |
             IBV_ACCESS_REMOTE_WRITE;
 
-        if( !( res->assets[i]->mr = ibv_reg_mr(res->assets[i]->pd, res->assets[i]->buf,
-                        size, mr_flags) ) )
-            ERR_RETURN_EN(-1, "reg_mr");
+        if( ! (res->assets[i]->mr = ibv_reg_mr(res->assets[i]->pd, res->assets[i]->buf,
+                        config.xfer_unit, mr_flags)) ){
+            fprintf(stderr, RED "reg_mr\n" RESET);
+            return -1;
+        }
 
         DEBUG_PRINT((stdout,
                     "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
@@ -643,34 +630,38 @@ resources_create (struct resources *res)
         qp_init_attr.cap.max_send_sge = MAX_SEND_SGE;
         qp_init_attr.cap.max_recv_sge = MAX_RECV_SGE;
 
-        if( !(res->assets[i]->qp = ibv_create_qp(res->assets[i]->pd, &qp_init_attr)))
-            ERR_RETURN_EN(-1, "create_qp");
+        if( !(res->assets[i]->qp = ibv_create_qp(res->assets[i]->pd, &qp_init_attr))){
+            fprintf(stderr, RED "create_qp\n" RESET); 
+            return -1;
+        }
 
         DEBUG_PRINT((stdout, "QP was created, QP number=0x%x\n", res->assets[i]->qp->qp_num));
     }
 
-    /* FOR WHEN THINGS GO WRONG */
     return 0;
 }
 
 // -1 on error, 0 on success
 static int
-resources_destroy (struct resources *res)
+resources_destroy( struct resources *res )
 {
     int i;
-    for(i = 0; i< config.threads; i++){
-        if( conn_destroy(res->assets[i]) )
-            ERR_RETURN_EN(-1, "failed to destroy IB assets\n");
+    for(i = 0; i < config.threads; i++){
+        if( -1 == conn_destroy(res->assets[i]) ){
+            fprintf(stderr, RED "conn_destroy failed\n" RESET);
+            return -1;
+        }
+
+        if( res->ibv_ctx && (-1 == ibv_close_device(res->ib_ctx)) ){
+            fprintf(stderr, RED "close_device failed\n" RESET);
+            return -1;
+        }
+
+        if( 0 <= res->sock && (-1 == close(res->sock)) ){{
+            fprintf(stderr, RED "close failed\n" RESET);
+            return -1;
+        }
     }
-    
-    if (res->ib_ctx)
-        if ( ibv_close_device (res->ib_ctx))
-            ERR_RETURN_EN(-1, "failed to close IB device\n");
-
-    if (res->sock >= 0)
-        if ( close (res->sock) )
-            ERR_RETURN_EN(-1, "failed to close IB device\n");
-
     return 0;
 }
 
@@ -678,25 +669,28 @@ resources_destroy (struct resources *res)
 static int
 conn_destroy( struct ib_assets *conn)
 {
-    int rc = 0;
-    if (conn->qp)
-        if (ibv_destroy_qp (conn->qp))
-            ERR_RETURN_EN(-1, "destroy_qp\n");
-
-    if (conn->mr)
-        if (ibv_dereg_mr (conn->mr))
-            ERR_RETURN_EN(-1, "dereg_mr\n");
-
     if (conn->buf)
-        free (conn->buf);
+        free(conn->buf);
 
-    if (conn->cq)
-        if (ibv_destroy_cq (conn->cq))
-            ERR_RETURN_EN(-1, "destroy_cq\n");
+    if (conn->qp && (errno = ibv_destroy_qp(conn->qp)) ){
+            perror("destroy_qp");
+            return -1;
+    }
 
-    if (conn->pd)
-        if (ibv_dealloc_pd (conn->pd))
-            ERR_RETURN_EN(-1, "dealloc_pd\n");
+    if (conn->mr && (errno = ibv_dereg_mr(conn->mr)) ){
+            perror("dereg_mr");
+            return -1;
+    }
+
+    if (conn->cq && (errno = ibv_destroy_cq(conn->cq)) ){
+            perror("destroy_cq");
+            return -1;
+    }
+
+    if (conn->pd && (errno = ibv_dealloc_pd (conn->pd)) ){
+            perror("dealloc_pd");
+            return -1;
+    }
 
     return 0;
 }
@@ -764,17 +758,21 @@ sock_connect( const char *servername, int port)
 }
 
 // -1 on error, 0 on success
-    int
-sock_sync_data (int sock, int xfer_size, char *local_data, char *remote_data)
+int
+sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 {
     int rc, total_read_bytes = 0;
 
-    if( 0 > (rc = write (sock, local_data, xfer_size)) )
-        ERR_RETURN_EN(errno, "write(); sock_sync_data();\n");
+    if( 0 > (rc = write(sock, local_data, xfer_size))){
+        perror("write");
+        return -1;
+    }
 
-    while (total_read_bytes < xfer_size){
-        if( 0 > (rc = read(sock, remote_data, xfer_size)) )
-            ERR_RETURN_EN(errno, "read(); sock_sync_data();\n");
+    while( total_read_bytes < xfer_size ){
+        if( 0 > (rc = read(sock, remote_data, xfer_size)) ){
+            perror("read");
+            return -1;
+        }
         total_read_bytes += rc;
     }
 
