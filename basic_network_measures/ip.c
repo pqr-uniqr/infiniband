@@ -5,6 +5,7 @@ struct config_t config = {
     19875, /* tcp port */
     0,  /* xfer unit */
     0,  /* iterations  */
+    1, /* threads */
     NULL,
 };
 
@@ -14,12 +15,22 @@ struct timeval tcompleted;
 struct pstat pstart;
 struct pstat pend;
 
+int cnt_threads;
+pthread_mutex_t start_mutex;
+pthread_cond_t start_cond;
+cpu_set_t cpuset;
+pthread_t *threads;
 
 int main ( int argc, char *argv[] )
 {
-    int rc = 1;
+    int rc = 1, i;
     struct resources res;
     char temp_char;
+
+    pthread_attr_t attr;
+    CPU_ZERO( &cpuset );
+    CPU_SET( CPUNO, &cpuset );
+    cnt_threads = 0;
 
     /* PROCES CL ARGUMENTS */
 
@@ -28,10 +39,11 @@ int main ( int argc, char *argv[] )
         static struct option long_options[] = {
             {.name="xfer-unit", .has_arg=1, .val='b'},
             {.name="iter", .has_arg=1, .val='i'},
+            {.name="threads", .has_arg=1, .val='t'},
             {.name=NULL, .has_arg=0, .val='\0'},
         };
 
-        if( (c = getopt_long(argc, argv, "b:i:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc, argv, "b:i:t:", long_options, NULL)) == -1 ) break;
 
         switch(c){
             case 'b':
@@ -42,6 +54,9 @@ int main ( int argc, char *argv[] )
                 break;
             case 'i':
                 config.iter = strtoul(optarg,NULL,0);
+                break;
+            case 't':
+                config.threads = strtoul(optarg, NULL, 0);
                 break;
             default:
                 return 1;
@@ -79,8 +94,43 @@ int main ( int argc, char *argv[] )
         return 1;
     }
 
-    run_iter(&res);
+    pthread_mutex_init(&start_mutex, NULL);
+    pthread_cond_init(&start_cond, NULL);
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+    for(i=0;i < config.threads; i++){
+        if( errno = pthread_create( &threads[i], &attr, 
+                    (void * (*)(void *)) run_iter, (void *) &res.conn[i]) ){
+            perror("pthread_create");
+            goto main_exit;
+        }
+    }
+
+    DEBUG_PRINT((stdout, GRN "threads created\n" RESET));
+
+    do{
+        pthread_mutex_lock( &start_mutex );
+        i = (cnt_threads < config.threads);
+        pthread_mutex_unlock( &start_mutex );
+    } while (i);
+    DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
+
+    get_usage( getpid(), &pstart, CPUNO );
+    gettimeofday( &tposted, NULL );
+
+    /* SIGNAL THREADS TO START WORK */
+    pthread_cond_broadcast(&start_cond);
+    for(i=0; i < config.threads; i++)
+        if(errno = pthread_join(threads[i], NULL)){
+            perror("pthread_join");
+            goto main_exit;
+        }
+
+    gettimeofday( &tcompleted, NULL );
+    get_usage( getpid(), &pend, CPUNO );
+
+    DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
     DEBUG_PRINT((stdout, YEL "run_iter finished, headed to final socket sync\n" RESET));
 
     if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
@@ -90,26 +140,33 @@ int main ( int argc, char *argv[] )
 
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
-    print_report( );
+    print_report();
 
 main_exit:
-
     return EXIT_SUCCESS;
 }				
 
-static int run_iter(struct resources *res)
+static int run_iter(void *param)
 {
-    int i;
-    int rc;
-    int bytes_read;
+    int i, rc, bytes_read, left_to_read;
     uint16_t csum;
     char *read_to;
-    int left_to_read;
+    struct connection *conn = (struct connection *) param;
+    pthread_t thread = pthread_self();
+
+    /* WAIT TO SYNCHRONIZE */
+
+    pthread_mutex_lock( &start_mutex );
+    if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
+        perror("pthread_setaffinity");
+        return -1;
+    }
+    cnt_threads++;
+    pthread_cond_wait( &start_cond, &start_mutex );
+    pthread_mutex_unlock( &start_mutex );
 
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
-    get_usage( getpid(), &pstart, CPUNO );
-    gettimeofday( &tposted, NULL );
     for(i = 0; i < config.iter; i++){
         rc = 0;
     
@@ -118,12 +175,12 @@ static int run_iter(struct resources *res)
         if( config.server_name ){
 
 #ifdef DEBUG
-            memset(res->buf, i % 2, config.xfer_unit);
-            csum = checksum(res->buf, config.xfer_unit);
+            memset(conn->buf, i % 2, config.xfer_unit);
+            csum = checksum(conn->buf, config.xfer_unit);
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
 
-            rc = write(res->sock, res->buf, config.xfer_unit);
+            rc = write(conn->sock, conn->buf, config.xfer_unit);
 
             if(rc < config.xfer_unit){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
@@ -132,12 +189,12 @@ static int run_iter(struct resources *res)
 
             DEBUG_PRINT((stdout, GRN "%d bytes written to socket\n" RESET, rc));
         } else {
-            read_to = res->buf;
+            read_to = conn->buf;
             left_to_read = config.xfer_unit;
             bytes_read = 0;
 
             while( left_to_read ){
-                rc = read(res->sock, read_to, left_to_read);
+                rc = read(conn->sock, read_to, left_to_read);
     
                 if( rc < 0 ){
                     fprintf(stderr, "failed to read from socket in run_iter\n");
@@ -152,13 +209,11 @@ static int run_iter(struct resources *res)
 
 #ifdef DEBUG
             DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
-            csum = checksum(res->buf, bytes_read);
+            csum = checksum(conn->buf, bytes_read);
             DEBUG_PRINT((stdout, WHT "\tchecksum on received data = %0x\n" RESET, csum));
 #endif
         }
     }
-    gettimeofday( &tcompleted, NULL );
-    get_usage( getpid(), &pend, CPUNO );
 
     return 0;
 }
@@ -171,7 +226,7 @@ static void resources_init(struct resources *res)
 
 static int resources_create(struct resources *res)
 {
-    int rc = 0;
+    int rc = 0, i;
     struct config_t *config_other = (struct config_t *) malloc(sizeof(struct config_t));
 
     if(config.server_name){
@@ -180,8 +235,7 @@ static int resources_create(struct resources *res)
             fprintf (stderr,
                     "failed to establish TCP connection to server %s, port %d\n",
                     config.server_name, config.tcp_port);
-            rc = 1;
-            goto resources_create_exit;
+            return -1;
         }
     } else {
         DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", config.tcp_port));
@@ -190,35 +244,58 @@ static int resources_create(struct resources *res)
             fprintf (stderr,
                     "failed to establish TCP connection with client on port %d\n",
                     config.tcp_port);
-            rc = 1;
-            goto resources_create_exit;
+            return -1;
         }
     }
     DEBUG_PRINT((stdout, GRN "TCP connection was established\n" RESET));
 
 
-    /* EXCHANGE EXPERIMENT CONFIGURATION */
+    /* EXCHANGE EXPERIMENT PARAMETERS */
     if( sock_sync_data(res->sock, 
                 sizeof(struct config_t), 
                 (char *) &config, 
                 (char *) config_other) < 0 ){
 
         fprintf(stderr, "failed to exchange config info\n");
-        rc = 1;
-        goto resources_create_exit;
+        return -1;
     }
     config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
     config.iter = MAX(config.iter, config_other->iter);
     config.config_other = config_other;
-    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations\n", config.xfer_unit, config.iter));
+    config.threads = MAX(config.threads, config_other->threads);
+    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
+                config.xfer_unit, config.iter, config.threads));
 
-    res->buf = (char *) malloc(config.xfer_unit);
-    if(!res->buf){
-        fprintf(stderr, "failed to malloc res->buf\n");
-        rc = 1;
-        goto resources_create_exit;
+
+    /* SET UP TCP CONNECTION AND BUFFER FOR EACH THREAD */
+
+    res->conn = (struct connection *) malloc(sizeof(struct connection) * config.threads);
+
+    for(i=0; i < config.threads; i ++){
+        DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket", i));
+        struct connection *c = &res->conn[i];
+        if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
+            fprintf(stderr, "failed to malloc c->buf\n");
+            return -1;
+        }
+        memset(c->buf, 0x1, config.xfer_unit);
+
+        //TODO what if config.tcp_port + i + 1 is already in use?
+        if (config.server_name) {
+            if( 0 > (c->sock = sock_connect(config.server_name, config.tcp_port+i+1))) {
+                fprintf(stderr, RED "sock_connect\n" RESET);
+                return -1;
+            }
+        } else {
+            DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", 
+                        config.tcp_port));
+            if( 0 > (c->sock = sock_connect(NULL, config.tcp_port+i+1)) ){
+                fprintf(stderr, RED "sock_connect\n" RESET);
+                return -1;
+            }
+        }
+        DEBUG_PRINT((stdout, "TCP connection established\n"));
     }
-    memset(res->buf, 0x1, config.xfer_unit);
 
     /* PRINT TCP WINDOW SIZE */
 
@@ -226,10 +303,12 @@ static int resources_create(struct resources *res)
     socklen_t len = sizeof( tcp_win_size ); 
 
     if( config.server_name ){
-        getsockopt( res->sock, SOL_SOCKET, SO_SNDBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
+        //TODO errcheck
+        getsockopt( res->sock, SOL_SOCKET, SO_SNDBUF, (char *) &tcp_win_size, &len ); 
         DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size));
     } else {
-        getsockopt( res->sock, SOL_SOCKET, SO_RCVBUF, (char *) &tcp_win_size, &len ); //TODO errcheck
+        //TODO errcheck
+        getsockopt( res->sock, SOL_SOCKET, SO_RCVBUF, (char *) &tcp_win_size, &len ); 
         DEBUG_PRINT((stdout, "tcp window size set to %d\n", tcp_win_size));
     }
 
@@ -240,19 +319,7 @@ static int resources_create(struct resources *res)
     getsockopt(res->sock, IPPROTO_TCP, TCP_MAXSEG, (char *) &mss, &len);
     DEBUG_PRINT((stdout, "tcp maximum segment size set to %d\n", mss));
 
-resources_create_exit:
-    if(rc){
-        if(res->buf){
-            free(res->buf);
-            res->buf = NULL;
-        }
-        if(res->sock >= 0){
-            if(close(res->sock))
-                fprintf(stderr, "failed to close socket\n");
-            res->sock = 1;
-        }
-    }
-    return rc;
+    return 0;
 }
 
 static int sock_connect(const char *servername, int port)
@@ -357,7 +424,8 @@ static void print_config( void )
     if ( !config.iter|| !config.xfer_unit )
         fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
     else
-        fprintf(stdout, "%d iters, each %zd bytes\n", config.iter, config.xfer_unit );
+        fprintf(stdout, "%d iters, each %zd bytes, %d threads\n", 
+                config.iter, config.xfer_unit, config.threads );
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
 

@@ -177,7 +177,7 @@ else
 
         # RUN IP EXPERIMENT
         for i in `seq 1 $POW`; do
-            ./$EXEC -b $i -i $ITER $ADDR >> $FILEPATH
+            ./$EXEC -b $i -i $ITER -t $THREAD $ADDR >> $FILEPATH
           sleep 0.1
         done
     fi

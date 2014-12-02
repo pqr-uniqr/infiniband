@@ -50,8 +50,7 @@ main ( int argc, char *argv[] )
 
     /* PROCESS CL ARGUMENTS */
 
-    while (1)
-    {
+    while (1){
         int c;
         static struct option long_options[] = {
             {.name = "port",.has_arg = 1,.val = 'p'},
@@ -833,7 +832,8 @@ print_config (void)
     if ( !config.iter|| !config.xfer_unit )
         fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
     else
-        fprintf(stdout, "%d iters, each %zd bytes\n", config.iter, config.xfer_unit );
+        fprintf(stdout, "%d iters, each %zd bytes, %d threads\n", 
+                config.iter, config.xfer_unit, config.threads );
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }

@@ -20,6 +20,7 @@
 #include <netinet/tcp.h>
 #include <netdb.h>
 #include <math.h>
+#include <errno.h>
 
 #include "getusage.c"
 
@@ -56,16 +57,22 @@ struct config_t {
     u_int32_t tcp_port;
     size_t xfer_unit;
     int iter;
+    int threads;
     struct config_t *config_other;
 };
 
-struct resources {
+struct connection{
     int sock;
     char *buf;
 };
 
+struct resources {
+    int sock;
+    struct connection *conn;
+};
 
-static int run_iter(struct resources *res);
+
+static int run_iter(void *param);
 static void resources_init(struct resources *res);
 static int resources_create(struct resources *res);
 static int sock_connect(const char *servername, int port);
