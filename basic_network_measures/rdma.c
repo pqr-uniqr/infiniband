@@ -887,13 +887,22 @@ static void
 print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
-    double xfer_total = config.xfer_unit * config.iter * config.threads;
+    double xfer_total = config.xfer_unit * config.iter;
     long elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
         - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
     double avg_bw = xfer_total / elapsed;
     double ucpu;
     double scpu;
     calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
+    
+    fprintf(stdout, "pstart: utime: %lu, stime: %ld, total_time: %lu\n", 
+            pstart.utime_ticks + pstart.cutime_ticks, 
+            pstart.stime_ticks + pstart.cstime_ticks,
+            pstart.cpu_total_time);
+    fprintf(stdout, "pend: utime: %lu, stime: %ld, total_time: %lu\n", 
+            pend.utime_ticks + pend.cutime_ticks, 
+            pend.stime_ticks + pend.cstime_ticks,
+            pend.cpu_total_time);
 
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
 }
