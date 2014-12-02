@@ -155,7 +155,7 @@ static int run_iter(void *param)
     struct connection *conn = (struct connection *) param;
     pthread_t thread = pthread_self();
 
-    DEBUG_PRINT((stdout, "[ thread %d ] spawned\n" RESET ));
+    DEBUG_PRINT((stdout, "[ thread %d ] spawned\n", thread));
     /* WAIT TO SYNCHRONIZE */
 
     pthread_mutex_lock( &start_mutex );
