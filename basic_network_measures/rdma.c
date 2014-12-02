@@ -171,7 +171,6 @@ main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-
     if( config.opcode != -1 ){
         for(i=0; i < config.threads; i++){
             if( errno = pthread_create( &threads[i], &attr, 
@@ -266,7 +265,6 @@ run_iter(void *param)
     }
 
     /* WAIT TO SYNCHRONIZE */
-
     
     pthread_mutex_lock( &start_mutex );
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
@@ -440,9 +438,10 @@ connect_qp(struct resources *res)
         struct ibv_mr *mr = res->assets[i]->mr;
         struct cm_con_data_t *remote_props =  &(res->assets[i]->remote_props);
 
-        local_con_data.addr = htonll( (uintptr_t) buf);
+        local_con_data.addr = htonll((uintptr_t) buf);
         local_con_data.rkey = htonl(mr->rkey);
         local_con_data.qp_num = htonl(qp->qp_num);
+        local_con_data.lid = htons (res->port_attr.lid);
         memcpy(local_con_data.gid, &my_gid, 16);
 
         if( 0 > sock_sync_data(res->sock, sizeof(struct cm_con_data_t) , 
@@ -487,11 +486,11 @@ connect_qp(struct resources *res)
         }
         DEBUG_PRINT((stdout, "Modified QP state to RTR\n"));
 
-        if( -1 == modify_qp_to_rts (qp) ){
+        if( -1 == modify_qp_to_rts(qp) ){
             fprintf (stderr, "failed to modify QP state to RTR\n");
             return -1;
         }
-        DEBUG_PRINT((stdout, "QP state was change to RTS\n"));
+        DEBUG_PRINT((stdout, "Modified QP state to RTS\n"));
 
         /* sync to make sure that both sides are in states that they can connect */
         if ( -1 == sock_sync_data(res->sock, 1, "Q", &temp_char) ){

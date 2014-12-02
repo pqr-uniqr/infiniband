@@ -44,18 +44,8 @@
 #define CPUNO 0
 #define CQ_SIZE 1
 
-#define FAILURE -1
-
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
-
-#define ERR_RETURN_EN(en, msg) \
-    do { if(errno < 0){errno = en; perror(msg);}\
-        else fprintf(stderr,msg); \
-        return(FAILURE); } while (0)
-
-#define MAIN_TOEXIT(msg) \
-    do { fprintf(stderr, RED msg RESET ); goto main_exit;} while(0)
 
 
 #define REPORT_FMT "%-7d\t%d\t%-7.2f\t%-7.5f\t%7.5f\n"
