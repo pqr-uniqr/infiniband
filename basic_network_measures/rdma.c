@@ -289,7 +289,6 @@ run_iter(void *param)
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
 
-            DEBUG_PRINT((stdout, "posting send request\n"));
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
                 perror("post_send");
                 return -1;
@@ -303,7 +302,6 @@ run_iter(void *param)
 
         if( ccnt < config.iter ){
             do {
-                DEBUG_PRINT((stdout, "polling cq\n"));
                 ne = ibv_poll_cq(conn->cq, 1, wc);
                 if( ne > 0 ){
                     for( i = 0; i < ne; i++){
