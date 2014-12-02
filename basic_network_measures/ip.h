@@ -68,7 +68,7 @@ struct connection{
 
 struct resources {
     int sock;
-    struct connection *conn;
+    struct connection **conn;
 };
 
 

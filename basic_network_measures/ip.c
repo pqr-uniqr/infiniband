@@ -101,7 +101,7 @@ int main ( int argc, char *argv[] )
 
     for(i=0;i < config.threads; i++){
         if( errno = pthread_create( &threads[i], &attr, 
-                    (void * (*)(void *)) run_iter, (void *) &res.conn[i]) ){
+                    (void * (*)(void *)) run_iter, (void *) res.conn[i]) ){
             perror("pthread_create");
             goto main_exit;
         }
@@ -155,7 +155,8 @@ static int run_iter(void *param)
     struct connection *conn = (struct connection *) param;
     pthread_t thread = pthread_self();
 
-    DEBUG_PRINT((stdout, "[ thread %u ] spawned\n", thread));
+    DEBUG_PRINT((stdout, "[ thread %u ] spawned\n", (int) thread));
+
     /* WAIT TO SYNCHRONIZE */
 
     pthread_mutex_lock( &start_mutex );
@@ -271,11 +272,12 @@ static int resources_create(struct resources *res)
 
     /* SET UP TCP CONNECTION AND BUFFER FOR EACH THREAD */
 
-    res->conn = (struct connection *) malloc(sizeof(struct connection) * config.threads);
+    res->conn = (struct connection **) malloc(sizeof(struct connection *) * 
+            config.threads);
 
     for(i=0; i < config.threads; i ++){
         DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket\n", i));
-        struct connection *c = &res->conn[i];
+        struct connection *c = res->conn[i];
         if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
             fprintf(stderr, "failed to malloc c->buf\n");
             return -1;
