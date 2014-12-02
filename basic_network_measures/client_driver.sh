@@ -111,7 +111,7 @@ else
     done 
 
     # GET NUMBER OF ITERATIONS
-    cecho "> i will run y many iterations for each transfer size. Specify y (max 100000)" $white
+    cecho "> I will run y many iterations for each transfer size. Specify y (max 100000)" $white
     while read ITER; do
         if [ "0$ITER" -gt 100000 ] || [ -z "${ITER}" ]
         then 
@@ -121,6 +121,18 @@ else
             break
         fi
     done
+
+    cecho "> I will run the experiment specified above for each of the thread. Specify number of threads" $white
+    while read THREAD; do
+        if [ "0$THREAD" -gt 30 ] || [ -z "${THREAD}" ]
+        then 
+            cecho "> try again (max 30)" $red
+        else
+            cecho "> $THREAD threads" $green
+            break
+        fi
+    done
+
 
     # CHECK IF RESULT DIRETORY EXISTS 
     if  ! [ -d "$DIR" ] 
@@ -134,6 +146,7 @@ else
     echo "#* to reproduce this result, use $GITVER *" >> $FILEPATH
 
     if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
+
         # GET VERB FOR RDMA
         cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
         while read OP; do 
@@ -147,7 +160,6 @@ else
             fi
         done
 
-
         echo "#verb: $OP"  >> $FILEPATH
         printheader >> $FILEPATH
         cecho "starting experiment..." $green
@@ -155,7 +167,7 @@ else
 
         # RUN RDMA EXPERIMENT
         for i in `seq 1 $POW`; do
-          ./$EXEC -v $OP -i $ITER -b $i $ADDR >> $FILEPATH
+          ./$EXEC -v $OP -i $ITER -b $i -t $THREAD $ADDR >> $FILEPATH
           sleep 0.1
         done
     else

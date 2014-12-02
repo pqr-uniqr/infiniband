@@ -4,11 +4,11 @@ LD=gcc
 LIB= -libverbs -lm -lpthread
 all: rdma
 
-rdma: rdma.c get_clock.c get_clock.h
+rdma: rdma.c
 	${CC} ${CFLAGS} -m64 -c rdma.c
 	${LD} rdma.o ${LIB} -o rdma
 
-rdma_dbg: rdma.c  get_clock.c get_clock.h 
+rdma_dbg: rdma.c  
 	${CC} ${CFLAGS} -m64 -c rdma.c -DDEBUG
 	${LD} rdma.o ${LIB} -o rdma_dbg
 
