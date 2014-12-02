@@ -275,7 +275,7 @@ static int resources_create(struct resources *res)
     res->conn = (struct connection **) malloc(sizeof(struct connection *) * 
             config.threads);
 
-    for(i=0; i < config.threads; i ++){
+    for(i=0; i < config.threads; i++){
         DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket\n", i));
         struct connection *c = res->conn[i];
         if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
@@ -283,6 +283,7 @@ static int resources_create(struct resources *res)
             return -1;
         }
         memset(c->buf, 0x1, config.xfer_unit);
+        DEBUG_PRINT((stdout, "buffer setup\n", i));
 
         //TODO what if config.tcp_port + i + 1 is already in use?
         if (config.server_name) {
