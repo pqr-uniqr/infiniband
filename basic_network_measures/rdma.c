@@ -887,7 +887,7 @@ static void
 print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
-    double xfer_total = config.xfer_unit * config.iter;
+    double xfer_total = config.xfer_unit * config.iter * config.threads;
     long elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
         - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
     double avg_bw = xfer_total / elapsed;
