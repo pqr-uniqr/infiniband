@@ -895,15 +895,6 @@ print_report(unsigned int iters, unsigned size, int duplex,
     double scpu;
     calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
     
-    fprintf(stdout, "pstart: utime: %lu, stime: %lu, total_time: %lu\n", 
-            pstart.utime_ticks + pstart.cutime_ticks, 
-            pstart.stime_ticks + pstart.cstime_ticks,
-            pstart.cpu_total_time);
-    fprintf(stdout, "pend: utime: %lu, stime: %ld, total_time: %lu\n", 
-            pend.utime_ticks + pend.cutime_ticks, 
-            pend.stime_ticks + pend.cstime_ticks,
-            pend.cpu_total_time);
-
     printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
 }
 
