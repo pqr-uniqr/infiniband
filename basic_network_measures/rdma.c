@@ -217,7 +217,7 @@ main_exit:
     pthread_cond_destroy(&start_cond);
 
     if (config.dev_name) free ((char *) config.dev_name);
-    if (config.config_other) free((char *)config.config_other);
+    if (config.config_other) free((char *) config.config_other);
     if (threads) free((char *) threads);
 
     /* REPORT ON EXPERIMENT TO STDOUT */
@@ -243,7 +243,7 @@ run_iter(void *param)
     struct ib_assets *conn = (struct ib_assets *) param;
     pthread_t thread = pthread_self();
 
-    DEBUG_PRINT((stdout, "[thread %d] ready\n", (int) thread));
+    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
 
     ALLOCATE(wc, struct ibv_wc, 1);
 
@@ -275,7 +275,7 @@ run_iter(void *param)
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
 
-    DEBUG_PRINT((stdout, "[thread %d] starting\n", (int) thread));
+    DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
     /* GO! */
     get_usage( getpid(), &pstart );
@@ -661,16 +661,16 @@ resources_destroy( struct resources *res )
             fprintf(stderr, RED "conn_destroy failed\n" RESET);
             return -1;
         }
+    }
 
-        if( res->ib_ctx && (-1 == ibv_close_device(res->ib_ctx)) ){
-            fprintf(stderr, RED "close_device failed\n" RESET);
-            return -1;
-        }
+    if( res->ib_ctx && (-1 == ibv_close_device(res->ib_ctx)) ){
+        fprintf(stderr, RED "close_device failed\n" RESET);
+        return -1;
+    }
 
-        if( 0 <= res->sock && (-1 == close(res->sock)) ){
-            fprintf(stderr, RED "close failed\n" RESET);
-            return -1;
-        }
+    if( 0 <= res->sock && (-1 == close(res->sock)) ){
+        fprintf(stderr, RED "close failed\n" RESET);
+        return -1;
     }
     return 0;
 }
