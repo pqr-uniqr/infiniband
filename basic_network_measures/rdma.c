@@ -171,6 +171,9 @@ main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+    // FIXME temp
+    DEBUG_PRINT((stdout, "opcode = %d, threads: %d\n", config.opcode, config.threads));
+
     if( config.opcode != -1 )
         for(i=0; i < config.threads; i++){
             if( errno = pthread_create( &threads[i], &attr, 
@@ -243,6 +246,8 @@ run_iter(void *param)
     struct ib_assets *conn = (struct ib_assets *) param;
     pthread_t thread = pthread_self();
 
+    DEBUG_PRINT((stdout, "[thread %d] ready\n", (int) thread));
+
     ALLOCATE(wc, struct ibv_wc, 1);
 
     memset(&sr, 0, sizeof(sr));
@@ -264,7 +269,6 @@ run_iter(void *param)
 
     /* WAIT TO SYNCHRONIZE */
 
-    DEBUG_PRINT((stdout, "[thread %d] ready\n", (int) thread));
     
     pthread_mutex_lock( &start_mutex );
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
@@ -275,7 +279,7 @@ run_iter(void *param)
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
 
-    DEBUG_PRINT((stdout, "[thread %d] starting\n", thread));
+    DEBUG_PRINT((stdout, "[thread %d] starting\n", (int) thread));
 
     /* GO! */
     get_usage( getpid(), &pstart );
