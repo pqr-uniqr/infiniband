@@ -188,15 +188,21 @@ main ( int argc, char *argv[] )
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
+        get_usage( getpid(), &pstart, CPUNO );
+        gettimeofday( &tposted, NULL );
+        
+
         /* SIGNAL THREADS TO START WORK */
         pthread_cond_broadcast(&start_cond);
-
-        for(i=0; i < config.threads; i++){
+        for(i=0; i < config.threads; i++)
             if(errno = pthread_join(threads[i], NULL)){
                 perror("pthread_join");
                 goto main_exit;
             }
-        }
+
+        gettimeofday( &tcompleted, NULL );
+        get_usage( getpid(), &pend, CPUNO );
+
         DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
     }
 
@@ -278,8 +284,6 @@ run_iter(void *param)
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
     /* GO! */
-    get_usage( getpid(), &pstart, CPUNO );
-    gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
         while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR ){
@@ -320,8 +324,6 @@ run_iter(void *param)
         }
 
     }
-    gettimeofday( &tcompleted, NULL );
-    get_usage( getpid(), &pend, CPUNO );
 
     free(wc);
 
