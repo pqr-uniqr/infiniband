@@ -142,7 +142,7 @@ else
 
     # if this is called on an existing file (such as /dev/null), won't really hurt
     touch "$FILEPATH"
-    echo "#$EXEC experiment: Up to 2^$POW bytes, each $ITER iterations (server addr: $ADDR)" > $FILEPATH
+    echo "#$EXEC experiment: Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" > $FILEPATH
     echo "#* to reproduce this result, use $GITVER *" >> $FILEPATH
 
     if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then

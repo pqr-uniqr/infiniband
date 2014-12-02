@@ -895,7 +895,7 @@ print_report(unsigned int iters, unsigned size, int duplex,
     double scpu;
     calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
     
-    fprintf(stdout, "pstart: utime: %lu, stime: %ld, total_time: %lu\n", 
+    fprintf(stdout, "pstart: utime: %lu, stime: %lu, total_time: %lu\n", 
             pstart.utime_ticks + pstart.cutime_ticks, 
             pstart.stime_ticks + pstart.cstime_ticks,
             pstart.cpu_total_time);
