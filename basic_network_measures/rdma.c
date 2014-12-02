@@ -171,10 +171,8 @@ main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    // FIXME temp
-    DEBUG_PRINT((stdout, "opcode = %d, threads: %d\n", config.opcode, config.threads));
 
-    if( config.opcode != -1 )
+    if( config.opcode != -1 ){
         for(i=0; i < config.threads; i++){
             if( errno = pthread_create( &threads[i], &attr, 
                         (void * (*)(void *)) run_iter, (void *) res.assets[i]) ){
@@ -182,26 +180,26 @@ main ( int argc, char *argv[] )
                 goto main_exit;
             }
         }
-    DEBUG_PRINT((stdout, GRN "threads created\n" RESET));
+        DEBUG_PRINT((stdout, GRN "threads created\n" RESET));
 
-    do{
-        pthread_mutex_lock( &start_mutex );
-        i = (cnt_threads < config.threads);
-        pthread_mutex_unlock( &start_mutex );
-    } while (i);
-    DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
+        do{
+            pthread_mutex_lock( &start_mutex );
+            i = (cnt_threads < config.threads);
+            pthread_mutex_unlock( &start_mutex );
+        } while (i);
+        DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
+        /* SIGNAL THREADS TO START WORK */
+        pthread_cond_broadcast(&start_cond);
 
-    /* SIGNAL THREADS TO START WORK */
-    pthread_cond_broadcast(&start_cond);
-
-    for(i=0; i < config.threads; i++){
-        if(errno = pthread_join(threads[i], NULL)){
-            perror("pthread_join");
-            goto main_exit;
+        for(i=0; i < config.threads; i++){
+            if(errno = pthread_join(threads[i], NULL)){
+                perror("pthread_join");
+                goto main_exit;
+            }
         }
+        DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
     }
-    DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
 
     if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, RED "final sync failed\n" RESET);
