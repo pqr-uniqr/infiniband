@@ -148,12 +148,14 @@ main_exit:
 
 static int run_iter(void *param)
 {
+
     int i, rc, bytes_read, left_to_read;
     uint16_t csum;
     char *read_to;
     struct connection *conn = (struct connection *) param;
     pthread_t thread = pthread_self();
 
+    DEBUG_PRINT((stdout, "[ thread %d ] spawned\n" RESET ));
     /* WAIT TO SYNCHRONIZE */
 
     pthread_mutex_lock( &start_mutex );
@@ -272,7 +274,7 @@ static int resources_create(struct resources *res)
     res->conn = (struct connection *) malloc(sizeof(struct connection) * config.threads);
 
     for(i=0; i < config.threads; i ++){
-        DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket", i));
+        DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket\n", i));
         struct connection *c = &res->conn[i];
         if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
             fprintf(stderr, "failed to malloc c->buf\n");
