@@ -278,7 +278,7 @@ run_iter(void *param)
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
     /* GO! */
-    get_usage( getpid(), &pstart );
+    get_usage( getpid(), &pstart, CPUNO );
     gettimeofday( &tposted, NULL );
     while( scnt < config.iter || ccnt < config.iter ){
 
@@ -321,7 +321,7 @@ run_iter(void *param)
 
     }
     gettimeofday( &tcompleted, NULL );
-    get_usage( getpid(), &pend );
+    get_usage( getpid(), &pend, CPUNO );
 
     free(wc);
 

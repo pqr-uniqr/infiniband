@@ -108,7 +108,7 @@ static int run_iter(struct resources *res)
 
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
-    get_usage( getpid(), &pstart );
+    get_usage( getpid(), &pstart, CPUNO );
     gettimeofday( &tposted, NULL );
     for(i = 0; i < config.iter; i++){
         rc = 0;
@@ -158,7 +158,7 @@ static int run_iter(struct resources *res)
         }
     }
     gettimeofday( &tcompleted, NULL );
-    get_usage( getpid(), &pend );
+    get_usage( getpid(), &pend, CPUNO );
 
     return 0;
 }

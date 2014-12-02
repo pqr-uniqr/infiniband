@@ -33,6 +33,8 @@
 #define WHT  "\x1B[37m"
 #define RESET "\033[0m"
 
+#define CPUNO 0
+
 
 #ifdef DEBUG
 # define DEBUG_PRINT(x) fprintf x

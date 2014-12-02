@@ -20,7 +20,10 @@ struct pstat {
  * read /proc data into the passed struct pstat
  * returns 0 on success, -1 on error
 */
-int get_usage(const pid_t pid, struct pstat* result) {
+int get_usage(const pid_t pid, struct pstat* result, int cpuno ) 
+{
+    int i;
+    char line[1000];
     //convert  pid to string
     char pid_s[20];
     snprintf(pid_s, sizeof(pid_s), "%d", pid);
@@ -59,6 +62,12 @@ int get_usage(const pid_t pid, struct pstat* result) {
     //read+calc cpu total time from /proc/stat
     long unsigned int cpu_time[10];
     bzero(cpu_time, sizeof(cpu_time));
+
+    // skip line to get to line for cpu number <cpuno>
+    for(i=0; i < cpuno+1; i++){
+        fgets(line, 1000, fstat);
+    }
+
     if (fscanf(fstat, "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
                 &cpu_time[0], &cpu_time[1], &cpu_time[2], &cpu_time[3],
                 &cpu_time[4], &cpu_time[5], &cpu_time[6], &cpu_time[7],
@@ -69,7 +78,7 @@ int get_usage(const pid_t pid, struct pstat* result) {
 
     fclose(fstat);
 
-    for(int i=0; i < 10;i++)
+    for(i=0; i < 10;i++)
         result->cpu_total_time += cpu_time[i];
 
     return 0;
