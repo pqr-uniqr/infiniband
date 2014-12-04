@@ -155,7 +155,7 @@ static int run_iter(void *param)
     struct connection *conn = (struct connection *) param;
     pthread_t thread = pthread_self();
 
-    DEBUG_PRINT((stdout, "[ thread %u ] spawned\n", (int) thread));
+    DEBUG_PRINT((stdout, MAG "[ thread %u ] spawned\n" RESET , (int) thread));
 
     /* WAIT TO SYNCHRONIZE */
 
@@ -457,7 +457,7 @@ static void print_report( void )
     double ucpu, scpu;
     calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu );
 
-    double xfer_total = config.xfer_unit * config.iter;
+    double xfer_total = config.xfer_unit * config.iter * config.threads;
     long elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
         (tposted.tv_sec * 1e6 + tposted.tv_usec);
     double avg_bw = xfer_total / elapsed;
