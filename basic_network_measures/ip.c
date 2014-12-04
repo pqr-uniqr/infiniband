@@ -282,8 +282,7 @@ static int resources_create(struct resources *res)
         portno++;
 
         /* SET UP BUFFER */
-        DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket \
-                     on port %u", i, portno));
+        DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket on port %u\n", i, portno));
         res->conn[i] = (struct connection *) malloc(sizeof(struct connection));
         struct connection *c = res->conn[i];
         if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
@@ -304,10 +303,12 @@ static int resources_create(struct resources *res)
                 return -1;
             }
         }
+
         if( sock_sync_data(res->sock, 1, "R", &temp_char ) ){
             fprintf(stderr, "sync error while in data transfer\n");
             return -1;
         }
+
         if( config.server_name ){
             if( 0 > (c->sock = sock_connect(config.server_name, portno))){
                 fprintf(stderr, RED "sock_connect\n" RESET);
