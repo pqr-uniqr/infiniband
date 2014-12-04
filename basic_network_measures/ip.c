@@ -283,7 +283,7 @@ static int resources_create(struct resources *res)
             return -1;
         }
         memset(c->buf, 0x1, config.xfer_unit);
-        DEBUG_PRINT((stdout, "buffer setup\n", i));
+        DEBUG_PRINT((stdout, "buffer setup\n"));
 
         //TODO what if config.tcp_port + i + 1 is already in use?
         if (config.server_name) {
