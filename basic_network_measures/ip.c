@@ -232,7 +232,6 @@ static int resources_create(struct resources *res)
     int rc = 0, i;
     u_int32_t portno = config.tcp_port;
     struct config_t *config_other = (struct config_t *) malloc(sizeof(struct config_t));
-    char temp_char;
 
     if(config.server_name){
         res->sock = sock_connect(config.server_name, portno);
@@ -293,8 +292,16 @@ static int resources_create(struct resources *res)
         DEBUG_PRINT((stdout, "\tbuffer setup\n"));
 
         /* ESTABLISH TCP CONNECTION */
-        /* to avoid race condition and enforce that the server goes to listening
-         * before the client makes its connection request, we use sock_sync_data */
+        /*  FIXME FIXME FIXME this is a dangerous hack that must be fixed ASAP
+         *  in attempting to avoid a race condition of client calling connect()
+         *  even before server does accept(), for now we just make the client
+         *  wait for a second.
+         *  ... don't try this at home
+         */
+
+        struct timespec hackpauselen;
+        hackpauselen.tv_sec = 0;
+        hackpauselen.tv_nsec = 1000000;
 
         if( ! config.server_name ){
             DEBUG_PRINT((stdout, "\twaiting on port %d for TCP connection\n", portno));
@@ -302,14 +309,8 @@ static int resources_create(struct resources *res)
                 fprintf(stderr, RED "sock_connect\n" RESET);
                 return -1;
             }
-        }
-
-        if( sock_sync_data(res->sock, 1, "R", &temp_char ) ){
-            fprintf(stderr, "sync error while in data transfer\n");
-            return -1;
-        }
-
-        if( config.server_name ){
+        } else {
+            nanosleep(&mytime, NULL); //FIXME
             if( 0 > (c->sock = sock_connect(config.server_name, portno))){
                 fprintf(stderr, RED "sock_connect\n" RESET);
                 return -1;
@@ -364,12 +365,12 @@ static int sock_connect(const char *servername, int port)
 
     sockfd = getaddrinfo (servername, service, &hints, &resolved_addr);
 
-    if (sockfd < 0)
-    {
+    if (sockfd < 0){
         fprintf (stderr, "%s for %s:%d\n", gai_strerror (sockfd), servername,
                 port);
         goto sock_connect_exit;
     }
+
     /* Search through results and find the one we want */
     for (iterator = resolved_addr; iterator; iterator = iterator->ai_next)
     {
