@@ -283,7 +283,7 @@ static int resources_create(struct resources *res)
             fprintf(stderr, "failed to malloc c->buf\n");
             return -1;
         }
-        DEBIUG_PRINT((stdout,"2\n"));
+        DEBUG_PRINT((stdout,"2\n"));
         memset(c->buf, 0x1, config.xfer_unit);
         DEBUG_PRINT((stdout, "buffer setup\n"));
 
