@@ -230,23 +230,24 @@ static void resources_init(struct resources *res)
 static int resources_create(struct resources *res)
 {
     int rc = 0, i;
+    u_int32_t portno = config.tcp_port;
     struct config_t *config_other = (struct config_t *) malloc(sizeof(struct config_t));
 
     if(config.server_name){
-        res->sock = sock_connect(config.server_name, config.tcp_port);
+        res->sock = sock_connect(config.server_name, portno);
         if(res->sock < 0){
             fprintf (stderr,
                     "failed to establish TCP connection to server %s, port %d\n",
-                    config.server_name, config.tcp_port);
+                    config.server_name, portno);
             return -1;
         }
     } else {
-        DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", config.tcp_port));
-        res->sock = sock_connect(NULL, config.tcp_port);
+        DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", portno));
+        res->sock = sock_connect(NULL, portno);
         if (res->sock < 0){
             fprintf (stderr,
                     "failed to establish TCP connection with client on port %d\n",
-                    config.tcp_port);
+                    portno);
             return -1;
         }
     }
@@ -276,33 +277,45 @@ static int resources_create(struct resources *res)
     res->conn = (struct connection **) malloc(sizeof(struct connection *) * 
             config.threads);
 
-    for(i=0; i < config.threads; i++){
-        DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket\n", i));
+    for(i=0; i<config.threads; i++){
+        portno++;
+
+        /* SET UP BUFFER */
+        DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket
+                     on port %u"), i, portno);
         res->conn[i] = (struct connection *) malloc(sizeof(struct connection));
-        struct connection *c = res->conn[i];
+        struct conection *c = res->conn[i];
         if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
             fprintf(stderr, "failed to malloc c->buf\n");
             return -1;
         }
         memset(c->buf, 0x1, config.xfer_unit);
-        DEBUG_PRINT((stdout, "buffer setup\n"));
+        DEBUG_PRINT((stdout, "\tbuffer setup\n"));
 
-        //TODO what if config.tcp_port + i + 1 is already in use?
-        if (config.server_name) {
-            if( 0 > (c->sock = sock_connect(config.server_name, config.tcp_port+i+1))) {
-                fprintf(stderr, RED "sock_connect\n" RESET);
-                return -1;
-            }
-        } else {
-            DEBUG_PRINT((stdout, "waiting on port %d for TCP connection\n", 
-                        config.tcp_port));
-            if( 0 > (c->sock = sock_connect(NULL, config.tcp_port+i+1)) ){
+        /* ESTABLISH TCP CONNECTION */
+        /* to avoid race condition and enforce that the server goes to listening
+         * before the client makes its connection request, we use sock_sync_data */
+
+        if( ! config.server_name ){
+            DEBUG_PRINT((stdout, "\twaiting on port %d for TCP connection\n", portno));
+            if( 0 > (c->sock = sock_connect(NULL, portno)) ){
                 fprintf(stderr, RED "sock_connect\n" RESET);
                 return -1;
             }
         }
-        DEBUG_PRINT((stdout, "TCP connection established\n"));
+        if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+            fprintf(stderr, "sync error while in data transfer\n");
+            return -1;
+        }
+        if( config.server_name ){
+            if( 0 > (c->sock = sock_connect(config.server_name, portno))){
+                fprintf(stderr, RED "sock_connect\n" RESET);
+                return -1;
+            }
+        }
+        DEBUG_PRINT((stdout, "\tTCP connection established\n")); 
     }
+
 
     /* PRINT TCP WINDOW SIZE */
 
@@ -370,7 +383,7 @@ static int sock_connect(const char *servername, int port)
                     sockfd = -1;
                 }
             } else {
-                /* Server mode. Set up listening socket an accept a connection */
+                /* Server mode. Set up listening socket and accept a connection */
                 listenfd = sockfd;
                 sockfd = -1;
                 if (bind (listenfd, iterator->ai_addr, iterator->ai_addrlen))
