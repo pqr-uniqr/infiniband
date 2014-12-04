@@ -266,6 +266,7 @@ static int resources_create(struct resources *res)
     config.iter = MAX(config.iter, config_other->iter);
     config.config_other = config_other;
     config.threads = MAX(config.threads, config_other->threads);
+    threads = (pthread_t *) malloc(sizeof(pthread_t) * config.threads);
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
 
@@ -279,12 +280,10 @@ static int resources_create(struct resources *res)
         DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket\n", i));
         res->conn[i] = (struct connection *) malloc(sizeof(struct connection));
         struct connection *c = res->conn[i];
-        DEBUG_PRINT((stdout,"1\n"));
         if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
             fprintf(stderr, "failed to malloc c->buf\n");
             return -1;
         }
-        DEBUG_PRINT((stdout,"2\n"));
         memset(c->buf, 0x1, config.xfer_unit);
         DEBUG_PRINT((stdout, "buffer setup\n"));
 
