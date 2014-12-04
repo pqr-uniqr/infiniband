@@ -278,10 +278,12 @@ static int resources_create(struct resources *res)
     for(i=0; i < config.threads; i++){
         DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket\n", i));
         struct connection *c = res->conn[i];
+        DEBIUG_PRINT((stdout,"1\n"));
         if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
             fprintf(stderr, "failed to malloc c->buf\n");
             return -1;
         }
+        DEBIUG_PRINT((stdout,"2\n"));
         memset(c->buf, 0x1, config.xfer_unit);
         DEBUG_PRINT((stdout, "buffer setup\n"));
 
