@@ -310,7 +310,7 @@ static int resources_create(struct resources *res)
                 return -1;
             }
         } else {
-            nanosleep(&mytime, NULL); //FIXME
+            nanosleep(&hackpauselen, NULL); //FIXME
             if( 0 > (c->sock = sock_connect(config.server_name, portno))){
                 fprintf(stderr, RED "sock_connect\n" RESET);
                 return -1;
