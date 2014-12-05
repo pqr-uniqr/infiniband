@@ -6,6 +6,7 @@ struct config_t config = {
     0,  /* xfer unit */
     0,  /* iterations  */
     1, /* threads */
+    BANDWIDTH, /* measure */
     NULL,
 };
 
@@ -40,10 +41,11 @@ int main ( int argc, char *argv[] )
             {.name="xfer-unit", .has_arg=1, .val='b'},
             {.name="iter", .has_arg=1, .val='i'},
             {.name="threads", .has_arg=1, .val='t'},
+            {.name="measure", .has_arg=1, .val='m'},
             {.name=NULL, .has_arg=0, .val='\0'},
         };
 
-        if( (c = getopt_long(argc, argv, "b:i:t:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc, argv, "b:i:t:m:", long_options, NULL)) == -1 ) break;
 
         switch(c){
             case 'b':
@@ -57,6 +59,14 @@ int main ( int argc, char *argv[] )
                 break;
             case 't':
                 config.threads = strtoul(optarg, NULL, 0);
+                break;
+            case 'm':
+                if( ! strcmp(optarg, "l") || ! strcmp(optarg, "lat") || 
+                        ! strcmp(optarg, "latency") )
+                    config.measure = LATENCY;
+                else if( ! strcmp(optarg, "b") || ! strcmp(optarg, "bw") || 
+                        ! strcmp(optarg, "bandwidth") )
+                    config.measure = BANDWIDTH;
                 break;
             default:
                 return 1;

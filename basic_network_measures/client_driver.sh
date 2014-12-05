@@ -201,7 +201,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     echo "#verb: $OP"  >> $FILEPATH
     printheader >> $FILEPATH
     cecho "starting experiment..." $green
-    cecho "STDERR OUTPUT: " $red
+    cecho "STDERR: " $red
 
     # TODO hypothetical code
     echo "WARNING: YOU'RE RUNNING HYPOCODE"
@@ -214,7 +214,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
 else
     printheader >> $FILEPATH
     cecho "starting experiment..." $green
-    cecho "STDERR OUTPUT: " $red
+    cecho "STDERR: " $red
 
     # TODO hypothetical code
     echo "WARNING: YOU'RE RUNNING HYPOCODE"

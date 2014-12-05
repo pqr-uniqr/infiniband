@@ -43,6 +43,9 @@
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
+#define BANDWIDTH 0
+#define LATENCY 1
+
 
 #define REPORT_FMT "%-7d\t%d\t%-7.2f\t%-7.2f\t%7.2f\n"
 #define ALLOCATE(var,type,size)                                  \
@@ -83,6 +86,7 @@ struct config_t
     enum ibv_wr_opcode opcode;     /* requested op */
     int crt;            /* what to test for */
     int threads;        /* number of threads to use */
+    int measure;
     struct config_t *config_other;
 };
 

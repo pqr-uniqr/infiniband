@@ -18,6 +18,7 @@ struct config_t config =
     -1,             /* opcode */
     CRT_DEF,       /* criteria */
     1,              /* number of threads */
+    BANDWIDTH,      /* measure */
     NULL,
 };
 
@@ -62,6 +63,7 @@ main ( int argc, char *argv[] )
             {.name = "verb", .has_arg=1, .val= 'v'},
             {.name = "criteria", .has_arg=1, .val='c'},
             {.name = "threads", .has_arg = 1, .val='t'},
+            {.name = "measure", .has_arg = 1, .val='m'},
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
@@ -127,6 +129,14 @@ main ( int argc, char *argv[] )
                     usage(argv[0]);
                     return EXIT_FAILURE;
                 }
+                break;
+            case 'm':
+                if( ! strcmp(optarg, "l") || ! strcmp(optarg, "lat") || 
+                        ! strcmp(optarg, "latency") )
+                    config.measure = LATENCY;
+                else if( ! strcmp(optarg, "b") || ! strcmp(optarg, "bw") || 
+                        ! strcmp(optarg, "bandwidth") )
+                    config.measure = BANDWIDTH;
                 break;
             default:
                 usage (argv[0]);

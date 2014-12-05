@@ -37,6 +37,9 @@
 #define CPUNO 0
 
 
+#define BANDWIDTH 0
+#define LATENCY 1
+
 #ifdef DEBUG
 # define DEBUG_PRINT(x) fprintf x
 #else
@@ -58,6 +61,7 @@ struct config_t {
     size_t xfer_unit;
     int iter;
     int threads;
+    int measure;
     struct config_t *config_other;
 };
 
