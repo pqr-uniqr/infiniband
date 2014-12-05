@@ -182,7 +182,7 @@ fi
 # if this is called on an existing file (such as /dev/null), won't really hurt
 touch "$FILEPATH"
 echo "#$EXEC experiment to measure $MEASURE: " > $FILEPATH
-echo "Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" >> $FILEPATH
+echo "#Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" >> $FILEPATH
 echo "#* to reproduce this result, use $GITVER *" >> $FILEPATH
 
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
@@ -217,8 +217,6 @@ else
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
-    # TODO hypothetical code
-    echo "WARNING: YOU'RE RUNNING HYPOCODE"
     # RUN IP EXPERIMENT
     for i in `seq 1 $POW`; do
         ./$EXEC -b $i -i $ITER -t $THREAD -m $MEASURE $ADDR >> $FILEPATH
