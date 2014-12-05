@@ -578,8 +578,7 @@ static void print_report( void )
         printf( REPORT_FMT_BW, (int) config.xfer_unit, 
                 config.iter, avg_bw, ucpu, scpu);
     } else if( config.measure == LATENCY ){
-        fprintf(stderr, "latency: %ld, config.iter: %d, avg_lat:%f\n", latency, config.iter, latency / config.iter);
-        avg_lat = latency / config.iter;
+        avg_lat = (double) latency / (double) config.iter;
         printf( REPORT_FMT_LAT, (int) config.xfer_unit, 
                 config.iter, avg_lat, 0, 0);
     }
