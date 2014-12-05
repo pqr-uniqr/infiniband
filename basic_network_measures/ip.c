@@ -27,6 +27,7 @@ int main ( int argc, char *argv[] )
     int rc = 1, i;
     struct resources res;
     char temp_char;
+    void * (*functorun)(void *);
 
     pthread_attr_t attr;
     CPU_ZERO( &cpuset );
@@ -109,9 +110,16 @@ int main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+    // TODO this code might be better off somewhere else
+    if(config.measure == BANDWIDTH){
+        functorun = (void * (*)(void *)) &run_iter_bw;
+    } else if(config.measure == LATENCY){
+        functorun = (void * (*)(void *)) &run_iter_lat;
+    }
+
     for(i=0;i < config.threads; i++){
-        if( errno = pthread_create( &threads[i], &attr, 
-                    (void * (*)(void *)) run_iter, (void *) res.conn[i]) ){
+        if( errno = pthread_create( &threads[i], &attr, functorun, 
+                    (void *) res.conn[i]) ){
             perror("pthread_create");
             goto main_exit;
         }
@@ -126,19 +134,25 @@ int main ( int argc, char *argv[] )
     } while (i);
     DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
-    get_usage( getpid(), &pstart, CPUNO );
-    gettimeofday( &tposted, NULL );
 
-    /* SIGNAL THREADS TO START WORK */
-    pthread_cond_broadcast(&start_cond);
-    for(i=0; i < config.threads; i++)
-        if(errno = pthread_join(threads[i], NULL)){
-            perror("pthread_join");
-            goto main_exit;
-        }
+    if( config.measure == BANDWIDTH ){
+        get_usage( getpid(), &pstart, CPUNO );
+        gettimeofday( &tposted, NULL );
 
-    gettimeofday( &tcompleted, NULL );
-    get_usage( getpid(), &pend, CPUNO );
+        /* SIGNAL THREADS TO START WORK */
+        pthread_cond_broadcast(&start_cond);
+        for(i=0; i < config.threads; i++)
+            if(errno = pthread_join(threads[i], NULL)){
+                perror("pthread_join");
+                goto main_exit;
+            }
+
+        gettimeofday( &tcompleted, NULL );
+        get_usage( getpid(), &pend, CPUNO );
+    } else if ( config.measure = LATENCY ){
+
+
+    }
 
     DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
     DEBUG_PRINT((stdout, YEL "run_iter finished, headed to final socket sync\n" RESET));
@@ -156,7 +170,7 @@ main_exit:
     return EXIT_SUCCESS;
 }				
 
-static int run_iter(void *param)
+static int run_iter_bw(void *param)
 {
 
     int i, rc, bytes_read, left_to_read;
@@ -229,6 +243,11 @@ static int run_iter(void *param)
     }
 
     return 0;
+}
+
+static int run_iter_lat(void *param)
+{
+    return 1;
 }
 
 static void resources_init(struct resources *res)

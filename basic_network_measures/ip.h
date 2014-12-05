@@ -76,7 +76,8 @@ struct resources {
 };
 
 
-static int run_iter(void *param);
+static int run_iter_bw(void *param);
+static int run_iter_lat(void *param);
 static void resources_init(struct resources *res);
 static int resources_create(struct resources *res);
 static int sock_connect(const char *servername, int port);

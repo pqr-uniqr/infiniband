@@ -154,7 +154,8 @@ then
         then
             cecho "> try again(max 10,000,000,000)" $red
         else
-            cecho "> 10^$ITER iterations each" $green
+            ITER=`echo "10^$ITER" | bc`
+            cecho "> $ITER iterations each" $green
             break
         fi
     done
