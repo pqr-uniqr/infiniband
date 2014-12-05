@@ -256,6 +256,7 @@ static int run_iter_lat(void *param)
     int i, rc, bytes_read, left_to_read;
     uint16_t csum;
     char *read_to;
+    long elapsed;
     struct connection *conn = (struct connection *) param;
     pthread_t thread = pthread_self();
 
@@ -291,7 +292,9 @@ static int run_iter_lat(void *param)
             rc = write(conn->sock, conn->buf, config.xfer_unit);
             gettimeofday( &tcompleted, NULL );
             //FIXME assuming none of the iterations will last more than a second
-            latency += tcompleted.tv_usec - tposted.tv_usec;
+            elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
+                (tposted.tv_sec * 1e6 + tposted.tv_usec);
+            latency += elapsed;
 
             if(rc < config.xfer_unit){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
@@ -575,7 +578,7 @@ static void print_report( void )
         printf( REPORT_FMT_BW, (int) config.xfer_unit, 
                 config.iter, avg_bw, ucpu, scpu);
     } else if( config.measure == LATENCY ){
-        fprintf(stderr, "latency: %ld, config.iter: %d, avg_lat:\n", latency, config.iter, latency / config.iter);
+        fprintf(stderr, "latency: %ld, config.iter: %d, avg_lat:%f\n", latency, config.iter, latency / config.iter);
         avg_lat = latency / config.iter;
         printf( REPORT_FMT_LAT, (int) config.xfer_unit, 
                 config.iter, avg_lat, 0, 0);
