@@ -17,7 +17,8 @@ cecho(){
     tput sgr0
     return
 }  
-printheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
+printbwheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
+printlatheader() { echo -e "#bytes\titer.\tlatency"; }
 ctrl_c(){
     make clean
     exit
@@ -148,6 +149,8 @@ then
 elif [ "${MEASURE}" = 'lat' ]
 then
     cecho "> Latency test: will test transfer sizes from 1 byte, 2 bytes, ...., 32 bytes" $white
+    POW=5
+    bytes=`echo "2^$POW" | bc`
     cecho "> I will run 10^y many iterations for each transfer sizes. Specify y (max 10)" $white
     while read ITER; do 
         if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
@@ -200,7 +203,15 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
         fi
     done
     echo "#verb: $OP"  >> $FILEPATH
-    printheader >> $FILEPATH
+
+    if [ "${MEASURE}" = 'bw' ]
+    then
+        printbwheader >> $FILEPATH
+    elif 
+    then
+        printlatheader >> $FILEPATH
+    fi
+
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
@@ -213,7 +224,14 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     done
 
 else
-    printheader >> $FILEPATH
+    if [ "${MEASURE}" = 'bw' ]
+    then
+        printbwheader >> $FILEPATH
+    elif 
+    then
+        printlatheader >> $FILEPATH
+    fi
+
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
