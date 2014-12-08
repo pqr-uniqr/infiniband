@@ -207,7 +207,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     if [ "${MEASURE}" = 'bw' ]
     then
         printbwheader >> $FILEPATH
-    elif [ "${MEASURE}" = 'lat']
+    elif [ "${MEASURE}" = 'lat' ]
     then
         printlatheader >> $FILEPATH
     fi
@@ -227,7 +227,7 @@ else
     if [ "${MEASURE}" = 'bw' ]
     then
         printbwheader >> $FILEPATH
-    elif [ "${MEASURE}" = 'lat']
+    elif [ "${MEASURE}" = 'lat' ]
     then
         printlatheader >> $FILEPATH
     fi
