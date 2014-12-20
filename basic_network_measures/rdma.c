@@ -767,6 +767,7 @@ resources_create (struct resources *res)
         /* CREATE QUEUE PAIR */
         memset(&qp_init_attr, 0, sizeof (qp_init_attr));
 
+        // FIXME we've been doing RC all along
         qp_init_attr.qp_type = IBV_QPT_RC;
         //qp_init_attr.sq_sig_all = 0; 
         qp_init_attr.send_cq = res->assets[i]->cq;

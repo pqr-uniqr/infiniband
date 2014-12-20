@@ -215,8 +215,6 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
-    # TODO hypothetical code
-    echo "WARNING: YOU'RE RUNNING HYPOCODE"
     # RUN RDMA EXPERIMENT
     for i in `seq 1 $POW`; do
       ./$EXEC -v $OP -i $ITER -b $i -t $THREAD -m $MEASURE $ADDR >> $FILEPATH
