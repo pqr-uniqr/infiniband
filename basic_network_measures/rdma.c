@@ -407,19 +407,19 @@ run_iter_server(void *param)
     sge.lkey = conn->mr->lkey;
     sge.length = config.xfer_unit;
 
-    struct ibv_recv_wr *rr;
+    struct ibv_recv_wr rr;
     memset(&rr, 0, sizeof(rr));
-    rr->sg_list = &sge;
-    rr->num_sge = 1;
-    rr->next = NULL;
-    rr->wr_id = 0;
+    rr.sg_list = &sge;
+    rr.num_sge = 1;
+    rr.next = NULL;
+    rr.wr_id = 0;
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
 
     // solves initial race condition
-    if( errno = ibv_post_recv(conn->qp, rr, &bad_wr) ){
+    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
         perror("ibv_post_recv");
         return -1;
     }
@@ -446,7 +446,7 @@ run_iter_server(void *param)
                     DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
                     rcnt++;
 
-                    if( errno = ibv_post_recv( conn->qp, rr, &bad_wr ) ){
+                    if( errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
                         perror("ibv_post_recv");
                         return -1;
                     }
