@@ -60,11 +60,6 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
-#define CRT_DEF 0
-#define CRT_BW 1
-#define CRT_LAT 2
-#define CRT_CPU 3
-
 #define CQ_MODERATION 50
 
 struct metrics_t
@@ -132,8 +127,8 @@ struct proctime_t
 
 
 /*  */
-static int run_iter_bw( void *param );
-static int run_iter_lat( void *param );
+static int run_iter_client( void *param );
+static int run_iter_server( void *param );
 
 /* QUEUE PAIR STATE MODIFICATION */
 static int modify_qp_to_init(struct ibv_qp *qp);

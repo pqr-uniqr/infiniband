@@ -36,7 +36,7 @@ cpu_set_t cpuset;
 pthread_t *threads;
 
 /* MAIN */
-int
+    int
 main ( int argc, char *argv[] )
 {
     int i, iter, rc = 0;
@@ -165,7 +165,7 @@ main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "resources_init() successful\n" RESET));
 
     // FROM HERE ON: functions containing malloc -----------------------------------
-    
+
     if( -1 == resources_create(&res) ){
         fprintf(stderr , RED "resources_create\n" RESET);
         goto main_exit;
@@ -183,14 +183,15 @@ main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-
-    if( config.measure == BANDWIDTH ){
-        functorun = (void *(*)(void *)) &run_iter_bw;
-    } else if ( config.measure == LATENCY ){
-        functorun = (void *(*)(void *)) &run_iter_lat;
-    }
-
+    // this is a bit convoluted
     if( config.opcode != -1 ){
+
+        if ( config.server_name ){
+            functorun = (void *(*)(void *)) &run_iter_client;
+        } else {
+            functorun = (void *(*)(void *)) &run_iter_server;
+        }
+
         for(i=0; i < config.threads; i++){
             if( errno = pthread_create( &threads[i], &attr, functorun, 
                         (void *) res.assets[i]) ){
@@ -207,33 +208,52 @@ main ( int argc, char *argv[] )
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
-
-
         /* SIGNAL THREADS TO START WORK */
 
-        if ( config.measure == BANDWIDTH ){
+        if( config.measure == BANDWIDTH ){
             get_usage( getpid(), &pstart, CPUNO );
             gettimeofday( &tposted, NULL );
+        }
 
-            pthread_cond_broadcast(&start_cond);
-            for(i=0; i < config.threads; i++)
-                if(errno = pthread_join(threads[i], NULL)){
-                    perror("pthread_join");
-                    goto main_exit;
-                }
+        pthread_cond_broadcast(&start_cond);
+        for( i=0; i < config.threads; i++ )
+            if(errno = pthread_join(threads[i], NULL)){
+                perror("pthread_join");
+                goto main_exit;
+            }
 
+        if( config.measure == BANDWIDTH ){
             gettimeofday( &tcompleted, NULL );
             get_usage( getpid(), &pend, CPUNO );
-        } else if ( config.measure == LATENCY ){
-            pthread_cond_broadcast(&start_cond);
-            for(i=0; i < config.threads; i++)
-                if(errno = pthread_join(threads[i], NULL)){
-                    perror("pthread_join");
-                    goto main_exit;
-                }
         }
 
         DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
+
+        /*
+           if ( config.measure == BANDWIDTH ){
+
+           get_usage( getpid(), &pstart, CPUNO );
+           gettimeofday( &tposted, NULL );
+
+           pthread_cond_broadcast(&start_cond);
+           for(i=0; i < config.threads; i++)
+           if(errno = pthread_join(threads[i], NULL)){
+           perror("pthread_join");
+           goto main_exit;
+           }
+
+           gettimeofday( &tcompleted, NULL );
+           get_usage( getpid(), &pend, CPUNO );
+
+           } else if ( config.measure == LATENCY ){
+           pthread_cond_broadcast(&start_cond);
+           for(i=0; i < config.threads; i++)
+           if(errno = pthread_join(threads[i], NULL)){
+           perror("pthread_join");
+           goto main_exit;
+           }
+           }*/
+
     }
 
     if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
@@ -266,34 +286,34 @@ main_exit:
     return EXIT_FAILURE;
 }
 
-static int
-run_iter_bw(void *param)
+    static int
+run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
-
-    int rc, scnt=0, ccnt=0, ne, i;
-
-    struct ibv_send_wr sr, *bad_wr=NULL;
-    struct ibv_wc *wc;
-    struct ibv_sge sge;
     struct ib_assets *conn = (struct ib_assets *) param;
+    int rc, scnt=0, ccnt=0, ne, i;
+    long int elapsed;
     pthread_t thread = pthread_self();
-
     DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
 
+    struct ibv_wc *wc;
+    struct ibv_send_wr *bad_wr=NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
 
-    memset(&sr, 0, sizeof(sr));
-    sr.next = NULL;
-    sr.wr_id = 0;
-    sr.sg_list = &sge;
-    sr.num_sge = 1;
-    sr.opcode = config.opcode;
+    struct ibv_send_wr sr;
+    struct ibv_sge sge;
 
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
-    sge.length = config.xfer_unit;
     sge.lkey = conn->mr->lkey;
+    sge.length = config.xfer_unit;
+
+    memset(&sr, 0, sizeof(sr));
+    sr.sg_list = &sge;
+    sr.num_sge = 1;
+    sr.opcode = config.opcode;
+    sr.next = NULL;
+    sr.wr_id = 0;
 
     if( config.opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = conn->remote_props.addr;
@@ -301,7 +321,7 @@ run_iter_bw(void *param)
     }
 
     /* WAIT TO SYNCHRONIZE */
-    
+
     pthread_mutex_lock( &start_mutex );
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
@@ -321,9 +341,18 @@ run_iter_bw(void *param)
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
 
+            if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
+
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
                 perror("post_send");
                 return -1;
+            }
+
+            if( config.measure == LATENCY ){
+                gettimeofday( &tcompleted, NULL );
+                elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+                    (tposted.tv_sec * 1e6 + tposted.tv_usec);
+                latency += elapsed;
             }
 
             ++scnt;
@@ -361,43 +390,39 @@ run_iter_bw(void *param)
     return 0;
 }
 
-static int
-run_iter_lat(void *param)
+    static int
+run_iter_server(void *param)
 {
-    /* DECLARE AND INITIALIZE */
-
-    int rc, scnt=0, ccnt=0, ne, i;
-    long int elapsed;
-
-    struct ibv_send_wr sr, *bad_wr=NULL;
-    struct ibv_wc *wc;
-    struct ibv_sge sge;
-    struct ib_assets *conn = (struct ib_assets *) param;
     pthread_t thread = pthread_self();
-
     DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
+    struct ib_assets *conn = (struct ib_assets *) param;
+    int rcnt = 0;
+    int ne, i;
 
-    ALLOCATE(wc, struct ibv_wc, 1);
-
-    memset(&sr, 0, sizeof(sr));
-    sr.next = NULL;
-    sr.wr_id = 0;
-    sr.sg_list = &sge;
-    sr.num_sge = 1;
-    sr.opcode = config.opcode;
-
+    struct ibv_sge sge; 
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
-    sge.length = config.xfer_unit;
     sge.lkey = conn->mr->lkey;
+    sge.length = config.xfer_unit;
 
-    if( config.opcode != IBV_WR_SEND ){
-        sr.wr.rdma.remote_addr = conn->remote_props.addr;
-        sr.wr.rdma.rkey = conn->remote_props.rkey;
+    struct ibv_recv_wr *rr;
+    memset(&rr, 0, sizeof(rr));
+    rr.sg_list = sge;
+    rr.num_sge = 1;
+    rr.opcode = config.opcode; // always IBV_SEND_WR
+    rr.next = NULL;
+    rr.wr_id = 0;
+
+    struct ibv_wc *wc;
+    struct ibv_rev_wr *bad_wr = NULL;
+    ALLOCATE(wc, struct ibv_wc, 1);
+
+    // solves initial race condition
+    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+        perror("ibv_post_recv")
+        return -1;
     }
 
-    /* WAIT TO SYNCHRONIZE */
-    
     pthread_mutex_lock( &start_mutex );
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
@@ -408,66 +433,41 @@ run_iter_lat(void *param)
     pthread_mutex_unlock( &start_mutex );
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
+    while( rcnt < config.iter ){
 
-    /* GO! */
-    while( scnt < config.iter || ccnt < config.iter ){
+        do {
+            ne = ibv_poll_cq(conn->cq, 1, wc);
+            if(ne > 0){
+                for(i = 0; i < ne ; i++){
+                    if( wc[i].status != IBV_WC_SUCCESS )
+                        check_wc_status(wc[i].status);
 
-        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR ){
+                    DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
+                    rcnt++;
 
-            if((scnt % CQ_MODERATION) == 0)
-                sr.send_flags &= ~IBV_SEND_SIGNALED;
-
-    
-
-            gettimeofday( &tposted, NULL );
-            if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
-                perror("post_send");
-                return -1;
-            }
-            gettimeofday( &tcompleted, NULL );
-            elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-                (tposted.tv_sec * 1e6 + tposted.tv_usec);
-            latency += elapsed;
-
-            ++scnt;
-
-            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
-                sr.send_flags |= IBV_SEND_SIGNALED;
-        }
-
-        if( ccnt < config.iter ){
-            do {
-                ne = ibv_poll_cq(conn->cq, 1, wc);
-                if( ne > 0 ){
-                    for( i = 0; i < ne; i++){
-                        if(wc[i].status != IBV_WC_SUCCESS)
-                            check_wc_status(wc[i].status);
-
-                        DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
-                        ccnt += CQ_MODERATION;
+                    if( errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
+                        perror("ibv_post_recv");
+                        return -1;
                     }
+
                 }
-
-            } while (ne > 0);
-
-            if( ne < 0 ){
-                fprintf(stderr, RED "poll cq\n" RESET);
-                return -1;
             }
-        }
 
+        } while( ne > 0 )
+
+        if( ne < 0 ){
+            fprintf(stderr, RED "poll cq\n" RESET);
+            return -1;
+        }
     }
 
     free(wc);
-
-    DEBUG_PRINT((stdout, "finishing run_iter\n"));
-    return 0;
 }
 
 
 /* QUEUE PAIR STATE MODIFICATION */
 
-static int
+    static int
 modify_qp_to_init(struct ibv_qp *qp)
 {
     int flags = IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS;
@@ -487,7 +487,7 @@ modify_qp_to_init(struct ibv_qp *qp)
     return 0;
 }
 
-static int
+    static int
 modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t * dgid)
 {
     struct ibv_qp_attr attr;
@@ -523,7 +523,7 @@ modify_qp_to_rtr (struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, uint8_t
     return 0;
 }
 
-static int
+    static int
 modify_qp_to_rts (struct ibv_qp *qp)
 {
     struct ibv_qp_attr attr;
@@ -546,7 +546,7 @@ modify_qp_to_rts (struct ibv_qp *qp)
 }
 
 // -1 on error, 0 on success
-static int
+    static int
 connect_qp(struct resources *res)
 {
     struct cm_con_data_t local_con_data, remote_con_data, tmp_con_data;
@@ -581,7 +581,7 @@ connect_qp(struct resources *res)
         memcpy(local_con_data.gid, &my_gid, 16);
 
         if( 0 > sock_sync_data(res->sock, sizeof(struct cm_con_data_t) , 
-                        (char *) &local_con_data, (char *) &tmp_con_data) ){
+                    (char *) &local_con_data, (char *) &tmp_con_data) ){
             fprintf(stderr, RED "failed to exchange conn data\n" RESET);
             return -1;
         }
@@ -616,7 +616,7 @@ connect_qp(struct resources *res)
         DEBUG_PRINT((stdout, "Modified QP state to INIT\n"));
 
         if (-1 == modify_qp_to_rtr(qp, remote_con_data.qp_num, remote_con_data.lid,
-                remote_con_data.gid)){
+                    remote_con_data.gid)){
             fprintf (stderr, "failed to modify QP state to RTR\n");
             return -1;
         }
@@ -640,7 +640,7 @@ connect_qp(struct resources *res)
 
 
 /* RESOURCE MANAGEMENT */
-static void
+    static void
 resources_init (struct resources *res)                                         
 {
     memset (res, 0, sizeof *res);                                              
@@ -648,7 +648,7 @@ resources_init (struct resources *res)
 }   
 
 // -1 on error, 0 on success
-static int
+    static int
 resources_create (struct resources *res)
 {
     struct ibv_device **dev_list=NULL, *ib_dev=NULL;
@@ -684,6 +684,10 @@ resources_create (struct resources *res)
     config.threads =    MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     config.config_other = config_other;
+
+    if( !config.server_name && config_other->opcode == IBV_WR_SEND )
+        config.opcode = IBV_WR_SEND;
+
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
 
@@ -763,7 +767,7 @@ resources_create (struct resources *res)
                     "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n",
                     res->assets[i]->buf, res->assets[i]->mr->lkey, 
                     res->assets[i]->mr->rkey, mr_flags));
-            
+
         /* CREATE QUEUE PAIR */
         memset(&qp_init_attr, 0, sizeof (qp_init_attr));
 
@@ -789,7 +793,7 @@ resources_create (struct resources *res)
 }
 
 // -1 on error, 0 on success
-static int
+    static int
 resources_destroy( struct resources *res )
 {
     int i;
@@ -813,30 +817,30 @@ resources_destroy( struct resources *res )
 }
 
 // -1 on error, 0 on success
-static int
+    static int
 conn_destroy( struct ib_assets *conn )
 {
     if (conn->buf)
         free(conn->buf);
 
     if (conn->qp && (errno = ibv_destroy_qp(conn->qp)) ){
-            perror("destroy_qp");
-            return -1;
+        perror("destroy_qp");
+        return -1;
     }
 
     if (conn->mr && (errno = ibv_dereg_mr(conn->mr)) ){
-            perror("dereg_mr");
-            return -1;
+        perror("dereg_mr");
+        return -1;
     }
 
     if (conn->cq && (errno = ibv_destroy_cq(conn->cq)) ){
-            perror("destroy_cq");
-            return -1;
+        perror("destroy_cq");
+        return -1;
     }
 
     if (conn->pd && (errno = ibv_dealloc_pd (conn->pd)) ){
-            perror("dealloc_pd");
-            return -1;
+        perror("dealloc_pd");
+        return -1;
     }
 
     return 0;
@@ -845,7 +849,7 @@ conn_destroy( struct ib_assets *conn )
 /* SOCKET OPERATION WRAPPERS */
 
 // -1 on error, 0 on success
-static int
+    static int
 sock_connect( const char *servername, int port)
 {
     struct addrinfo *resolved_addr = NULL, *iterator;
@@ -905,7 +909,7 @@ sock_connect( const char *servername, int port)
 }
 
 // -1 on error, 0 on success
-int
+    int
 sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 {
     int rc, total_read_bytes = 0;
@@ -927,7 +931,7 @@ sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 }
 
 /* UTILITY */
-static void
+    static void
 usage (const char *argv0)
 {
 
@@ -946,7 +950,7 @@ usage (const char *argv0)
             " -g, --gid_idx <git index> gid index to be used in GRH (default not used)\n");
 }
 
-static void
+    static void
 print_config (void)
 {
     char *op;
@@ -974,7 +978,7 @@ print_config (void)
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
 }
 
-static void
+    static void
 crt_to_str(int code, char **str)
 {
     char *s;
@@ -996,7 +1000,7 @@ crt_to_str(int code, char **str)
     return;
 }
 
-static void
+    static void
 opcode_to_str(int opcode, char **str)
 {
     char *s;
@@ -1021,7 +1025,7 @@ opcode_to_str(int opcode, char **str)
 /*  note on units: bytes/microseconds turns out to be the same as MB/sec
  *
  * */
-static void
+    static void
 print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
@@ -1041,7 +1045,7 @@ print_report(unsigned int iters, unsigned size, int duplex,
     }
 }
 
-static void
+    static void
 check_wc_status(enum ibv_wc_status status)
 {
     switch(status){
@@ -1117,7 +1121,7 @@ check_wc_status(enum ibv_wc_status status)
     }
 }
 
-static uint16_t 
+    static uint16_t 
 checksum(void *vdata, size_t length)
 {
     // Cast the data pointer to one that can be indexed.
@@ -1152,26 +1156,26 @@ checksum(void *vdata, size_t length)
 }
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-static inline uint64_t
+    static inline uint64_t
 htonll (uint64_t x)
 {
     return bswap_64 (x);
 }
 
-static inline uint64_t 
+    static inline uint64_t 
 ntohll (uint64_t x)
 {
     return bswap_64 (x);
 }
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
-static inline uint64_t 
+    static inline uint64_t 
 htonll (uint64_t x)
 {
     return x;
 }
 
-static inline uint64_t 
+    static inline uint64_t 
 ntohll (uint64_t x)
 {
     return x;
