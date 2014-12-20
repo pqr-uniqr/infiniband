@@ -24,6 +24,7 @@ struct config_t config =
 
 struct timeval tposted; 
 struct timeval tcompleted;
+long int latency;
 
 struct pstat pstart;
 struct pstat pend;
@@ -40,9 +41,11 @@ main ( int argc, char *argv[] )
 {
     int i, iter, rc = 0;
     uint16_t csum;
-    struct resources res;
     char temp_char;
+    void * (* functorun) (void *);
+    struct resources res;
     struct timeval cur_time;
+
 
     pthread_attr_t attr;
     CPU_ZERO( &cpuset );
@@ -67,7 +70,7 @@ main ( int argc, char *argv[] )
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:t:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:t:m:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -180,10 +183,17 @@ main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+
+    if( config.measure == BANDWIDTH ){
+        functorun = (void *(*)(void *)) &run_iter_bw;
+    } else if ( config.measure == LATENCY ){
+        functorun = (void *(*)(void *)) &run_iter_lat;
+    }
+
     if( config.opcode != -1 ){
         for(i=0; i < config.threads; i++){
-            if( errno = pthread_create( &threads[i], &attr, 
-                        (void * (*)(void *)) run_iter, (void *) res.assets[i]) ){
+            if( errno = pthread_create( &threads[i], &attr, functorun, 
+                        (void *) res.assets[i]) ){
                 perror("pthread_create");
                 goto main_exit;
             }
@@ -197,20 +207,31 @@ main ( int argc, char *argv[] )
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
-        get_usage( getpid(), &pstart, CPUNO );
-        gettimeofday( &tposted, NULL );
-        
+
 
         /* SIGNAL THREADS TO START WORK */
-        pthread_cond_broadcast(&start_cond);
-        for(i=0; i < config.threads; i++)
-            if(errno = pthread_join(threads[i], NULL)){
-                perror("pthread_join");
-                goto main_exit;
-            }
 
-        gettimeofday( &tcompleted, NULL );
-        get_usage( getpid(), &pend, CPUNO );
+        if ( config.measure == BANDWIDTH ){
+            get_usage( getpid(), &pstart, CPUNO );
+            gettimeofday( &tposted, NULL );
+
+            pthread_cond_broadcast(&start_cond);
+            for(i=0; i < config.threads; i++)
+                if(errno = pthread_join(threads[i], NULL)){
+                    perror("pthread_join");
+                    goto main_exit;
+                }
+
+            gettimeofday( &tcompleted, NULL );
+            get_usage( getpid(), &pend, CPUNO );
+        } else if ( config.measure == LATENCY ){
+            pthread_cond_broadcast(&start_cond);
+            for(i=0; i < config.threads; i++)
+                if(errno = pthread_join(threads[i], NULL)){
+                    perror("pthread_join");
+                    goto main_exit;
+                }
+        }
 
         DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
     }
@@ -219,6 +240,7 @@ main ( int argc, char *argv[] )
         fprintf(stderr, RED "final sync failed\n" RESET);
         goto main_exit;
     }
+
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
     rc = 1;
@@ -245,9 +267,8 @@ main_exit:
 }
 
 static int
-run_iter(void *param)
+run_iter_bw(void *param)
 {
-
     /* DECLARE AND INITIALIZE */
 
     int rc, scnt=0, ccnt=0, ne, i;
@@ -339,6 +360,110 @@ run_iter(void *param)
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
 }
+
+static int
+run_iter_lat(void *param)
+{
+    /* DECLARE AND INITIALIZE */
+
+    int rc, scnt=0, ccnt=0, ne, i;
+    long int elapsed;
+
+    struct ibv_send_wr sr, *bad_wr=NULL;
+    struct ibv_wc *wc;
+    struct ibv_sge sge;
+    struct ib_assets *conn = (struct ib_assets *) param;
+    pthread_t thread = pthread_self();
+
+    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
+
+    ALLOCATE(wc, struct ibv_wc, 1);
+
+    memset(&sr, 0, sizeof(sr));
+    sr.next = NULL;
+    sr.wr_id = 0;
+    sr.sg_list = &sge;
+    sr.num_sge = 1;
+    sr.opcode = config.opcode;
+
+    memset(&sge, 0, sizeof(sge));
+    sge.addr = (uintptr_t) conn->buf;
+    sge.length = config.xfer_unit;
+    sge.lkey = conn->mr->lkey;
+
+    if( config.opcode != IBV_WR_SEND ){
+        sr.wr.rdma.remote_addr = conn->remote_props.addr;
+        sr.wr.rdma.rkey = conn->remote_props.rkey;
+    }
+
+    /* WAIT TO SYNCHRONIZE */
+    
+    pthread_mutex_lock( &start_mutex );
+    if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
+        perror("pthread_setaffinity");
+        return -1;
+    }
+    cnt_threads++;
+    pthread_cond_wait( &start_cond, &start_mutex );
+    pthread_mutex_unlock( &start_mutex );
+
+    DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
+
+    /* GO! */
+    while( scnt < config.iter || ccnt < config.iter ){
+
+        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR ){
+
+            if((scnt % CQ_MODERATION) == 0)
+                sr.send_flags &= ~IBV_SEND_SIGNALED;
+
+    
+
+            gettimeofday( &tposted, NULL );
+            if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
+                perror("post_send");
+                return -1;
+            }
+            gettimeofday( &tcompleted, NULL );
+            elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+                (tposted.tv_sec * 1e6 + tposted.tv_usec);
+            latency += elasped;
+
+            ++scnt;
+
+            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
+                sr.send_flags |= IBV_SEND_SIGNALED;
+        }
+
+        if( ccnt < config.iter ){
+            do {
+                ne = ibv_poll_cq(conn->cq, 1, wc);
+                if( ne > 0 ){
+                    for( i = 0; i < ne; i++){
+                        if(wc[i].status != IBV_WC_SUCCESS)
+                            check_wc_status(wc[i].status);
+
+                        DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
+                        ccnt += CQ_MODERATION;
+                    }
+                }
+
+            } while (ne > 0);
+
+            if( ne < 0 ){
+                fprintf(stderr, RED "poll cq\n" RESET);
+                return -1;
+            }
+        }
+
+    }
+
+    free(wc);
+
+    DEBUG_PRINT((stdout, "finishing run_iter\n"));
+    return 0;
+}
+
 
 /* QUEUE PAIR STATE MODIFICATION */
 
@@ -899,14 +1024,21 @@ static void
 print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
-    double ucpu, scpu;
-    double xfer_total = config.xfer_unit * config.iter * config.threads;
-    long elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
-        - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
-    double avg_bw = xfer_total / elapsed;
-    calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
-    
-    printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
+
+    double ucpu, scpu, xfer_total, avg_bw, avg_lat;
+    long elapsed;
+
+    if( config.measure == BANDWIDTH ){
+        xfer_total = config.xfer_unit * config.iter * config.threads;
+        elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
+            - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
+        avg_bw = xfer_total / elapsed;
+        calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
+        printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
+    } else if (config.measure == LATENCY){
+        avg_lat = (double) latency / (double) config.iter;
+        printf( REPORT_FMT_LAT, (int) config.xfer_unit, config.iter,avg_lat);
+    }
 }
 
 static void

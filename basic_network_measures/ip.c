@@ -177,7 +177,6 @@ main_exit:
 
 static int run_iter_bw(void *param)
 {
-
     int i, rc, bytes_read, left_to_read;
     uint16_t csum;
     char *read_to;
@@ -291,7 +290,6 @@ static int run_iter_lat(void *param)
             gettimeofday( &tposted, NULL );
             rc = write(conn->sock, conn->buf, config.xfer_unit);
             gettimeofday( &tcompleted, NULL );
-            //FIXME assuming none of the iterations will last more than a second
             elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
                 (tposted.tv_sec * 1e6 + tposted.tv_usec);
             latency += elapsed;
