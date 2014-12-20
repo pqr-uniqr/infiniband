@@ -16,7 +16,7 @@ struct config_t config =
     0,              /* xfer_unit */
     0,              /* iter */
     -1,             /* opcode */
-    CRT_DEF,       /* criteria */
+    0,       /* criteria */
     1,              /* number of threads */
     BANDWIDTH,      /* measure */
     NULL,
@@ -116,6 +116,7 @@ main ( int argc, char *argv[] )
                 break;
             case 'c':
                 //awkward!
+                /*
                 if(optarg[0] == 'b'){
                     config.crt = CRT_BW;
                 } else if( optarg[0] == 'l' ){
@@ -125,6 +126,7 @@ main ( int argc, char *argv[] )
                 } else {
                     config.crt = CRT_DEF;
                 }
+                */
                 break;
             case 't':
                 config.threads = strtoul(optarg, NULL, 0);
@@ -407,19 +409,18 @@ run_iter_server(void *param)
 
     struct ibv_recv_wr *rr;
     memset(&rr, 0, sizeof(rr));
-    rr.sg_list = sge;
-    rr.num_sge = 1;
-    rr.opcode = config.opcode; // always IBV_SEND_WR
-    rr.next = NULL;
-    rr.wr_id = 0;
+    rr->sg_list = &sge;
+    rr->num_sge = 1;
+    rr->next = NULL;
+    rr->wr_id = 0;
 
     struct ibv_wc *wc;
-    struct ibv_rev_wr *bad_wr = NULL;
+    struct ibv_recv_wr *bad_wr = NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
 
     // solves initial race condition
-    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
-        perror("ibv_post_recv")
+    if( errno = ibv_post_recv(conn->qp, rr, &bad_wr) ){
+        perror("ibv_post_recv");
         return -1;
     }
 
@@ -445,7 +446,7 @@ run_iter_server(void *param)
                     DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
                     rcnt++;
 
-                    if( errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
+                    if( errno = ibv_post_recv( conn->qp, rr, &bad_wr ) ){
                         perror("ibv_post_recv");
                         return -1;
                     }
@@ -453,7 +454,7 @@ run_iter_server(void *param)
                 }
             }
 
-        } while( ne > 0 )
+        } while( ne > 0 );
 
         if( ne < 0 ){
             fprintf(stderr, RED "poll cq\n" RESET);
@@ -954,7 +955,6 @@ usage (const char *argv0)
 print_config (void)
 {
     char *op;
-    char *crt;
 
     fprintf (stdout, YEL "\n\nCONFIG-------------------------------------------\n" );
     fprintf (stdout, "Device name : \"%s\"\n", config.dev_name);
@@ -966,8 +966,7 @@ print_config (void)
         fprintf (stdout, "GID index : %u\n", config.gid_idx);
 
     opcode_to_str(config.opcode, &op);
-    crt_to_str(config.crt, &crt);
-    fprintf(stdout, "%s operation requested (for %s test)\n", op, crt);
+    fprintf(stdout, "%s operation requested\n", op);
 
     if ( !config.iter|| !config.xfer_unit )
         fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
@@ -976,28 +975,6 @@ print_config (void)
                 config.iter, config.xfer_unit, config.threads );
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
-}
-
-    static void
-crt_to_str(int code, char **str)
-{
-    char *s;
-    switch( code ){
-        case CRT_BW:
-            s = "BANDWIDTH";
-            break;
-        case CRT_LAT:
-            s = "LATENCY";
-            break;
-        case CRT_CPU:
-            s = "CPU USAGE";
-            break;
-        default:
-            s = "ALL";
-    }
-    *str = malloc( strlen(s) );
-    strcpy(*str, s);
-    return;
 }
 
     static void
