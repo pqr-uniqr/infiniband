@@ -418,11 +418,6 @@ run_iter_server(void *param)
     struct ibv_recv_wr *bad_wr = NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
 
-    // solves initial race condition
-    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
-        perror("ibv_post_recv");
-        return -1;
-    }
 
     pthread_mutex_lock( &start_mutex );
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
@@ -432,6 +427,12 @@ run_iter_server(void *param)
     cnt_threads++;
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
+
+    // solves initial race condition
+    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+        perror("ibv_post_recv");
+        return -1;
+    }
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
     while( rcnt < config.iter ){
