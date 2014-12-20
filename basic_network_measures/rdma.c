@@ -427,7 +427,7 @@ run_iter_lat(void *param)
             gettimeofday( &tcompleted, NULL );
             elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
                 (tposted.tv_sec * 1e6 + tposted.tv_usec);
-            latency += elasped;
+            latency += elapsed;
 
             ++scnt;
 
@@ -1024,7 +1024,6 @@ static void
 print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
-
     double ucpu, scpu, xfer_total, avg_bw, avg_lat;
     long elapsed;
 

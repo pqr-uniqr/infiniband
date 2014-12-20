@@ -132,7 +132,8 @@ struct proctime_t
 
 
 /*  */
-static int run_iter( void *param );
+static int run_iter_bw( void *param );
+static int run_iter_lat( void *param );
 
 /* QUEUE PAIR STATE MODIFICATION */
 static int modify_qp_to_init(struct ibv_qp *qp);
