@@ -463,6 +463,8 @@ run_iter_server(void *param)
     }
 
     free(wc);
+    DEBUG_PRINT((stdout, "finishing run_iter\n"));
+    return 0;
 }
 
 
