@@ -266,7 +266,6 @@ main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
     rc = 1;
-
 main_exit:
     if( -1 == resources_destroy(&res) )
         fprintf(stderr, RED "resources_destroy\n" RESET);
@@ -417,7 +416,15 @@ run_iter_server(void *param)
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
+    
 
+    DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n"), (int) thread);
+
+    // solves initial race condition
+    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+        perror("ibv_post_recv");
+        return -1;
+    }
 
     pthread_mutex_lock( &start_mutex );
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
@@ -428,11 +435,6 @@ run_iter_server(void *param)
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
 
-    // solves initial race condition
-    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
-        perror("ibv_post_recv");
-        return -1;
-    }
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
     while( rcnt < config.iter ){
