@@ -418,7 +418,7 @@ run_iter_server(void *param)
     ALLOCATE(wc, struct ibv_wc, 1);
     
 
-    DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n"), (int) thread);
+    DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
     // solves initial race condition
     if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
