@@ -210,6 +210,15 @@ main ( int argc, char *argv[] )
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
+
+        /* FINAL SOCKET SYNC SO THREADS MAY HAVE TIME TO POST RECV */
+
+        if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+            fprintf(stderr, RED "final sync failed\n" RESET);
+            goto main_exit;
+        }
+
+
         /* SIGNAL THREADS TO START WORK */
 
         if( config.measure == BANDWIDTH ){
@@ -295,31 +304,30 @@ run_iter_client(void *param)
     int rc, scnt=0, ccnt=0, ne, i;
     long int elapsed;
     pthread_t thread = pthread_self();
-    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
 
-    struct ibv_wc *wc;
-    struct ibv_send_wr *bad_wr=NULL;
-    ALLOCATE(wc, struct ibv_wc, 1);
+    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
 
     struct ibv_send_wr sr;
     struct ibv_sge sge;
-
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
     sge.lkey = conn->mr->lkey;
     sge.length = config.xfer_unit;
-
     memset(&sr, 0, sizeof(sr));
     sr.sg_list = &sge;
     sr.num_sge = 1;
     sr.opcode = config.opcode;
     sr.next = NULL;
     sr.wr_id = 0;
-
     if( config.opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = conn->remote_props.addr;
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
+
+    struct ibv_wc *wc;
+    struct ibv_send_wr *bad_wr=NULL;
+    ALLOCATE(wc, struct ibv_wc, 1);
+
 
     /* WAIT TO SYNCHRONIZE */
 
@@ -405,7 +413,6 @@ run_iter_server(void *param)
     sge.addr = (uintptr_t) conn->buf;
     sge.lkey = conn->mr->lkey;
     sge.length = config.xfer_unit;
-
     struct ibv_recv_wr rr;
     memset(&rr, 0, sizeof(rr));
     rr.sg_list = &sge;
@@ -697,7 +704,6 @@ resources_create (struct resources *res)
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
 
-
     /* GET IB DEVICES AND SELECT ONE */
 
     DEBUG_PRINT((stdout, "searching for IB devices in host\n"));
@@ -739,7 +745,6 @@ resources_create (struct resources *res)
     for( i = 0; i < config.threads; i++){
 
         res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
-
 
         if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
