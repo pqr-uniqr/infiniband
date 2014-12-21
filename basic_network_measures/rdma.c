@@ -461,6 +461,8 @@ run_iter_server(void *param)
                         return -1;
                     }
 
+                    DEBUG_PRINT((stdout, "recv wr posted\n"));
+
                 }
             }
 
