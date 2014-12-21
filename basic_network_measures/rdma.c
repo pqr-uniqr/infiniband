@@ -370,7 +370,7 @@ run_iter_client(void *param)
                         if(wc[i].status != IBV_WC_SUCCESS)
                             check_wc_status(wc[i].status);
 
-                        DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
+                        DEBUG_PRINT((stdout, "Completion found: scnt = %d\n", scnt));
                         ccnt += CQ_MODERATION;
                     }
                 }
@@ -446,7 +446,7 @@ run_iter_server(void *param)
                     if( wc[i].status != IBV_WC_SUCCESS )
                         check_wc_status(wc[i].status);
 
-                    DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
+                    DEBUG_PRINT((stdout, "Completion found. rcnt= %d\n", rcnt));
                     rcnt++;
 
                     if( errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
