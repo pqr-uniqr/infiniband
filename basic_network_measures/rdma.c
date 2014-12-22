@@ -705,6 +705,8 @@ resources_create (struct resources *res)
         cq_size = MAX_RECV_WR;
     }
 
+    DEBUG_PRINT((stdout, "cq size: %d\n", cq_size));
+
 
     if( !config.server_name && config_other->opcode == IBV_WR_SEND )
         config.opcode = IBV_WR_SEND;
@@ -953,7 +955,6 @@ sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
     static void
 usage (const char *argv0)
 {
-
     fprintf (stderr, "Usage:\n");
     fprintf (stderr, " %s start a server and wait for connection\n", argv0);
     fprintf (stderr, " %s <host> connect to server at <host>\n", argv0);
