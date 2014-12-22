@@ -409,7 +409,7 @@ run_iter_server(void *param)
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
-    ALLOCATE(wc, struct ibv_wc, 1);
+    ALLOCATE(wc, struct ibv_wc, CQ_SIZE);
     
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
@@ -438,7 +438,7 @@ run_iter_server(void *param)
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
     while( ccnt < config.iter ){
         do {
-            ne = ibv_poll_cq(conn->cq, 1, wc);
+            ne = ibv_poll_cq(conn->cq, CQ_SIZE, wc);
             if(ne > 0){
                 for(i = 0; i < ne ; i++){
                     if( wc[i].status != IBV_WC_SUCCESS )
