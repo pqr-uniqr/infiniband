@@ -60,11 +60,6 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 
-#define CRT_DEF 0
-#define CRT_BW 1
-#define CRT_LAT 2
-#define CRT_CPU 3
-
 #define CQ_MODERATION 50
 
 struct metrics_t
@@ -132,8 +127,8 @@ struct proctime_t
 
 
 /*  */
-static int run_iter_bw( void *param );
-static int run_iter_lat( void *param );
+static int run_iter_client( void *param );
+static int run_iter_server( void *param );
 
 /* QUEUE PAIR STATE MODIFICATION */
 static int modify_qp_to_init(struct ibv_qp *qp);
@@ -158,7 +153,6 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 static void print_report(unsigned int iters, unsigned size, int duplex, int no_cpu_freq_fail);
 static void usage(const char *argv0);
 static void opcode_to_str(int code, char **str);
-static void crt_to_str(int code, char **str);
 static void print_config(void);
 static inline uint64_t htonll(uint64_t x);
 static inline uint64_t ntohll(uint64_t x);
