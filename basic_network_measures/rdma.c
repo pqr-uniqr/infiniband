@@ -409,7 +409,7 @@ run_iter_server(void *param)
     DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
     int rcnt = 0;
-    int ne, i;
+    int ne, i, initial_recv_count;
 
     struct ibv_sge sge; 
     memset(&sge, 0, sizeof(sge));
@@ -427,10 +427,11 @@ run_iter_server(void *param)
     struct ibv_recv_wr *bad_wr = NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
     
-
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
     //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
+    initial_recv_count = MAX(MAX_SEND_WR, config.iter);
+    DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
     for(i=0; i < MAX_SEND_WR * 2 ; i++){
         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
             perror("ibv_post_recv");
