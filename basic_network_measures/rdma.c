@@ -430,7 +430,7 @@ run_iter_server(void *param)
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
     //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
-    initial_recv_count = MAX(MAX_SEND_WR, config.iter);
+    initial_recv_count = MIN(MAX_SEND_WR, config.iter);
     DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
     for(i=0; i < MAX_SEND_WR * 2 ; i++){
         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
