@@ -187,6 +187,7 @@ main ( int argc, char *argv[] )
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     // this is a bit convoluted
+    // unless opcode == IB_SEND, only client will enter here
     if( config.opcode != -1 ){
 
         if ( config.server_name ){
@@ -210,6 +211,16 @@ main ( int argc, char *argv[] )
             pthread_mutex_unlock( &start_mutex );
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
+
+        // if we're doing IB-send, client and server are in here,
+        // they've spawned their threads, their threads have reached pthread_wait
+        // let the client wait for the server to post the RRs
+        if (config.opcode == IBV_WR_SEND ){
+            if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+                fprintf(stderr, RED "IB Send preliminary\n" RESET);
+                goto main_exit;
+            }
+        }
 
         /* SIGNAL THREADS TO START WORK */
 
@@ -419,10 +430,12 @@ run_iter_server(void *param)
 
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
-    // solves initial race condition
-    if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
-        perror("ibv_post_recv");
-        return -1;
+    //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
+    for(i=0; i < MAX_SEND_WR * 2 ; i++){
+        if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+            perror("ibv_post_recv");
+            return -1;
+        }
     }
 
     pthread_mutex_lock( &start_mutex );
