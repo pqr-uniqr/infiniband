@@ -466,13 +466,21 @@ run_iter_server(void *param)
                     DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
                     ccnt++;
 
+                    if(rcnt < config.iter){
+                        if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+                            perror("ibv_post_recv");
+                            return -1;
+                        }
+
+                        DEBUG_PRINT((stdout, "post_recv called %d\n", rcnt));
+                        rcnt++;
+                    }
+
                     if( rcnt < config.iter && (errno = ibv_post_recv( conn->qp, &rr, &bad_wr )) ){
                         perror("ibv_post_recv");
                         return -1;
                     }
-                    rcnt++;
 
-                    DEBUG_PRINT((stdout, "recv wr posted\n"));
 
                 }
             }
