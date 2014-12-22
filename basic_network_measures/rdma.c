@@ -435,7 +435,6 @@ run_iter_server(void *param)
     for(i=0; i < initial_recv_count ; i++){
         rr.wr_id = i;
         rcnt++;
-
         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
             fprintf(stderr, "%d-th post\n", i);
             perror("ibv_post_recv");
@@ -454,7 +453,6 @@ run_iter_server(void *param)
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
     while( ccnt < config.iter ){
-
         do {
             ne = ibv_poll_cq(conn->cq, 1, wc);
             if(ne > 0){
@@ -465,6 +463,7 @@ run_iter_server(void *param)
                     ccnt++;
                     DEBUG_PRINT((stdout, "Completion found. rcnt= %d, ccnt = %d\n", rcnt, ccnt));
                     DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
+                    DEBUG_PRINT((stdout, "bytes: %u\n", wc[i].byte_len));
 
                     if(rcnt < config.iter){
                         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
