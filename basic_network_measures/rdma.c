@@ -760,7 +760,7 @@ resources_create (struct resources *res)
         }
 
         /* CREATE COMPLETION QUEUE */
-        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, CQ_SIZE, NULL,NULL, 0)) ){
+        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, cq_size, NULL,NULL, 0)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
             return -1;
         }
