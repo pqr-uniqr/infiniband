@@ -211,15 +211,6 @@ main ( int argc, char *argv[] )
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
-
-        /* FINAL SOCKET SYNC SO THREADS MAY HAVE TIME TO POST RECV */
-
-        if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
-            fprintf(stderr, RED "final sync failed\n" RESET);
-            goto main_exit;
-        }
-
-
         /* SIGNAL THREADS TO START WORK */
 
         if( config.measure == BANDWIDTH ){
