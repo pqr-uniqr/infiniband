@@ -365,7 +365,6 @@ static int
 run_iter_lat(void *param)
 {
     /* DECLARE AND INITIALIZE */
-
     int rc, scnt=0, ccnt=0, ne, i;
     long int elapsed;
 
