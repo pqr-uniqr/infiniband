@@ -231,7 +231,7 @@ main ( int argc, char *argv[] )
 
         pthread_cond_broadcast(&start_cond);
         for( i=0; i < config.threads; i++ )
-            if(errno = pthread_join(threads[i], NULL)){
+            if( errno = pthread_join(threads[i], NULL) ){
                 perror("pthread_join");
                 goto main_exit;
             }
@@ -241,33 +241,7 @@ main ( int argc, char *argv[] )
             get_usage( getpid(), &pend, CPUNO );
         }
 
-        DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
-
-        /*
-           if ( config.measure == BANDWIDTH ){
-
-           get_usage( getpid(), &pstart, CPUNO );
-           gettimeofday( &tposted, NULL );
-
-           pthread_cond_broadcast(&start_cond);
-           for(i=0; i < config.threads; i++)
-           if(errno = pthread_join(threads[i], NULL)){
-           perror("pthread_join");
-           goto main_exit;
-           }
-
-           gettimeofday( &tcompleted, NULL );
-           get_usage( getpid(), &pend, CPUNO );
-
-           } else if ( config.measure == LATENCY ){
-           pthread_cond_broadcast(&start_cond);
-           for(i=0; i < config.threads; i++)
-           if(errno = pthread_join(threads[i], NULL)){
-           perror("pthread_join");
-           goto main_exit;
-           }
-           }*/
-
+        DEBUG_PRINT((stdout, GRN "threads joined--waiting for socket sync\n" RESET));
     }
 
     if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
@@ -359,7 +333,7 @@ run_iter_client(void *param)
 #ifdef DEBUG
             memset( conn->buf, scnt % 2, config.xfer_unit );
             csum = checksum(conn->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
+            DEBUG_PRINT((stdout, WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
 
             if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
@@ -440,9 +414,9 @@ run_iter_server(void *param)
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
     //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
-    initial_recv_count = MIN(MAX_SEND_WR, config.iter);
+    initial_recv_count = MIN(MAX_RECV_WR, config.iter);
     DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
-    for(i=0; i < initial_recv_count ; i++){
+    for(i = 0; i < initial_recv_count ; i++){
         rr.wr_id = i;
         rcnt++;
         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
