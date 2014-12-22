@@ -462,9 +462,9 @@ run_iter_server(void *param)
                     if( wc[i].status != IBV_WC_SUCCESS )
                         check_wc_status(wc[i].status);
 
-                    DEBUG_PRINT((stdout, "Completion found. rcnt= %d\n", rcnt));
-                    DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
                     ccnt++;
+                    DEBUG_PRINT((stdout, "Completion found. rcnt= %d, ccnt = %d\n", rcnt, ccnt));
+                    DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
 
                     if(rcnt < config.iter){
                         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
@@ -472,7 +472,7 @@ run_iter_server(void *param)
                             return -1;
                         }
 
-                        DEBUG_PRINT((stdout, "post_recv called %d\n", rcnt));
+                        DEBUG_PRINT((stdout, "post_recv called: rcnt = %d\n", rcnt));
                         rcnt++;
                     }
 
