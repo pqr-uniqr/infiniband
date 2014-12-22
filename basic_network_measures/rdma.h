@@ -38,7 +38,8 @@
 #define MAX_RECV_SGE 1
 
 #define CPUNO 0
-#define CQ_SIZE 5
+#define CQ_SIZE 1
+#define WC_SIZE 1
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )

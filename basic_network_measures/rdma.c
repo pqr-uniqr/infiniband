@@ -306,7 +306,6 @@ run_iter_client(void *param)
     struct ibv_send_wr *bad_wr=NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
 
-
     /* WAIT TO SYNCHRONIZE */
 
     pthread_mutex_lock( &start_mutex );
@@ -409,7 +408,7 @@ run_iter_server(void *param)
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
-    ALLOCATE(wc, struct ibv_wc, CQ_SIZE);
+    ALLOCATE(wc, struct ibv_wc, WC_SIZE);
     
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
@@ -438,7 +437,7 @@ run_iter_server(void *param)
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
     while( ccnt < config.iter ){
         do {
-            ne = ibv_poll_cq(conn->cq, CQ_SIZE, wc);
+            ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
             if(ne > 0){
                 for(i = 0; i < ne ; i++){
                     if( wc[i].status != IBV_WC_SUCCESS )
@@ -669,7 +668,8 @@ resources_create (struct resources *res)
     struct ibv_qp_init_attr qp_init_attr;
     struct config_t *config_other;
     size_t size;
-    int i, j, rc, mr_flags = 0, cq_size = 0, num_devices;
+    int i, j, rc, mr_flags = 0, cq_size, num_devices;
+
 
     /* ESTABLISH TCP CONNECTION */
     if (config.server_name) {
@@ -698,6 +698,13 @@ resources_create (struct resources *res)
     config.threads =    MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     config.config_other = config_other;
+
+    if( config.server_name ){
+        cq_size = MAX_SEND_WR;
+    } else {
+        cq_size = MAX_RECV_WR;
+    }
+
 
     if( !config.server_name && config_other->opcode == IBV_WR_SEND )
         config.opcode = IBV_WR_SEND;
