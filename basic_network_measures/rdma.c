@@ -462,13 +462,6 @@ run_iter_server(void *param)
                         DEBUG_PRINT((stdout, "post_recv called: rcnt = %d\n", rcnt));
                         rcnt++;
                     }
-
-                    if( rcnt < config.iter && (errno = ibv_post_recv( conn->qp, &rr, &bad_wr )) ){
-                        perror("ibv_post_recv");
-                        return -1;
-                    }
-
-
                 }
             }
 
