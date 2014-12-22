@@ -408,7 +408,7 @@ run_iter_server(void *param)
     pthread_t thread = pthread_self();
     DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rcnt = 0;
+    int rcnt = 0, ccnt = 0;
     int ne, i, initial_recv_count;
 
     struct ibv_sge sge; 
@@ -453,7 +453,7 @@ run_iter_server(void *param)
     pthread_mutex_unlock( &start_mutex );
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
-    while( rcnt < config.iter ){
+    while( rcnt < config.iter || ccnt < config.iter ){
 
         do {
             ne = ibv_poll_cq(conn->cq, 1, wc);
@@ -464,12 +464,13 @@ run_iter_server(void *param)
 
                     DEBUG_PRINT((stdout, "Completion found. rcnt= %d\n", rcnt));
                     DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
-                    rcnt++;
+                    ccnt++;
 
                     if( errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
                         perror("ibv_post_recv");
                         return -1;
                     }
+                    rcnt++;
 
                     DEBUG_PRINT((stdout, "recv wr posted\n"));
 
