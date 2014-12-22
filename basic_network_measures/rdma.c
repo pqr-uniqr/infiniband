@@ -355,7 +355,7 @@ run_iter_client(void *param)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
 
 #ifdef DEBUG
-            memset( conn->buf, i % 2, config.xfer_unit );
+            memset( conn->buf, scnt % 2, config.xfer_unit );
             csum = checksum(conn->buf, config.xfer_unit);
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
