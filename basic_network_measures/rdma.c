@@ -30,6 +30,7 @@ struct pstat pstart;
 struct pstat pend;
 
 int cnt_threads;
+
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
 cpu_set_t cpuset;
