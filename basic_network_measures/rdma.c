@@ -438,6 +438,7 @@ run_iter_server(void *param)
     while( ccnt < config.iter ){
         do {
             ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
+
             if(ne > 0){
                 for(i = 0; i < ne ; i++){
                     if( wc[i].status != IBV_WC_SUCCESS )
