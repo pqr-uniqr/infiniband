@@ -306,6 +306,7 @@ run_iter_client(void *param)
     struct ib_assets *conn = (struct ib_assets *) param;
     int rc, scnt=0, ccnt=0, ne, i;
     long int elapsed;
+    uint16_t csum;
     pthread_t thread = pthread_self();
 
     DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
@@ -352,6 +353,12 @@ run_iter_client(void *param)
 
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
+
+#ifdef DEBUG
+            memset( conn->buf, i % 2, config.xfer_unit );
+            csum = checksum(conn->buf, config.xfer_unit);
+            DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
+#endif
 
             if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
 
@@ -410,6 +417,7 @@ run_iter_server(void *param)
     struct ib_assets *conn = (struct ib_assets *) param;
     int rcnt = 0, ccnt = 0;
     int ne, i, initial_recv_count;
+    uint16_t csum;
 
     struct ibv_sge sge; 
     memset(&sge, 0, sizeof(sge));
@@ -464,6 +472,10 @@ run_iter_server(void *param)
                     DEBUG_PRINT((stdout, "Completion found. rcnt= %d, ccnt = %d\n", rcnt, ccnt));
                     DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
                     DEBUG_PRINT((stdout, "bytes: %u\n", wc[i].byte_len));
+#ifdef DEBUG
+                    csum = checksum(conn->buf, config.xfer_unit);
+                    DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
+#endif
 
                     if(rcnt < config.iter){
                         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
