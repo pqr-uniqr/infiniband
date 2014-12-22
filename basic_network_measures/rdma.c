@@ -354,6 +354,8 @@ run_iter_client(void *param)
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
 
+            DEBUG_PRINT((stdout, "scnt = %d, signaled? %d\n", scnt, !(scnt % CQ_MODERATION)));
+
 #ifdef DEBUG
             memset( conn->buf, scnt % 2, config.xfer_unit );
             csum = checksum(conn->buf, config.xfer_unit);
@@ -470,11 +472,11 @@ run_iter_server(void *param)
 
                     ccnt++;
                     DEBUG_PRINT((stdout, "Completion found. rcnt= %d, ccnt = %d\n", rcnt, ccnt));
-                    DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
-                    DEBUG_PRINT((stdout, "bytes: %u\n", wc[i].byte_len));
+                    DEBUG_PRINT((stdout, "\tWR id: %lu\n", wc[i].wr_id));
+                    DEBUG_PRINT((stdout, "\tbytes: %u\n", wc[i].byte_len));
 #ifdef DEBUG
                     csum = checksum(conn->buf, config.xfer_unit);
-                    DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
+                    DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
 #endif
 
                     if(rcnt < config.iter){
