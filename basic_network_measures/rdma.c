@@ -433,6 +433,8 @@ run_iter_server(void *param)
     initial_recv_count = MIN(MAX_SEND_WR, config.iter);
     DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
     for(i=0; i < initial_recv_count ; i++){
+        rr.wr_id = i;
+
         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
             fprintf(stderr, "%d-th post\n", i);
             perror("ibv_post_recv");
@@ -449,7 +451,6 @@ run_iter_server(void *param)
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
 
-
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
     while( rcnt < config.iter ){
 
@@ -461,6 +462,7 @@ run_iter_server(void *param)
                         check_wc_status(wc[i].status);
 
                     DEBUG_PRINT((stdout, "Completion found. rcnt= %d\n", rcnt));
+                    DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
                     rcnt++;
 
                     if( errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
