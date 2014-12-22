@@ -453,7 +453,7 @@ run_iter_server(void *param)
     pthread_mutex_unlock( &start_mutex );
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
-    while( rcnt < config.iter || ccnt < config.iter ){
+    while( ccnt < config.iter ){
 
         do {
             ne = ibv_poll_cq(conn->cq, 1, wc);
@@ -466,7 +466,7 @@ run_iter_server(void *param)
                     DEBUG_PRINT((stdout, "WR id: %lu\n", wc[i].wr_id));
                     ccnt++;
 
-                    if( errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
+                    if( rcnt < config.iter && errno = ibv_post_recv( conn->qp, &rr, &bad_wr ) ){
                         perror("ibv_post_recv");
                         return -1;
                     }
