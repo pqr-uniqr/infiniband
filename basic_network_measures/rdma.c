@@ -466,7 +466,7 @@ run_iter_server(void *param)
                         return -1;
                     } else {
                         ccnt++;
-                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, number of RRs on RQ: %d\n"), (rcnt - ccnt));
+                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, number of RRs on RQ: %d\n", wc[i].wr_id, (rcnt - ccnt)));
 #ifdef DEBUG
                         csum = checksum(conn->buf, config.xfer_unit);
                         DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
