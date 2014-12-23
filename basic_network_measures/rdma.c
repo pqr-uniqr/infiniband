@@ -339,6 +339,7 @@ run_iter_client(void *param)
             if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
 
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
+                fprintf(stdout, "scnt - ccnt = %d\n",(scnt - ccnt));
                 perror("post_send");
                 return -1;
             }
@@ -363,9 +364,8 @@ run_iter_client(void *param)
                     for( i = 0; i < ne; i++){
                         if(wc[i].status != IBV_WC_SUCCESS)
                             check_wc_status(wc[i].status);
-
-                        DEBUG_PRINT((stdout, "Completion found: scnt = %d\n", scnt));
                         ccnt += CQ_MODERATION;
+                        DEBUG_PRINT((stdout, "Completion found: scnt = %d, ccnt = %d\n", scnt, ccnt));
                     }
                 }
 
