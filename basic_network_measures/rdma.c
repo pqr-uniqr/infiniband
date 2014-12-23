@@ -368,15 +368,15 @@ run_iter_client(void *param)
 
 
 
-        DEBUG_PRINT((stdout, GRN"[EXITING SEND MODE]----------\n"RESET));
-        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                    (scnt - ccnt), MAX_SEND_WR / 2));
 
         if( ccnt < config.iter ){
             do {
                 ne = ibv_poll_cq(conn->cq, 1, wc);
                 if( ne > 0 ){
                     for( i = 0; i < ne; i++){
+                        DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
+                        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                                    (scnt - ccnt), MAX_SEND_WR / 2));
 
                         if(wc[i].status != IBV_WC_SUCCESS){
                             check_wc_status(wc[i].status);
