@@ -366,9 +366,6 @@ run_iter_client(void *param)
                 sr.send_flags |= IBV_SEND_SIGNALED;
         }
 
-
-
-
         if( ccnt < config.iter ){
             do {
                 ne = ibv_poll_cq(conn->cq, 1, wc);
@@ -438,7 +435,7 @@ run_iter_server(void *param)
     initial_recv_count = MIN(MAX_RECV_WR, config.iter);
     DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
     for(i = 0; i < initial_recv_count ; i++){
-        rr.wr_id = i;
+        rr.wr_id = rcnt;
         rcnt++;
         if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
             fprintf(stderr, "%d-th post\n", i);
@@ -463,26 +460,26 @@ run_iter_server(void *param)
 
             if(ne > 0){
                 for(i = 0; i < ne ; i++){
-                    if( wc[i].status != IBV_WC_SUCCESS )
+                    if( wc[i].status != IBV_WC_SUCCESS ){
                         check_wc_status(wc[i].status);
-
-                    ccnt++;
-                    DEBUG_PRINT((stdout, "Completion found. rcnt= %d, ccnt = %d\n", rcnt, ccnt));
-                    DEBUG_PRINT((stdout, "\tWR id: %lu\n", wc[i].wr_id));
-                    DEBUG_PRINT((stdout, "\tbytes: %u\n", wc[i].byte_len));
+                        DEBUG_PRINT((stdout, "Completion with error. wr_id: %lu\n", wc[i].wr_id));
+                        return -1;
+                    } else {
+                        ccnt++;
+                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, number of RRs on RQ: %d\n"), (rcnt - ccnt));
 #ifdef DEBUG
-                    csum = checksum(conn->buf, config.xfer_unit);
-                    DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
+                        csum = checksum(conn->buf, config.xfer_unit);
+                        DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
 #endif
-
-                    if(rcnt < config.iter){
-                        if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
-                            perror("ibv_post_recv");
-                            return -1;
+                        if( rcnt < config.iter ){
+                            rr.wr_id = rcnt;
+                            if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+                                perror("ibv_post_recv");
+                                return -1;
+                            }
+                            DEBUG_PRINT((stdout, "posted new RR. wr_id = %d\n", rcnt));
+                            rcnt++;
                         }
-
-                        DEBUG_PRINT((stdout, "post_recv called: rcnt = %d\n", rcnt));
-                        rcnt++;
                     }
                 }
             }
