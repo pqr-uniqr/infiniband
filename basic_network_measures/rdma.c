@@ -322,7 +322,8 @@ run_iter_client(void *param)
     /* GO! */
     while( scnt < config.iter || ccnt < config.iter ){
 
-        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR ){
+        // keep control of number of uncompleted sent requests
+        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
 
             if((scnt % CQ_MODERATION) == 0)
                 sr.send_flags &= ~IBV_SEND_SIGNALED;

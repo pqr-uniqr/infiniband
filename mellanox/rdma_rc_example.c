@@ -68,6 +68,8 @@ ntohll (uint64_t x)
 #else
 #error __BYTE_ORDER is neither __LITTLE_ENDIAN nor __BIG_ENDIAN
 #endif
+
+
 /* structure of test parameters */
 struct config_t
 {
@@ -416,17 +418,20 @@ post_receive (struct resources *res)
     struct ibv_sge sge;
     struct ibv_recv_wr *bad_wr;
     int rc;
+
     /* prepare the scatter/gather entry */
     memset (&sge, 0, sizeof (sge));
     sge.addr = (uintptr_t) res->buf;
     sge.length = MSG_SIZE;
     sge.lkey = res->mr->lkey;
+
     /* prepare the receive work request */
     memset (&rr, 0, sizeof (rr));
     rr.next = NULL;
     rr.wr_id = 0;
     rr.sg_list = &sge;
     rr.num_sge = 1;
+
     /* post the Receive Request to the RQ */
     rc = ibv_post_recv (res->qp, &rr, &bad_wr);
     if (rc)
