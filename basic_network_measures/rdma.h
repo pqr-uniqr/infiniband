@@ -32,13 +32,14 @@
 
 
 #define MAX_POLL_CQ_TIMEOUT 2000
-#define MAX_SEND_WR 100 
-#define MAX_RECV_WR 100 
+#define MAX_SEND_WR 100
+#define MAX_RECV_WR 200
 #define MAX_SEND_SGE 1
 #define MAX_RECV_SGE 1
 
 #define CPUNO 0
 #define CQ_SIZE 1
+#define WC_SIZE 1
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )

@@ -30,6 +30,7 @@ struct pstat pstart;
 struct pstat pend;
 
 int cnt_threads;
+
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
 cpu_set_t cpuset;
@@ -186,6 +187,7 @@ main ( int argc, char *argv[] )
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     // this is a bit convoluted
+    // unless opcode == IB_SEND, only client will enter here
     if( config.opcode != -1 ){
 
         if ( config.server_name ){
@@ -210,6 +212,16 @@ main ( int argc, char *argv[] )
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
+        // if we're doing IB-send, client and server are in here,
+        // they've spawned their threads, their threads have reached pthread_wait
+        // let the client wait for the server to post the RRs
+        if (config.opcode == IBV_WR_SEND ){
+            if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+                fprintf(stderr, RED "IB Send preliminary\n" RESET);
+                goto main_exit;
+            }
+        }
+
         /* SIGNAL THREADS TO START WORK */
 
         if( config.measure == BANDWIDTH ){
@@ -219,7 +231,7 @@ main ( int argc, char *argv[] )
 
         pthread_cond_broadcast(&start_cond);
         for( i=0; i < config.threads; i++ )
-            if(errno = pthread_join(threads[i], NULL)){
+            if( errno = pthread_join(threads[i], NULL) ){
                 perror("pthread_join");
                 goto main_exit;
             }
@@ -229,33 +241,7 @@ main ( int argc, char *argv[] )
             get_usage( getpid(), &pend, CPUNO );
         }
 
-        DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
-
-        /*
-           if ( config.measure == BANDWIDTH ){
-
-           get_usage( getpid(), &pstart, CPUNO );
-           gettimeofday( &tposted, NULL );
-
-           pthread_cond_broadcast(&start_cond);
-           for(i=0; i < config.threads; i++)
-           if(errno = pthread_join(threads[i], NULL)){
-           perror("pthread_join");
-           goto main_exit;
-           }
-
-           gettimeofday( &tcompleted, NULL );
-           get_usage( getpid(), &pend, CPUNO );
-
-           } else if ( config.measure == LATENCY ){
-           pthread_cond_broadcast(&start_cond);
-           for(i=0; i < config.threads; i++)
-           if(errno = pthread_join(threads[i], NULL)){
-           perror("pthread_join");
-           goto main_exit;
-           }
-           }*/
-
+        DEBUG_PRINT((stdout, GRN "threads joined--waiting for socket sync\n" RESET));
     }
 
     if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
@@ -266,7 +252,6 @@ main ( int argc, char *argv[] )
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
     rc = 1;
-
 main_exit:
     if( -1 == resources_destroy(&res) )
         fprintf(stderr, RED "resources_destroy\n" RESET);
@@ -295,32 +280,31 @@ run_iter_client(void *param)
     struct ib_assets *conn = (struct ib_assets *) param;
     int rc, scnt=0, ccnt=0, ne, i;
     long int elapsed;
+    uint16_t csum;
     pthread_t thread = pthread_self();
-    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
 
-    struct ibv_wc *wc;
-    struct ibv_send_wr *bad_wr=NULL;
-    ALLOCATE(wc, struct ibv_wc, 1);
+    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
 
     struct ibv_send_wr sr;
     struct ibv_sge sge;
-
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
     sge.lkey = conn->mr->lkey;
     sge.length = config.xfer_unit;
-
     memset(&sr, 0, sizeof(sr));
     sr.sg_list = &sge;
     sr.num_sge = 1;
     sr.opcode = config.opcode;
     sr.next = NULL;
     sr.wr_id = 0;
-
     if( config.opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = conn->remote_props.addr;
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
+
+    struct ibv_wc *wc;
+    struct ibv_send_wr *bad_wr=NULL;
+    ALLOCATE(wc, struct ibv_wc, 1);
 
     /* WAIT TO SYNCHRONIZE */
 
@@ -338,14 +322,33 @@ run_iter_client(void *param)
     /* GO! */
     while( scnt < config.iter || ccnt < config.iter ){
 
-        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR ){
+        // keep control of number of uncompleted sent requests
+        if( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
+            DEBUG_PRINT((stdout, GRN"[ENTERING SEND MODE]----------\n"RESET));
+            DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                        (scnt - ccnt), MAX_SEND_WR / 2));
+        }
 
-            if((scnt % CQ_MODERATION) == 0)
+        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
+            if((scnt % CQ_MODERATION) == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
+                sr.wr_id = scnt;
+            }
+
+            DEBUG_PRINT((stdout, "[%d, signaled? %d]\n", scnt, !(scnt % CQ_MODERATION)));
+
+            /* CUSTOMIZE SR */
+
+#ifdef DEBUG
+            memset( conn->buf, scnt % 2, config.xfer_unit );
+            csum = checksum(conn->buf, config.xfer_unit);
+            fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
+#endif
 
             if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
 
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
+                fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
                 perror("post_send");
                 return -1;
             }
@@ -368,11 +371,19 @@ run_iter_client(void *param)
                 ne = ibv_poll_cq(conn->cq, 1, wc);
                 if( ne > 0 ){
                     for( i = 0; i < ne; i++){
-                        if(wc[i].status != IBV_WC_SUCCESS)
-                            check_wc_status(wc[i].status);
+                        DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
+                        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                                    (scnt - ccnt), MAX_SEND_WR / 2));
 
-                        DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
-                        ccnt += CQ_MODERATION;
+                        if(wc[i].status != IBV_WC_SUCCESS){
+                            check_wc_status(wc[i].status);
+                            DEBUG_PRINT((stdout, "Completion with error. wr_id: %lu\n", wc[i].wr_id));
+                            return -1;
+                        } else{
+                            ccnt += CQ_MODERATION;
+                            DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", wc[i].wr_id, ccnt));
+                        }
+
                     }
                 }
 
@@ -398,30 +409,39 @@ run_iter_server(void *param)
     pthread_t thread = pthread_self();
     DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rcnt = 0;
-    int ne, i;
+    int rcnt = 0, ccnt = 0;
+    int ne, i, initial_recv_count;
+    uint16_t csum;
 
     struct ibv_sge sge; 
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
     sge.lkey = conn->mr->lkey;
     sge.length = config.xfer_unit;
-
-    struct ibv_recv_wr *rr;
+    struct ibv_recv_wr rr;
     memset(&rr, 0, sizeof(rr));
-    rr->sg_list = &sge;
-    rr->num_sge = 1;
-    rr->next = NULL;
-    rr->wr_id = 0;
+    rr.sg_list = &sge;
+    rr.num_sge = 1;
+    rr.next = NULL;
+    rr.wr_id = 0;
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
-    ALLOCATE(wc, struct ibv_wc, 1);
+    ALLOCATE(wc, struct ibv_wc, WC_SIZE);
+    
+    DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
-    // solves initial race condition
-    if( errno = ibv_post_recv(conn->qp, rr, &bad_wr) ){
-        perror("ibv_post_recv");
-        return -1;
+    //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
+    initial_recv_count = MIN(MAX_RECV_WR, config.iter);
+    DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
+    for(i = 0; i < initial_recv_count ; i++){
+        rr.wr_id = rcnt;
+        rcnt++;
+        if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+            fprintf(stderr, "%d-th post\n", i);
+            perror("ibv_post_recv");
+            return -1;
+        }
     }
 
     pthread_mutex_lock( &start_mutex );
@@ -434,23 +454,33 @@ run_iter_server(void *param)
     pthread_mutex_unlock( &start_mutex );
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
-    while( rcnt < config.iter ){
-
+    while( ccnt < config.iter ){
         do {
-            ne = ibv_poll_cq(conn->cq, 1, wc);
+            ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
+
             if(ne > 0){
                 for(i = 0; i < ne ; i++){
-                    if( wc[i].status != IBV_WC_SUCCESS )
+                    if( wc[i].status != IBV_WC_SUCCESS ){
                         check_wc_status(wc[i].status);
-
-                    DEBUG_PRINT((stdout, "Completion found in completion queue\n"));
-                    rcnt++;
-
-                    if( errno = ibv_post_recv( conn->qp, rr, &bad_wr ) ){
-                        perror("ibv_post_recv");
+                        DEBUG_PRINT((stdout, "Completion with error. wr_id: %lu\n", wc[i].wr_id));
                         return -1;
+                    } else {
+                        ccnt++;
+                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, number of RRs on RQ: %d\n", wc[i].wr_id, (rcnt - ccnt)));
+#ifdef DEBUG
+                        csum = checksum(conn->buf, config.xfer_unit);
+                        DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
+#endif
+                        if( rcnt < config.iter ){
+                            rr.wr_id = rcnt;
+                            if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+                                perror("ibv_post_recv");
+                                return -1;
+                            }
+                            DEBUG_PRINT((stdout, "posted new RR. wr_id = %d\n", rcnt));
+                            rcnt++;
+                        }
                     }
-
                 }
             }
 
@@ -463,6 +493,8 @@ run_iter_server(void *param)
     }
 
     free(wc);
+    DEBUG_PRINT((stdout, "finishing run_iter\n"));
+    return 0;
 }
 
 
@@ -656,7 +688,8 @@ resources_create (struct resources *res)
     struct ibv_qp_init_attr qp_init_attr;
     struct config_t *config_other;
     size_t size;
-    int i, j, rc, mr_flags = 0, cq_size = 0, num_devices;
+    int i, j, rc, mr_flags = 0, cq_size, num_devices;
+
 
     /* ESTABLISH TCP CONNECTION */
     if (config.server_name) {
@@ -686,12 +719,20 @@ resources_create (struct resources *res)
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     config.config_other = config_other;
 
+    if( config.server_name ){
+        cq_size = MAX_SEND_WR;
+    } else {
+        cq_size = MAX_RECV_WR;
+    }
+
+    DEBUG_PRINT((stdout, "cq size: %d\n", cq_size));
+
+
     if( !config.server_name && config_other->opcode == IBV_WR_SEND )
         config.opcode = IBV_WR_SEND;
 
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
-
 
     /* GET IB DEVICES AND SELECT ONE */
 
@@ -735,14 +776,13 @@ resources_create (struct resources *res)
 
         res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
 
-
         if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
             return -1;
         }
 
         /* CREATE COMPLETION QUEUE */
-        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, CQ_SIZE, NULL,NULL, 0)) ){
+        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, cq_size, NULL,NULL, 0)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
             return -1;
         }
@@ -774,7 +814,7 @@ resources_create (struct resources *res)
 
         // FIXME we've been doing RC all along
         qp_init_attr.qp_type = IBV_QPT_RC;
-        //qp_init_attr.sq_sig_all = 0; 
+        qp_init_attr.sq_sig_all = 0; 
         qp_init_attr.send_cq = res->assets[i]->cq;
         qp_init_attr.recv_cq = res->assets[i]->cq;
         qp_init_attr.cap.max_send_wr = MAX_SEND_WR;
@@ -935,7 +975,6 @@ sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
     static void
 usage (const char *argv0)
 {
-
     fprintf (stderr, "Usage:\n");
     fprintf (stderr, " %s start a server and wait for connection\n", argv0);
     fprintf (stderr, " %s <host> connect to server at <host>\n", argv0);
