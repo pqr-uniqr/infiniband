@@ -323,23 +323,32 @@ run_iter_client(void *param)
     while( scnt < config.iter || ccnt < config.iter ){
 
         // keep control of number of uncompleted sent requests
+        if( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
+            DEBUG_PRINT((stdout, GRN"[ENTERING SEND MODE]----------\n"RESET));
+            DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                        (scnt - ccnt), MAX_SEND_WR / 2));
+        }
+
         while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
-
-            if((scnt % CQ_MODERATION) == 0)
+            if((scnt % CQ_MODERATION) == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
+                sr.wr_id = scnt;
+            }
 
-            DEBUG_PRINT((stdout, "scnt = %d, signaled? %d\n", scnt, !(scnt % CQ_MODERATION)));
+            DEBUG_PRINT((stdout, "[%d, signaled? %d]\n", scnt, !(scnt % CQ_MODERATION)));
+
+            /* CUSTOMIZE SR */
 
 #ifdef DEBUG
             memset( conn->buf, scnt % 2, config.xfer_unit );
             csum = checksum(conn->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout, WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
+            fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
 
             if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
 
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
-                fprintf(stdout, "scnt - ccnt = %d\n",(scnt - ccnt));
+                fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
                 perror("post_send");
                 return -1;
             }
@@ -357,15 +366,27 @@ run_iter_client(void *param)
                 sr.send_flags |= IBV_SEND_SIGNALED;
         }
 
+
+
+        DEBUG_PRINT((stdout, GRN"[EXITING SEND MODE]----------\n"RESET));
+        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                    (scnt - ccnt), MAX_SEND_WR / 2));
+
         if( ccnt < config.iter ){
             do {
                 ne = ibv_poll_cq(conn->cq, 1, wc);
                 if( ne > 0 ){
                     for( i = 0; i < ne; i++){
-                        if(wc[i].status != IBV_WC_SUCCESS)
+
+                        if(wc[i].status != IBV_WC_SUCCESS){
                             check_wc_status(wc[i].status);
-                        ccnt += CQ_MODERATION;
-                        DEBUG_PRINT((stdout, "Completion found: scnt = %d, ccnt = %d\n", scnt, ccnt));
+                            DEBUG_PRINT((stdout, "Completion with error. wr_id: %d\n", wc[i].wr_id))
+                            return -1;
+                        } else{
+                            ccnt += CQ_MODERATION;
+                            DEBUG_PRINT((stdout, "Completion success: wr_id: %d ccnt: %d\n", wc[i].wr_id, ccnt))
+                        }
+
                     }
                 }
 

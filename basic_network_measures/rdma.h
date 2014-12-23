@@ -32,8 +32,8 @@
 
 
 #define MAX_POLL_CQ_TIMEOUT 2000
-#define MAX_SEND_WR 300
-#define MAX_RECV_WR 600
+#define MAX_SEND_WR 10
+#define MAX_RECV_WR 20
 #define MAX_SEND_SGE 1
 #define MAX_RECV_SGE 1
 
