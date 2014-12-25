@@ -390,7 +390,7 @@ run_iter_client(void *param)
 
                         if(wc[i].status != IBV_WC_SUCCESS){
                             check_wc_status(wc[i].status);
-                            DEBUG_PRINT((stdout, "Completion with error. wr_id: %lu\n", wc[i].wr_id));
+                            fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id));
                             return -1;
                         } else{
                             ccnt += CQ_MODERATION;
