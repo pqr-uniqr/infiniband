@@ -187,16 +187,16 @@ main ( int argc, char *argv[] )
         get_usage( getpid(), &pstart, CPUNO );
     }
     
+    pthread_mutex_init(&start_mutex, NULL);
+    pthread_cond_init(&start_cond, NULL);
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     // this is a bit convoluted
     // unless opcode == IB_SEND, only client will enter here
     if( config.opcode != -1 ){
 
 
-        pthread_mutex_init(&start_mutex, NULL);
-        pthread_cond_init(&start_cond, NULL);
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
         if ( config.server_name ){
             functorun = (void *(*)(void *)) &run_iter_client;
