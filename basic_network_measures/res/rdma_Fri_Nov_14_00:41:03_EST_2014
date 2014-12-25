@@ -1,2 +1,0 @@
-#rdma experiment: Up to 2^20 bytes, each 1000 iterations (server addr: 192.168.1.1)
-#* to reproduce this result, use commit 610381f475e19f8476b9831899037e0def5a0380 *
