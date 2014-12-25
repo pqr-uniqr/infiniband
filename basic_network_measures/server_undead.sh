@@ -56,7 +56,7 @@ while read FILENAME; do
             break
         fi
     else
-        FILENAME="${EXEC}_${MEASURE}_${DATE}_server"
+        FILENAME="${EXEC}_${DATE}_server"
         FILEPATH="$DIR/$FILENAME"
         cecho "> defaulting to: $FILEPATH" $green
         break
@@ -74,6 +74,7 @@ else
     exit 1
 fi
 
+touch "$FILEPATH"
 printbwheader | tee $FILEPATH
 
 while true 
