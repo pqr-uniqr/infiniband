@@ -28,6 +28,7 @@ printbwheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
 trap ctrl_c SIGINT
 
 EXEC=$1
+DATE=`date | sed 's/ /_/g'`
 
 if [ "${EXEC}" = "" ]
 then
