@@ -123,7 +123,7 @@ done
 if [ "${MEASURE}" = 'bw' ]
 then
     # GET XFER SIZE
-    cecho "> I will test transfer sizes from 2^1 to 2^x. Specify x. (max 29)" $white
+    cecho "> I will test transfer sizes from 2^1 to 2^x. Specify x. (max 29, 24 recommended)" $white
     while read POW; do
         if [ "0$POW" -gt 29  ] || [ -z "${POW}" ]
         then
@@ -136,7 +136,7 @@ then
     done 
 
     # GET NUMBER OF ITERATIONS
-    cecho "> I will run y many iterations for each transfer size. Specify y (max 100000)" $white
+    cecho "> I will run y many iterations for each transfer size. Specify y (max 100000, recommended 10000)" $white
     while read ITER; do
         if [ "0$ITER" -gt 100000 ] || [ -z "${ITER}" ]
         then 
@@ -148,10 +148,20 @@ then
     done
 elif [ "${MEASURE}" = 'lat' ]
 then
-    cecho "> Latency test: will test transfer sizes from 1 byte, 2 bytes, ...., 32 bytes" $white
-    POW=5
-    bytes=`echo "2^$POW" | bc`
-    cecho "> I will run 10^y many iterations for each transfer sizes. Specify y (max 10)" $white
+    # GET XFER SIZE
+    cecho "> I will test transfer sizes from 2^1 to 2^x. Specify x. (max 29, 16 recommended)" $white
+    while read POW; do
+        if [ "0$POW" -gt 29  ] || [ -z "${POW}" ]
+        then
+            cecho "> try again (max 29)" $red
+        else
+            bytes=`echo "2^$POW" | bc`
+            cecho "> up to $bytes bytes" $green
+            break
+        fi
+    done 
+
+    cecho "> I will run 10^y many iterations for each transfer sizes. Specify y (max 10, 6 recommended)" $white
     while read ITER; do 
         if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
         then
@@ -165,7 +175,7 @@ then
 fi
 
 # GET NUMBER OF THREADS
-cecho "> I will run the experiment specified above for each of the thread. Specify number of threads" $white
+cecho "> I will run the experiment specified above for each of the threads. Specify number of threads" $white
 while read THREAD; do
     if [ "0$THREAD" -gt 30 ] || [ -z "${THREAD}" ]
     then 
@@ -184,9 +194,9 @@ fi
 
 # if this is called on an existing file (such as /dev/null), won't really hurt
 touch "$FILEPATH"
-echo "#$EXEC experiment to measure $MEASURE: " > $FILEPATH
-echo "#Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" >> $FILEPATH
-echo "#* to reproduce this result, use $GITVER *" >> $FILEPATH
+echo "#$EXEC experiment to measure $MEASURE: " | tee $FILEPATH
+echo "#Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" | tee -a $FILEPATH
+echo "#* to reproduce this result, use $GITVER *" | tee -a $FILEPATH
 
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
 
@@ -202,14 +212,14 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
             fi
         fi
     done
-    echo "#verb: $OP"  >> $FILEPATH
+    echo "#verb: $OP"  | tee -a $FILEPATH
 
     if [ "${MEASURE}" = 'bw' ]
     then
-        printbwheader >> $FILEPATH
+        printbwheader | tee -a $FILEPATH
     elif [ "${MEASURE}" = 'lat' ]
     then
-        printlatheader >> $FILEPATH
+        printlatheader | tee -a $FILEPATH
     fi
 
     cecho "starting experiment..." $green
@@ -217,17 +227,17 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
 
     # RUN RDMA EXPERIMENT
     for i in `seq 1 $POW`; do
-      ./$EXEC -v $OP -i $ITER -b $i -t $THREAD -m $MEASURE $ADDR >> $FILEPATH
+      ./$EXEC -v $OP -i $ITER -b $i -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
       sleep 0.1
     done
 
 else
     if [ "${MEASURE}" = 'bw' ]
     then
-        printbwheader >> $FILEPATH
+        printbwheader | tee -a $FILEPATH
     elif [ "${MEASURE}" = 'lat' ]
     then
-        printlatheader >> $FILEPATH
+        printlatheader | tee -a $FILEPATH
     fi
 
     cecho "starting experiment..." $green
@@ -235,7 +245,7 @@ else
 
     # RUN IP EXPERIMENT
     for i in `seq 1 $POW`; do
-        ./$EXEC -b $i -i $ITER -t $THREAD -m $MEASURE $ADDR >> $FILEPATH
+        ./$EXEC -b $i -i $ITER -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
       sleep 0.1
     done
 fi

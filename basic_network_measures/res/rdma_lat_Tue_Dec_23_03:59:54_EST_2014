@@ -8,3 +8,8 @@
 8      	100000000	0.16   	
 16     	100000000	0.16   	
 32     	100000000	0.16   	
+
+
+
+# too much iterations, no change in latency as we scale size of buffer
+# try with smaller number of iterations, but scale up to bigger # bytes

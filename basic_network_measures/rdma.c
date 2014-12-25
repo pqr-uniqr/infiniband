@@ -181,14 +181,22 @@ main ( int argc, char *argv[] )
     }
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
 
-    pthread_mutex_init(&start_mutex, NULL);
-    pthread_cond_init(&start_cond, NULL);
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    /* server begins CPU measurement if not IBSR */
+    if( !config.server_name && config.opcode == -1){
+        get_usage( getpid(), &pstart, CPUNO );
+    }
+    
 
     // this is a bit convoluted
     // unless opcode == IB_SEND, only client will enter here
     if( config.opcode != -1 ){
+
+
+        pthread_mutex_init(&start_mutex, NULL);
+        pthread_cond_init(&start_cond, NULL);
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
         if ( config.server_name ){
             functorun = (void *(*)(void *)) &run_iter_client;
@@ -247,6 +255,11 @@ main ( int argc, char *argv[] )
     if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, RED "final sync failed\n" RESET);
         goto main_exit;
+    }
+
+    /* server ends CPU measurement if not IBSR */
+    if( !config.server_name && config.opcode == -1 ){
+        get_usage( getpid(), &pend, CPUNO );
     }
 
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));

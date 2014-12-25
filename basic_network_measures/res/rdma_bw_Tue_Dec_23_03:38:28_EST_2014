@@ -27,3 +27,8 @@
 4194304	100000	6490.51	99.88  	   0.00
 8388608	100000	6490.93	99.90  	   0.00
 16777216	100000	6491.16	99.90  	   0.00
+
+
+
+
+# good number of iterations... BW measurement seems sane, CPU usage good
