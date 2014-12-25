@@ -29,6 +29,7 @@ trap ctrl_c SIGINT
 
 EXEC=$1
 DATE=`date | sed 's/ /_/g'`
+DIR='res'
 
 if [ "${EXEC}" = "" ]
 then
@@ -72,6 +73,12 @@ then
 else
     cecho "> executable could not be compiled. exiting..." $red
     exit 1
+fi
+
+
+if  ! [ -d "$DIR" ] 
+then
+    mkdir $DIR
 fi
 
 touch "$FILEPATH"
