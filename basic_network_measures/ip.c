@@ -578,7 +578,7 @@ static void print_report( void )
     } else if( config.measure == LATENCY ){
         avg_lat = (double) latency / (double) config.iter;
         printf( REPORT_FMT_LAT, (int) config.xfer_unit, 
-                config.iter, avg_lat, 0, 0);
+                config.iter, avg_lat);
     }
 }
 
