@@ -1067,10 +1067,10 @@ print_report(unsigned int iters, unsigned size, int duplex,
             - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
         avg_bw = xfer_total / elapsed;
         calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
-        printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
+        printf(REPORT_FMT, config.threads, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
     } else if (config.measure == LATENCY){
         avg_lat = (double) latency / (double) config.iter;
-        printf( REPORT_FMT_LAT, (int) config.xfer_unit, config.iter, avg_lat );
+        printf( REPORT_FMT_LAT, config.threads, (int) config.xfer_unit, config.iter, avg_lat );
     }
 }
 

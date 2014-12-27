@@ -20,8 +20,8 @@ cecho(){
     tput sgr0
     return
 }  
-printbwheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
-printlatheader() { echo -e "#bytes\titer.\tlatency"; }
+printbwheader() { echo -e "#bytes\tthreads\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
+printlatheader() { echo -e "#bytes\tthreads\titer.\tlatency"; }
 ctrl_c(){
     make clean
     exit
@@ -135,7 +135,7 @@ while read POW; do
     fi
 done
 
-cecho "> I will run around y total iterations over all the threads. Specify y (10000 recommended for over Ib, 5000 recommended for over Ethernet) " $white
+cecho "> I will run around y total iterations over all the threads. Specify y (100000 recommended for over Ib, 5000 recommended for over Ethernet) " $white
 while read ITER; do
     if [ "0$ITER" -gt 100000 ] || [ -z "${ITER}" ]
     then 

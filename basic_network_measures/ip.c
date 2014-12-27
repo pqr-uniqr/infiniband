@@ -573,11 +573,11 @@ static void print_report( void )
         avg_bw = xfer_total / elapsed;
 
         calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu );
-        printf( REPORT_FMT_BW, (int) config.xfer_unit, 
+        printf( REPORT_FMT_BW, config.threads, (int) config.xfer_unit, 
                 config.iter, avg_bw, ucpu, scpu);
     } else if( config.measure == LATENCY ){
         avg_lat = (double) latency / (double) config.iter;
-        printf( REPORT_FMT_LAT, (int) config.xfer_unit, 
+        printf( REPORT_FMT_LAT, config.threads,(int) config.xfer_unit, 
                 config.iter, avg_lat);
     }
 }
