@@ -135,7 +135,7 @@ while read POW; do
     fi
 done
 
-cecho "> I will run around y total iterations over all the threads. Specify y (100000 recommended for over Ib, 5000 recommended for over Ethernet) " $white
+cecho "> I will run around y total iterations over all the threads. Specify y (10000 recommended for over Ib, 5000 recommended for over Ethernet) " $white
 while read ITER; do
     if [ "0$ITER" -gt 100000 ] || [ -z "${ITER}" ]
     then 
@@ -197,10 +197,10 @@ then
     cecho "STDERR: " $red
 
     # RUN RDMA EXPERIMENT
-    for i in `seq 1 $THREAD`; do
+    for i in `seq 0 $THREAD`; do
         NUMTHREAD=`echo "2^$i" | bc`
-        ITER=`echo "$ITER / $NUMTHREAD" | bc` 
-        ./$EXEC -v $OP -i $ITER -b $POW -t $NUMTHREAD -m $MEASURE $ADDR | tee -a $FILEPATH
+        NUMITER=`echo "$ITER / $NUMTHREAD" | bc` 
+        ./$EXEC -v $OP -i $NUMITER -b $POW -t $NUMTHREAD -m $MEASURE $ADDR | tee -a $FILEPATH
         sleep 0.1
     done
 else 
@@ -216,10 +216,10 @@ else
     cecho "STDERR: " $red
 
     # RUN IP EXPERIMENT
-    for i in `seq 1 $THREAD`; do
+    for i in `seq 0 $THREAD`; do
         NUMTHREAD=`echo "2^$i" | bc`
-        ITER=`echo "$ITER / $NUMTHREAD" | bc` 
-        ./$EXEC -b $POW -i $ITER -t $NUMTHREAD -m $MEASURE $ADDR | tee -a $FILEPATH
+        NUMITER=`echo "$ITER / $NUMTHREAD" | bc` 
+        ./$EXEC -b $POW -i $NUMITER -t $NUMTHREAD -m $MEASURE $ADDR | tee -a $FILEPATH
         sleep 0.1
     done
 fi
