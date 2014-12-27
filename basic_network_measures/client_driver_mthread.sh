@@ -204,8 +204,6 @@ then
         sleep 0.1
     done
 else 
-
-else
     if [ "${MEASURE}" = 'bw' ]
     then
         printbwheader | tee -a $FILEPATH
