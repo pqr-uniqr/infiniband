@@ -177,7 +177,7 @@ fi
 # GET NUMBER OF THREADS
 cecho "> I will run the experiment specified above for each of the threads. Specify number of threads" $white
 while read THREAD; do
-    if [ "0$THREAD" -gt 30 ] || [ -z "${THREAD}" ]
+    if [ "0$THREAD" -gt 100 ] || [ -z "${THREAD}" ]
     then 
         cecho "> try again (max 30)" $red
     else
