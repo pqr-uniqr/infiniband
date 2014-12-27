@@ -147,7 +147,7 @@ while read ITER; do
 done
 
 cecho "> I will run the above experiment using 1 thread to 2^z threads. Specify z (recommended 10)"
-while read THREAD:do
+while read THREAD; do
     if [ "0$THREAD" -gt 12 ] || [ -z "${THREAD}" ]
     then
         cecho "> try again (max 12)" $red
