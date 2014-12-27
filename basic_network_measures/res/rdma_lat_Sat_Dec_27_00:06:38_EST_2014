@@ -1,0 +1,5 @@
+#rdma experiment to measure lat: 
+#Up to 2^16 bytes, each 1000000 iterations on 1 threads (server addr: 192.168.1.1)
+#* to reproduce this result, use commit 5474a0fd7f184a6b76ee2212cc319d459bfd41c4 *
+#verb: w
+#bytes	iter.	latency

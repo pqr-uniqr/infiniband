@@ -358,9 +358,7 @@ run_iter_client(void *param)
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
 
-            /*
             if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
-            */
 
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
                 fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
@@ -368,13 +366,12 @@ run_iter_client(void *param)
                 return -1;
             }
 
-            /*
             if( config.measure == LATENCY ){
                 gettimeofday( &tcompleted, NULL );
                 elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
                     (tposted.tv_sec * 1e6 + tposted.tv_usec);
                 latency += elapsed;
-            }*/
+            }
 
             ++scnt;
 
@@ -1073,7 +1070,7 @@ print_report(unsigned int iters, unsigned size, int duplex,
         printf(REPORT_FMT, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
     } else if (config.measure == LATENCY){
         avg_lat = (double) latency / (double) config.iter;
-        printf( REPORT_FMT_LAT, (int) config.xfer_unit, config.iter,avg_lat);
+        printf( REPORT_FMT_LAT, (int) config.xfer_unit, config.iter, avg_lat );
     }
 }
 
