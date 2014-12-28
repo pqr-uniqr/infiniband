@@ -1,0 +1,15 @@
+#ip experiment to measure bw: 
+#2^12 buffer size, up to 2^10 number of threads with total 50000 iterations (server addr: 10.116.60.2)
+#* to reproduce this result, use commit d61435a607ade7534bcbfe9371121f6bce05beee
+#bytes	threads	iter.	Avg. BW	UCPU%	SCPU%
+1      	4096	50000	119.41 	0.00   	   5.39
+2      	4096	25000	119.13 	0.00   	   5.81
+4      	4096	12500	119.81 	0.00   	   6.25
+8      	4096	6250	120.77 	0.00   	   6.02
+16     	4096	3125	119.17 	0.00   	   6.59
+32     	4096	1562	119.46 	0.00   	   7.27
+64     	4096	781	118.48 	0.00   	   8.54
+128    	4096	390	118.02 	0.61   	   9.20
+256    	4096	195	117.67 	0.00   	   9.41
+512    	4096	97	117.77 	0.59   	  10.59
+1024   	4096	48	117.47 	0.00   	  13.02
