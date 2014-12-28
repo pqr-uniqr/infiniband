@@ -1,0 +1,15 @@
+#ip experiment to measure lat: 
+#2^12 buffer size, up to 2^10 number of threads with total 5000 iterations (server addr: 192.168.1.1)
+#* to reproduce this result, use commit 4cef764b0451654e706579535386db9fd1081275
+#bytes	threads	iter.	latency
+1      	4096	5000	1.63   	
+2      	4096	2500	1.70   	
+4      	4096	1250	1.53   	
+8      	4096	625	1.73   	
+16     	4096	312	1.42   	
+32     	4096	156	1.67   	
+64     	4096	78	1.68   	
+128    	4096	39	1.98   	
+256    	4096	19	2.42   	
+512    	4096	9	3.03   	
+1024   	4096	4	4.57   	
