@@ -167,7 +167,7 @@ main ( int argc, char *argv[] )
     resources_init( &res );
     DEBUG_PRINT((stdout, GRN "resources_init() successful\n" RESET));
 
-    // FROM HERE ON: functions containing malloc -----------------------------------
+    // FROM HERE ON: functions could contain malloc -----------------------------------
 
     if( -1 == resources_create(&res) ){
         fprintf(stderr , RED "resources_create\n" RESET);
@@ -196,8 +196,6 @@ main ( int argc, char *argv[] )
     // unless opcode == IB_SEND, only client will enter here
     if( config.opcode != -1 ){
 
-
-
         if ( config.server_name ){
             functorun = (void *(*)(void *)) &run_iter_client;
         } else {
@@ -224,7 +222,7 @@ main ( int argc, char *argv[] )
         // they've spawned their threads, their threads have reached pthread_wait
         // let the client wait for the server to post the RRs
         if (config.opcode == IBV_WR_SEND ){
-            if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
+            if( -1 == sock_sync_data(res.sock, 1, "K", &temp_char ) ){
                 fprintf(stderr, RED "IB Send preliminary\n" RESET);
                 goto main_exit;
             }
@@ -258,6 +256,7 @@ main ( int argc, char *argv[] )
     }
 
     /* server ends CPU measurement if not IBSR */
+    // FIXME where does server measure CPU if IBSR?
     if( !config.server_name && config.opcode == -1 ){
         get_usage( getpid(), &pend, CPUNO );
     }
@@ -358,7 +357,9 @@ run_iter_client(void *param)
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
 
-            if( config.measure == LATENCY ) gettimeofday( &tposted, NULL );
+            // if first of the 50 request block
+            if( config.measure == LATENCY && (scnt % CQ_MODERATION) == 0 ) 
+                gettimeofday( &tposted, NULL );
 
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
                 fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
@@ -394,6 +395,13 @@ run_iter_client(void *param)
                             return -1;
                         } else{
                             ccnt += CQ_MODERATION;
+                            if( config.measure == LATENCY ){
+                                gettimeofday( &tcompleted, NULL );
+                                elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+                                    (tposted.tv_sec * 1e6 + tposted.tv_usec);
+                                latency += elapsed;
+                            }
+
                             DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", wc[i].wr_id, ccnt));
                         }
 

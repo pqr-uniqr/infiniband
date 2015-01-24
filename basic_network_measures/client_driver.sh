@@ -194,9 +194,9 @@ fi
 
 # if this is called on an existing file (such as /dev/null), won't really hurt
 touch "$FILEPATH"
-echo "#$EXEC experiment to measure $MEASURE: " | tee $FILEPATH
-echo "#Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" | tee -a $FILEPATH
-echo "#* to reproduce this result, use $GITVER *" | tee -a $FILEPATH
+echo "# $EXEC experiment to measure $MEASURE: " | tee $FILEPATH
+echo "# Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" | tee -a $FILEPATH
+echo "# * to reproduce this result, use $GITVER *" | tee -a $FILEPATH
 
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
 
