@@ -367,13 +367,6 @@ run_iter_client(void *param)
                 return -1;
             }
 
-            if( config.measure == LATENCY ){
-                gettimeofday( &tcompleted, NULL );
-                elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-                    (tposted.tv_sec * 1e6 + tposted.tv_usec);
-                latency += elapsed;
-            }
-
             ++scnt;
 
             if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
@@ -393,7 +386,7 @@ run_iter_client(void *param)
                             check_wc_status(wc[i].status);
                             fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
                             return -1;
-                        } else{
+                        } else {
                             ccnt += CQ_MODERATION;
                             if( config.measure == LATENCY ){
                                 gettimeofday( &tcompleted, NULL );
@@ -404,10 +397,8 @@ run_iter_client(void *param)
 
                             DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", wc[i].wr_id, ccnt));
                         }
-
                     }
                 }
-
             } while (ne > 0);
 
             if( ne < 0 ){
