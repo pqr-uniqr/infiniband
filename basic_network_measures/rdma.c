@@ -1065,8 +1065,14 @@ print_report(unsigned int iters, unsigned size, int duplex,
         elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
             - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
         avg_bw = xfer_total / elapsed;
-        calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
-        fprintf(stdout, "total time diff: %lu\n", pend.cpu_total_time - pstart.cpu_total_time);
+
+        if( pend.cpu_total_time - pstart.cpu_total_time == 0){
+            ucpu = 0.;
+            scpu = 0.;
+        } else {
+            calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
+        }
+
         printf(REPORT_FMT, config.threads, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
     } else if (config.measure == LATENCY){
         avg_lat = (double) latency / (double) (config.iter / CQ_MODERATION) / (double) config.threads;
