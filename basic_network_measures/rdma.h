@@ -83,6 +83,7 @@ struct config_t
     int crt;            /* what to test for */
     int threads;        /* number of threads to use */
     int measure;
+    int use_event;      /* use events API for polling? */
     struct config_t *config_other;
 };
 
@@ -99,6 +100,7 @@ struct cm_con_data_t
 // one for every ib connection
 struct ib_assets
 {
+    struct ibv_comp_channel *channel; /* completion event channel (if use_event is set) */
     struct ibv_pd *pd;		/* PD handle */
     struct ibv_cq *cq;		/* CQ handle */
     struct ibv_qp *qp;		/* QP handle */

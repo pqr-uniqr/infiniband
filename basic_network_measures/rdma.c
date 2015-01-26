@@ -19,6 +19,7 @@ struct config_t config =
     0,       /* criteria */
     1,              /* number of threads */
     BANDWIDTH,      /* measure */
+    0,          /* use events */
     NULL,
 };
 
@@ -70,10 +71,11 @@ main ( int argc, char *argv[] )
             {.name = "criteria", .has_arg=1, .val='c'},
             {.name = "threads", .has_arg = 1, .val='t'},
             {.name = "measure", .has_arg = 1, .val='m'},
+            {.name = "event", .has_arg = 0, .val='e'},
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:t:m:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:t:m:e:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -145,6 +147,9 @@ main ( int argc, char *argv[] )
                 else if( ! strcmp(optarg, "b") || ! strcmp(optarg, "bw") || 
                         ! strcmp(optarg, "bandwidth") )
                     config.measure = BANDWIDTH;
+                break;
+            case 'e':
+                config.use_event = 1;
                 break;
             default:
                 usage (argv[0]);

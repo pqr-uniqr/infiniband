@@ -83,26 +83,23 @@ done
 # GET NAME OF FILE TO WRITE TO 
 cecho "> Specify name of file (defaults to date/time)" $white
 while read FILENAME; do
-    if [ -n "${FILENAME}"  ]
+    if [ -n "${FILENAME}" ]
     then
-        if [ -e "$DIR/$FILENAME" ]
+        if [ `expr index ${FILENAME} /` = 1]
         then
-            cecho "> file already exists" $red
-        elif [ `expr index ${FILENAME} /` = 1 ] 
-        then
-            # we can order redirection to command line tools (e.g. /dev/null)
             FILEPATH="${FILENAME}"
             break
+        elif [ -e "$DIR/$FILENAME" ]
+        then
+            cecho "> file already exists" $red
         else
-            FILENAME="${EXEC}_$FILENAME_${MEASURE}"
             FILEPATH="$DIR/$FILENAME"
             cecho "> experiment will be stored in '$FILEPATH'" $green
             break
         fi
     else
-        FILENAME="${EXEC}_${MEASURE}_${DATE}"
-        FILEPATH="$DIR/$FILENAME"
-        cecho "> defaulting to: $FILEPATH" $green
+        FILENAME="${EXEC}_${MEASURE}"
+        cecho "> defaulting to something like: ${EXEC}_${MEASURE}_${DATE}" $green
         break
     fi
 done
@@ -192,14 +189,13 @@ then
     mkdir $DIR
 fi
 
-# if this is called on an existing file (such as /dev/null), won't really hurt
-touch "$FILEPATH"
-echo "# $EXEC experiment to measure $MEASURE: " | tee $FILEPATH
-echo "# Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)" | tee -a $FILEPATH
-echo "# * to reproduce this result, use $GITVER *" | tee -a $FILEPATH
 
+FILEHEADER="# $EXEC experiment to measure $MEASURE:\n" 
+FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)\n" 
+FILEHEADER="${FILEHEADER}# * to reproduce this result, use $GITVER *\n"
+
+# BRANCH INTO RDMA AND IP SPECIFIC SETTINGS
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
-
     # GET VERB FOR RDMA
     cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
     while read OP; do 
@@ -212,7 +208,17 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
             fi
         fi
     done
-    echo "#verb: $OP"  | tee -a $FILEPATH
+   
+    # FINALIZE FILE NAME
+    if [ -n "${FILENAME}"]
+    then
+        FILENAME="${EXEC}_${MEASURE}_${OP}_${DATE}"
+        FILEPATH="$DIR/$FILENAME"
+    fi
+
+    touch "$FILEPATH"
+    echo -e FILEHEADER | tee -a $FILEPATH
+
 
     if [ "${MEASURE}" = 'bw' ]
     then
@@ -239,6 +245,30 @@ else
     then
         printlatheader | tee -a $FILEPATH
     fi
+
+
+    cecho "> Please specify link type (eth for ethernet, ib for infiniband)"$white
+    while read LT; do 
+        if  [ -n "${LT}" ]; then 
+            if [ "$LT" != 'ib' ] && [ "$LT" != 'eth' ] ; then
+                cecho "> try again (eth for ethernet, ib for infiniband)" $red
+            else
+                cecho "> $LT received" $green
+                break
+            fi
+        else
+            cecho "> try again" $red
+        fi
+    done
+
+    if [ -n "${FILENAME}"]
+    then
+        FILENAME="${EXEC}_${MEASURE}_${LT}_${DATE}"
+        FILEPATH="$DIR/$FILENAME"
+    fi
+
+    touch "$FILEPATH"
+    echo -e FILEHEADER | tee -a $FILEPATH
 
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
