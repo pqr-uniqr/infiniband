@@ -28,6 +28,8 @@ long int latency;
 
 struct pstat pstart;
 struct pstat pend;
+struct pstat pstart_server;
+struct pstat pend_server;
 
 int cnt_threads;
 
@@ -256,13 +258,25 @@ main ( int argc, char *argv[] )
     }
 
     /* server ends CPU measurement if not IBSR */
-    // FIXME where does server measure CPU if IBSR?
     if( !config.server_name && config.opcode == -1 ){
         get_usage( getpid(), &pend, CPUNO );
     }
 
+    /* exchange stat data*/
+    if( -1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pstart, 
+                (char *) &pstart_server)){
+        fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
+        goto main_exit;
+    }
+
+    if(-1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pend, (char *) &pend_server)){
+        fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
+        goto main_exit;
+    }
+
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
+    // signifies that everything was run without errors
     rc = 1;
 main_exit:
     if( -1 == resources_destroy(&res) )
@@ -721,7 +735,8 @@ resources_create (struct resources *res)
 
     /* EXCHANGE CONFIG INFO */
     config_other = (struct config_t *) malloc( sizeof(struct config_t) );
-    if( 0 > sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config,(char *) config_other) ){
+    if( -1 == sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config, 
+                (char *) config_other) ){
         fprintf(stderr, RED "failed to exchange config data\n" RESET);
         return -1;
     }
@@ -1057,7 +1072,7 @@ opcode_to_str(int opcode, char **str)
 print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
-    double ucpu, scpu, xfer_total, avg_bw, avg_lat;
+    double ucpu=0., scpu=0., ucpu_server=0., scpu_server=0., xfer_total, avg_bw, avg_lat;
     long elapsed;
 
     if( config.measure == BANDWIDTH ){
@@ -1066,14 +1081,14 @@ print_report(unsigned int iters, unsigned size, int duplex,
             - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
         avg_bw = xfer_total / elapsed;
 
-        if( pend.cpu_total_time - pstart.cpu_total_time == 0){
-            ucpu = 0.;
-            scpu = 0.;
-        } else {
-            calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
-        }
+        // to avoid getting nan's
+        if( pend.cpu_total_time - pstart.cpu_total_time )
+            calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
+        if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
+            calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
 
-        printf(REPORT_FMT, config.threads, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
+        printf(REPORT_FMT, config.threads, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu,
+                ucpu_server, scpu_server);
     } else if (config.measure == LATENCY){
         avg_lat = (double) latency / (double) (config.iter / CQ_MODERATION) / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads, (int) config.xfer_unit, config.iter, avg_lat );

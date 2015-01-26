@@ -17,7 +17,7 @@ cecho(){
     tput sgr0
     return
 }  
-printbwheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
+printbwheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%\tUCPU%(s)\tSCPU%(s)"; }
 printlatheader() { echo -e "#bytes\titer.\tlatency"; }
 ctrl_c(){
     make clean
