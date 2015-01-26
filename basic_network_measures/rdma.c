@@ -347,7 +347,7 @@ run_iter_client(void *param)
                 sr.wr_id = scnt;
             }
 
-            DEBUG_PRINT((stdout, "[%d, signaled? %d]\n", scnt, !(scnt % CQ_MODERATION)));
+            DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, !(scnt % CQ_MODERATION)));
 
             /* CUSTOMIZE SR */
 
@@ -376,6 +376,11 @@ run_iter_client(void *param)
         if( ccnt < config.iter ){
             do {
                 ne = ibv_poll_cq(conn->cq, 1, wc);
+
+                if( !ne ){
+                    DEBUG_PRINT((stdout, "poll_cq returned\n"));
+                }
+
                 if( ne > 0 ){
                     for( i = 0; i < ne; i++){
                         DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
