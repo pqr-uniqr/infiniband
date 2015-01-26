@@ -217,7 +217,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     fi
 
     touch "$FILEPATH"
-    echo -e FILEHEADER | tee -a $FILEPATH
+    echo -e $FILEHEADER | tee -a $FILEPATH
 
 
     if [ "${MEASURE}" = 'bw' ]
@@ -269,7 +269,7 @@ else
     fi
 
     touch "$FILEPATH"
-    echo -e FILEHEADER | tee -a $FILEPATH
+    echo -e $FILEHEADER | tee -a $FILEPATH
 
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
