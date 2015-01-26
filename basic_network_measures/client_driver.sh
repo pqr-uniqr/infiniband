@@ -192,7 +192,7 @@ fi
 
 FILEHEADER="# $EXEC experiment to measure $MEASURE:\n" 
 FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)\n" 
-FILEHEADER="${FILEHEADER}# * to reproduce this result, use $GITVER *\n"
+FILEHEADER="${FILEHEADER}# to reproduce this result, use $GITVER *\n"
 
 # BRANCH INTO RDMA AND IP SPECIFIC SETTINGS
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
@@ -219,7 +219,6 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     touch "$FILEPATH"
     echo -e $FILEHEADER | tee -a $FILEPATH
 
-
     if [ "${MEASURE}" = 'bw' ]
     then
         printbwheader | tee -a $FILEPATH
@@ -238,15 +237,6 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     done
 
 else
-    if [ "${MEASURE}" = 'bw' ]
-    then
-        printbwheader | tee -a $FILEPATH
-    elif [ "${MEASURE}" = 'lat' ]
-    then
-        printlatheader | tee -a $FILEPATH
-    fi
-
-
     cecho "> Please specify link type (eth for ethernet, ib for infiniband)" $white
     while read LT; do 
         if  [ -n "${LT}" ]; then 
@@ -261,6 +251,7 @@ else
         fi
     done
 
+
     # FINALIZE FILE NAME
     if [ -n "${FILENAME}" ]
     then
@@ -270,6 +261,15 @@ else
 
     touch "$FILEPATH"
     echo -e $FILEHEADER | tee -a $FILEPATH
+
+    if [ "${MEASURE}" = 'bw' ]
+    then
+        printbwheader | tee -a $FILEPATH
+    elif [ "${MEASURE}" = 'lat' ]
+    then
+        printlatheader | tee -a $FILEPATH
+    fi
+
 
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
