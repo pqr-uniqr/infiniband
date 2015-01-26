@@ -395,7 +395,6 @@ run_iter_client(void *param)
                                     (tposted.tv_sec * 1e6 + tposted.tv_usec);
                                 latency += elapsed;
                             }
-
                             DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", wc[i].wr_id, ccnt));
                         }
                     }
@@ -1069,6 +1068,7 @@ print_report(unsigned int iters, unsigned size, int duplex,
         calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu);
         printf(REPORT_FMT, config.threads, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
     } else if (config.measure == LATENCY){
+        avg_lat = (double) latency / (double) (config.iter / CQ_MODERATION) / (double) config.threads;
         avg_lat = (double) latency / (double) config.iter / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads, (int) config.xfer_unit, config.iter, avg_lat );
     }
