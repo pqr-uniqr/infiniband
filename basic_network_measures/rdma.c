@@ -350,7 +350,7 @@ run_iter_client(void *param)
                 sr.wr_id = scnt;
             }
 
-            DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, !(scnt % CQ_MODERATION)));
+            DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, (scnt % CQ_MODERATION == CQ_MODERATION - 1)));
 
             /* CUSTOMIZE SR */
 
