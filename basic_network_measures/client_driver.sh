@@ -247,7 +247,7 @@ else
     fi
 
 
-    cecho "> Please specify link type (eth for ethernet, ib for infiniband)"$white
+    cecho "> Please specify link type (eth for ethernet, ib for infiniband)" $white
     while read LT; do 
         if  [ -n "${LT}" ]; then 
             if [ "$LT" != 'ib' ] && [ "$LT" != 'eth' ] ; then
