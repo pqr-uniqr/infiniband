@@ -383,7 +383,7 @@ run_iter_client(void *param)
                 if( !ne ){
                     j++;
                     DEBUG_PRINT((stdout, "poll_cq returned 0\n"));
-                    if(j > 5) return -1;
+                    if(j > 30) return -1;
                 }
 
                 if( ne > 0 ){
