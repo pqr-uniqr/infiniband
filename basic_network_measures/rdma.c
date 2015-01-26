@@ -288,9 +288,6 @@ main_exit:
     static int
 run_iter_client(void *param)
 {
-    // FIXME temporary
-    int j = 0;
-
     /* DECLARE AND INITIALIZE */
     struct ib_assets *conn = (struct ib_assets *) param;
     int rc, scnt=0, ccnt=0, ne, i;
@@ -379,12 +376,6 @@ run_iter_client(void *param)
         if( ccnt < config.iter ){
             do {
                 ne = ibv_poll_cq(conn->cq, 1, wc);
-
-                if( !ne ){
-                    j++;
-                    DEBUG_PRINT((stdout, "poll_cq returned 0\n"));
-                    if(j > 30) return -1;
-                }
 
                 if( ne > 0 ){
                     for( i = 0; i < ne; i++){
