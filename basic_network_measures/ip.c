@@ -16,6 +16,8 @@ long int latency;
 
 struct pstat pstart;
 struct pstat pend;
+struct pstat pstart_server;
+struct pstat pend_server;
 
 int cnt_threads;
 pthread_mutex_t start_mutex;
@@ -165,6 +167,18 @@ int main ( int argc, char *argv[] )
     if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, "sync error while in data transfer\n");
         return 1;
+    }
+
+    /* exchange stat data*/
+    if( -1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pstart, 
+                (char *) &pstart_server)){
+        fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
+        goto main_exit;
+    }
+
+    if(-1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pend, (char *) &pend_server)){
+        fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
+        goto main_exit;
     }
 
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
@@ -563,7 +577,7 @@ static void print_config( void )
 
 static void print_report( void )
 {
-    double ucpu, scpu, xfer_total, avg_bw, avg_lat;
+    double ucpu=0., scpu=0., ucpu_server=0., scpu_server=0., xfer_total, avg_bw, avg_lat;
     long elapsed;
 
     if( config.measure == BANDWIDTH ){
@@ -572,9 +586,13 @@ static void print_report( void )
             (tposted.tv_sec * 1e6 + tposted.tv_usec);
         avg_bw = xfer_total / elapsed;
 
-        calc_cpu_usage_pct( &pend, &pstart, &ucpu, &scpu );
+        if( pend.cpu_total_time - pstart.cpu_total_time )
+            calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
+        if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
+            calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
+
         printf( REPORT_FMT_BW, config.threads, (int) config.xfer_unit, 
-                config.iter, avg_bw, ucpu, scpu);
+                config.iter, avg_bw, ucpu, scpu, ucpu_server, scpu_server);
     } else if( config.measure == LATENCY ){
         avg_lat = (double) latency / (double) config.iter / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads,(int) config.xfer_unit, 

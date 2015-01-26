@@ -48,7 +48,7 @@
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
-#define REPORT_FMT_BW     "%-7d\t%d\t%d\t%-7.2f\t%-7.2f\t%7.2f\n"
+#define REPORT_FMT_BW      "%-7d\t%d\t%d\t%-7.2f\t%-7.2f\t%7.2f\t%7.2f\t%7.2f\n"
 #define REPORT_FMT_LAT     "%-7d\t%d\t%d\t%-7.2f\t\n"
 
 #define ALLOCATE(var,type,size)                                  \
