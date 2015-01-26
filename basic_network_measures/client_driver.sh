@@ -210,7 +210,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     done
    
     # FINALIZE FILE NAME
-    if [ -n "${FILENAME}"]
+    if [ -n "${FILENAME}" ]
     then
         FILENAME="${EXEC}_${MEASURE}_${OP}_${DATE}"
         FILEPATH="$DIR/$FILENAME"
@@ -261,7 +261,8 @@ else
         fi
     done
 
-    if [ -n "${FILENAME}"]
+    # FINALIZE FILE NAME
+    if [ -n "${FILENAME}" ]
     then
         FILENAME="${EXEC}_${MEASURE}_${LT}_${DATE}"
         FILEPATH="$DIR/$FILENAME"
