@@ -1069,7 +1069,6 @@ print_report(unsigned int iters, unsigned size, int duplex,
         printf(REPORT_FMT, config.threads, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu);
     } else if (config.measure == LATENCY){
         avg_lat = (double) latency / (double) (config.iter / CQ_MODERATION) / (double) config.threads;
-        avg_lat = (double) latency / (double) config.iter / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads, (int) config.xfer_unit, config.iter, avg_lat );
     }
 }
