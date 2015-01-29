@@ -361,7 +361,7 @@ run_iter_client(void *param)
         }
 
         while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
-            if((scnt % CQ_MODERATION) == 0){
+            if( config.measure == BANDWIDTH && (scnt % CQ_MODERATION) == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
                 sr.wr_id = scnt;
             }
@@ -377,7 +377,7 @@ run_iter_client(void *param)
 #endif
 
             // if first of the 50 request block
-            if( config.measure == LATENCY && (scnt % CQ_MODERATION) == 0 ) 
+            if( config.measure == LATENCY )
                 gettimeofday( &tposted, NULL );
 
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
@@ -388,7 +388,7 @@ run_iter_client(void *param)
 
             ++scnt;
 
-            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
+            if( config.measure == BANDWIDTH && scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
                 sr.send_flags |= IBV_SEND_SIGNALED;
         }
 
