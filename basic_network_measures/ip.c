@@ -599,7 +599,7 @@ static void print_report( void )
         printf("iterations: %d\n", config.iter);
         printf("iterations (casted to double): %f\n", (double) config.iter);
         printf("threads: %d\n", config.threads);
-        printf("threads (double): %d\n", (double) config.threads);
+        printf("threads (double): %f\n", (double) config.threads);
 
         avg_lat = (double) latency / (double) config.iter / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads,(int) config.xfer_unit, 
