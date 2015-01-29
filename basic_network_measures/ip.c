@@ -310,7 +310,7 @@ static int run_iter_lat(void *param)
                 (tposted.tv_sec * 1e6 + tposted.tv_usec);
             latency += elapsed;
 
-            DEBUG_PRINT((stdout, WHT "%d us" RESET, elapsed));
+            DEBUG_PRINT((stdout, WHT "%ld us" RESET, elapsed));
 
             if(rc < config.xfer_unit){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
