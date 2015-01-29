@@ -408,12 +408,14 @@ run_iter_client(void *param)
                             fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
                             return -1;
                         } else {
-                            ccnt += CQ_MODERATION;
                             if( config.measure == LATENCY ){
+                                ccnt += 1;
                                 gettimeofday( &tcompleted, NULL );
                                 elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
                                     (tposted.tv_sec * 1e6 + tposted.tv_usec);
                                 latency += elapsed;
+                            } else {
+                                ccnt += CQ_MODERATION;
                             }
                             DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", wc[i].wr_id, ccnt));
                         }
