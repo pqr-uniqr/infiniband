@@ -131,6 +131,11 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 
+
+
+# MAIN!
+
+
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-l', '--list', action='store_true')
@@ -162,8 +167,6 @@ elif args.delete:
     for f in wrongname + redundant:
         print '\t' + bc.BOLD + f + bc.ENDC
 
-    print tracked
-
     if not query_yes_no("good?"): sys.exit()
 
     for f in wrongname + redundant:
@@ -171,8 +174,6 @@ elif args.delete:
             print bc.FAIL + "skipping " + f + " (tracked by git -- too hot for me)" + bc.ENDC
         else:
             os.system('rm ' + f)
-
-
 else:
     print "no op"
 
