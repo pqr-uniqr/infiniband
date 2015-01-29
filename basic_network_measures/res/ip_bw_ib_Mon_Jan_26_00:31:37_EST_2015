@@ -1,4 +1,1 @@
-# ip experiment to measure bw:
-# Up to 2^24 bytes, each 1000 iterations on 1 threads (server addr: 192.168.1.1)
-# client_driver_mthread.sh client_driver.sh getusage.c ip ip.c ip.h ip.o Makefile rdma.c rdma.h res server_undead.sh to reproduce this result, use commit 6ad085ef5907ac16c1a16616075a829ccadc53d7 *
-
+#CHECKED
