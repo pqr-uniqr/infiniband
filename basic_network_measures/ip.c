@@ -295,12 +295,11 @@ static int run_iter_lat(void *param)
 
         if( config.server_name ){
 
-#ifdef DEBUG
             memset(conn->buf, i % 2, config.xfer_unit);
+#ifdef DEBUG
             csum = checksum(conn->buf, config.xfer_unit);
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
-
             gettimeofday( &tposted, NULL );
 
             rc = write(conn->sock, conn->buf, config.xfer_unit);
@@ -594,13 +593,6 @@ static void print_report( void )
         printf( REPORT_FMT_BW, config.threads, (int) config.xfer_unit, 
                 config.iter, avg_bw, ucpu, scpu, ucpu_server, scpu_server);
     } else if( config.measure == LATENCY ){
-        printf("\n latency (total microseconds): %ld\n", latency);
-        printf("latency (casted to double): %f\n", (double) latency);
-        printf("iterations: %d\n", config.iter);
-        printf("iterations (casted to double): %f\n", (double) config.iter);
-        printf("threads: %d\n", config.threads);
-        printf("threads (double): %d\n", (double) config.threads);
-
         avg_lat = (double) latency / (double) config.iter / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads,(int) config.xfer_unit, 
                 config.iter, avg_lat);
