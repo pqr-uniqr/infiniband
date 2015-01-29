@@ -327,6 +327,7 @@ run_iter_client(void *param)
     sr.num_sge = 1;
     sr.opcode = config.opcode;
     sr.next = NULL;
+    sr.send_flags |= IBV_SEND_SIGNALED;
     sr.wr_id = 0;
     if( config.opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = conn->remote_props.addr;
