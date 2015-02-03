@@ -309,7 +309,7 @@ run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rc, scnt=0, ccnt=0, ne, i, signaled=0, max_requests_onwire;
+    int rc, scnt=0, ccnt=0, ne, i, signaled=0, max_requests_onwire; // * outstanding *
     long int elapsed;
     uint16_t csum;
     pthread_t thread = pthread_self();
@@ -356,10 +356,13 @@ run_iter_client(void *param)
     // NEW
     while( scnt < config.iter || ccnt < config.iter ){
 
-        while ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
+        if ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
             DEBUG_PRINT((stdout, GRN"[ENTERING SEND MODE]----------\n"RESET));
             DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
                         (scnt - ccnt), MAX_SEND_WR / 2));
+        }
+
+        while ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
 
             if( scnt % CQ_MODERATION == 0 ){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
@@ -396,15 +399,17 @@ run_iter_client(void *param)
 
             ++scnt;
 
-            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
+            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 ){
                 sr.send_flags |= IBV_SEND_SIGNALED;
+                signaled = 1;
+            }
         }
 
         if(ccnt < config.iter){
             do{
                 ne = ibv_poll_cq(conn->cq, 1, wc);
-                if( ne > 0){
-                    for(i = 0; i < ne; i ++){
+                if( ne > 0 ){
+                    for(i = 0; i < ne; i++){
                         DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
                         DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
                                     (scnt - ccnt), max_requests_onwire));
