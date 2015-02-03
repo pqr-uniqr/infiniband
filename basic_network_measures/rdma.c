@@ -691,8 +691,8 @@ modify_qp_to_rts (struct ibv_qp *qp)
     memset (&attr, 0, sizeof (attr));
     attr.qp_state = IBV_QPS_RTS;
     attr.timeout = 0x12;
-    attr.retry_cnt = 6;
-    attr.rnr_retry = 6;
+    attr.retry_cnt = 7;
+    attr.rnr_retry = 7;
     attr.sq_psn = 0;
     attr.max_rd_atomic = 16; //FIXME hardcoded!
 
