@@ -39,7 +39,7 @@ fi
 
 
 # GET NAME OF FILE TO WRITE TO 
-cecho "> Specify name of file (defaults to date/time)" $white
+cecho "> Specify name of file (defaults to /dev/null)" $white
 while read FILENAME; do
     if [ -n "${FILENAME}"  ]
     then
@@ -57,8 +57,7 @@ while read FILENAME; do
             break
         fi
     else
-        FILENAME="${EXEC}_${DATE}_server"
-        FILEPATH="$DIR/$FILENAME"
+        FILEPATH="/dev/null"
         cecho "> defaulting to: $FILEPATH" $green
         break
     fi
