@@ -364,11 +364,11 @@ run_iter_client(void *param)
         while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
             if( config.measure == BANDWIDTH && (scnt % CQ_MODERATION) == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
-                sr.wr_id = scnt;
             }
 
-            DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, (scnt % CQ_MODERATION == CQ_MODERATION - 1)));
+            sr.wr_id = scnt;
 
+            DEBUG_PRINT((stdout, "[wr_id %d]\n", scnt));
             /* CUSTOMIZE SR */
 
 #ifdef DEBUG
@@ -377,7 +377,6 @@ run_iter_client(void *param)
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
 
-            // if first of the 50 request block
             if( config.measure == LATENCY )
                 gettimeofday( &tposted, NULL );
 
@@ -421,7 +420,7 @@ run_iter_client(void *param)
                         }
                     }
                 }
-            } while (ne > 0);
+            } while (ne > 0 && (scnt - ccnt) != 0); 
 
             if( ne < 0 ){
                 fprintf(stderr, RED "poll cq\n" RESET);
