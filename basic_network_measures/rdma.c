@@ -309,7 +309,7 @@ run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rc, scnt=0, ccnt=0, ne, i;
+    int rc, scnt=0, ccnt=0, ne, i, signaled=0, max_requests_onwire;
     long int elapsed;
     uint16_t csum;
     pthread_t thread = pthread_self();
@@ -334,6 +334,8 @@ run_iter_client(void *param)
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
 
+    max_requests_onwire = (config.measure == LATENCY)? 1 : MAX_SEND_WR / 2;
+
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
@@ -351,7 +353,94 @@ run_iter_client(void *param)
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
+    // NEW
+    while( scnt < config.iter || ccnt < config.iter ){
+
+        while ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
+            DEBUG_PRINT((stdout, GRN"[ENTERING SEND MODE]----------\n"RESET));
+            DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                        (scnt - ccnt), MAX_SEND_WR / 2));
+
+            if( scnt % CQ_MODERATION == 0 ){
+                sr.send_flags &= ~IBV_SEND_SIGNALED;
+                signaled = 0;
+            }
+
+            sr.wr_id = scnt;
+
+            DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, signaled));
+
+#ifdef DEBUG
+            memset( conn->buf, scnt % 2, config.xfer_unit );
+            csum = checksum(conn->buf, config.xfer_unit);
+            fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
+#endif
+
+            // latency of request i == timestamp[i+1] - timestamp[i]
+            if( config.measure == LATENCY ){
+                if( !scnt ) gettimeofday(&tposted, NULL);
+                else {
+                    gettimeofday(&tcompleted, NULL);
+                    elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+                        (tposted.tv_sec * 1e6 + tposted.tv_usec);
+                    latency += elapsed;
+                    memcpy(&tposted, &tcompleted, sizeof(struct timeval));
+                }
+            }
+
+            if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
+                fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
+                perror("post_send");
+                return -1;
+            }
+
+            ++scnt;
+
+            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
+                sr.send_flags |= IBV_SEND_SIGNALED;
+        }
+
+        if(ccnt < config.iter){
+            do{
+                ne = ibv_poll_cq(conn->cq, 1, wc);
+                if( ne > 0){
+                    for(i = 0; i < ne; i ++){
+                        DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
+                        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                                    max_requests_onwire));
+                        if( wc[i].status != IBV_WC_SUCCESS){
+                            check_wc_status(wc[i].status);
+                            fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
+                            return -1;
+                        } else {
+                            DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", 
+                                        wc[i].wr_id, ccnt));
+                            ccnt += CQ_MODERATION;
+                        }
+
+                    }
+                }
+            } while( ne > 0);
+        }
+
+        if( ne < 0 ){
+            fprintf(stderr, RED "poll cq\n" RESET);
+            return -1;
+        }
+
+    }
+
+    free(wc);
+
+    DEBUG_PRINT((stdout, "finishing run_iter\n"));
+    return 0;
+
+
+
+
+    // OLD
     /* GO! */
+
     while( scnt < config.iter || ccnt < config.iter ){
 
         // keep control of number of uncompleted sent requests
@@ -420,7 +509,7 @@ run_iter_client(void *param)
                         }
                     }
                 }
-            } while (ne > 0 || (scnt - ccnt) != 0); 
+            } while (ne > 0);
 
             if( ne < 0 ){
                 fprintf(stderr, RED "poll cq\n" RESET);
@@ -430,10 +519,6 @@ run_iter_client(void *param)
 
     }
 
-    free(wc);
-
-    DEBUG_PRINT((stdout, "finishing run_iter\n"));
-    return 0;
 }
 
     static int
