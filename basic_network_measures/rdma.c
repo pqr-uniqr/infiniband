@@ -314,7 +314,7 @@ run_iter_client(void *param)
     uint16_t csum;
     pthread_t thread = pthread_self();
 
-    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
+    DEBUG_PRINT((stdout, "[thread %u] spawned \n", (int) thread));
 
     struct ibv_send_wr sr;
     struct ibv_sge sge;
@@ -440,13 +440,16 @@ run_iter_client(void *param)
     static int
 run_iter_server(void *param)
 {
+    DEBUG_PRINT((stdout, "[thread %u] spawned\n", (int) thread));
+
+    /* DECLARE COUNTERS, CAST PARAMTER */
     pthread_t thread = pthread_self();
-    DEBUG_PRINT((stdout, "[thread %u] ready\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
     int rcnt = 0, ccnt = 0;
     int ne, i, initial_recv_count;
     uint16_t csum;
 
+    /* CONSTRUCT RECEIVE REQUEST */
     struct ibv_sge sge; 
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
