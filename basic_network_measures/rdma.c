@@ -585,6 +585,7 @@ run_iter_server(void *param)
             ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
 
             if(ne > 0){
+                DEBUG_PRINT((stdout, "%d CQEs found\n", ne));
                 for(i = 0; i < ne ; i++){
                     if( wc[i].status != IBV_WC_SUCCESS ){
                         check_wc_status(wc[i].status);
