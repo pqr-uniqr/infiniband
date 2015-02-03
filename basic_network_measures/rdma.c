@@ -358,7 +358,7 @@ run_iter_client(void *param)
     while( scnt < config.iter || ccnt < config.iter ){
 
         if ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
-            DEBUG_PRINT((stdout, GRN"[ENTERING SEND MODE]----------\n"RESET));
+            DEBUG_PRINT((stdout, GRN "[ENTERING SEND MODE]----------\n"RESET));
             DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
                         (scnt - ccnt), MAX_SEND_WR / 2));
         }
@@ -692,7 +692,7 @@ modify_qp_to_rts (struct ibv_qp *qp)
     attr.qp_state = IBV_QPS_RTS;
     attr.timeout = 0x12;
     attr.retry_cnt = 6;
-    attr.rnr_retry = 0;
+    attr.rnr_retry = 6;
     attr.sq_psn = 0;
     attr.max_rd_atomic = 16; //FIXME hardcoded!
 
