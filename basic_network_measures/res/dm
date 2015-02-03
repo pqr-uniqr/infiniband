@@ -23,60 +23,116 @@ experiment_types = ["ip_bw_ib","ip_bw_eth","ip_lat_ib","ip_lat_eth",
 
 def list_checked(unchecked=False):
     experiments_checked = dict(zip( experiment_types, [None] * len(experiment_types) ))
-    tobeadded = list()
-    tracked = list()
-    filepresent = list()
-    wrongnames = list()
-    redundants = list()
-    tracked_files = list()
-    unchecked_files = list()
-    checked_files = list()
+    tobeadded = list()      # correctly formatted checked file, no conflict, ready to be added to repo
+    wrongnames = list()     # checked files with names that do not follow convention
+    redundants = list()     # multiple checked files of the same experiment type
+    tracked_files = list()  # all tracked files in the directory (except ignored)
+    ready_plot= list()      # tracked files with no error
+    unchecked_files = list()# unchecked files (except ignored)
+    checked_files = list()  # checked files (except ignored)
+
 
 
     print bc.OKBLUE+ "> listing all checked files" + bc.ENDC + '\n'
 
-    # GET CHECKED DATA FILES
+
+    # GET CHECKED
     os.system('grep -l "#CHECKED" * > checked.txt')
-    os.system('grep -L "#CHECKED" * > unchecked.txt')
-
-    # GET DATA FILES ALREADY ADDED TO REPO
-    os.system('git ls-files > gitfiles.txt')
-    with open('gitfiles.txt') as gitfiles:
-        for filename in gitfiles:
-            tracked_files.append(filename.strip())
-
-
-    # CHECK FOR MALFORMED FILES AND REDUNDANCY
     with open('checked.txt') as checked:
         for filename in checked:
             fn = filename.strip()
             if fn in ignore:
                 continue
             checked_files.append(fn)
-
-    print "[ ALL MARKED FILES ]"
-    if not len(checked_files):
-        print bc.OKGREEN + "NONE" + bc.ENDC
-    else:
-        for f in checked_files:
-            print f
-
-    print ""
-
+    # GET UNCHECKED
+    os.system('grep -L "#CHECKED" * > unchecked.txt')
     with open('unchecked.txt') as unchecked:
         for filename in unchecked:
             fn = filename.strip()
             if fn in ignore:
                 continue
             unchecked_files.append(fn)
+    # GET TRACKED FILES
+    os.system('git ls-files > gitfiles.txt')
+    with open('gitfiles.txt') as gitfiles:
+        for filename in gitfiles:
+            fn = filename.strip()
+            if fn in ignore:
+                continue
+            tracked_files.append(fn)
 
+
+    # PRINT CHECKED FILES
+    print "[ ALL MARKED FILES ]"
+    if not len(checked_files):
+        print bc.OKGREEN + "NONE" + bc.ENDC
+    else:
+        for f in checked_files:
+            print f
+    print ""
+
+    # PRINT UNCHECKED FILES
     print "[ ALL UNMARKED FILES ]"
     if not len(unchecked_files):
         print bc.OKGREEN + "NONE" + bc.ENDC
     else:
         for f in unchecked_files:
             print f
+    print ""
 
+    # PRINT ERRORS WITH CHECKED FILES
+    print "[ ERRORS ]"
+    for fn in checked_files:
+        ex_type = get_exp_type(fn)
+        
+        # DATA FILES SHOULD BE PREFIXED BY THEIR EXPERIMENT TYPE
+        if ex_type not in experiment_types:
+            print bc.FAIL + fn + bc.WARNING + ': filename does not follow naming convention' + bc.ENDC
+            wrongnames.append(fn)
+            continue
+        
+        # THERE SHOULD BE NO MORE THAN ONE CHECKED DATA FILE FOR ANY EXPERIEMTN TYPE
+        curr = experiments_checked[ex_type] 
+        if curr == None:
+            experiments_checked[ex_type] = fn
+        elif curr != CONFLICT: # conflict first detected
+            print bc.FAIL + fn + bc.WARNING + ': conflict with ' + curr + bc.ENDC
+            redundants.extend((curr, fn))
+            experiments_checked[ex_type] = CONFLICT
+        else: # curr is CONFLICT
+            print bc.FAIL + fn + bc.WARNING + ': conflict' + bc.ENDC
+            redundants.append(fn)
+
+    print ""
+    print "[ REPORT ]" 
+
+    
+    # SUMMARY OF COMPLYING DATA FILES AND CONFLICTS (ALSO SHOW WHICH ONES ARE IN THE REPO)
+    for exp_type in experiments_checked:
+        filename = experiments_checked[exp_type]
+
+        if filename == CONFLICT:
+            desc = bc.WARNING + filename + bc.ENDC
+        elif filename == None:
+            desc = bc.FAIL + "No file" + bc.ENDC
+        else:
+            desc = bc.OKGREEN + filename + bc.ENDC
+            
+            # CHECK IF IN REPO
+            if filename in tracked_files: 
+                desc += bc.OKBLUE + ' (tracked) ' + bc.ENDC
+                ready_plot.append(filename)
+            else: 
+                desc += bc.OKBLUE+ ' (not tracked) ' + bc.ENDC
+                tobeadded.append(filename)
+        print exp_type + "\t -> \t" + desc
+
+    os.system('rm checked.txt')
+    os.system('rm unchecked.txt')
+    os.system('rm gitfiles.txt')
+
+
+    """
     with open('checked.txt') as checked:
         print ""
         print "[ ERRORS ]" 
@@ -86,8 +142,6 @@ def list_checked(unchecked=False):
             if fn == 'dm': 
                 continue
 
-            # DATA FILES SHOULD BE PREFIXED BY THEIR EXPERIMENT TYPE
-            ex_type = '_'.join(fn.split('_')[:3])
             if ex_type not in experiment_types:
                 print bc.FAIL + fn + bc.WARNING + ': filename does not follow naming convention' + bc.ENDC
                 wrongnames.append(fn)
@@ -106,37 +160,12 @@ def list_checked(unchecked=False):
                 print bc.FAIL + fn + bc.WARNING + ': conflict' + bc.ENDC
                 redundants.append(fn)
 
-    print ""
-    
-    print "[ REPORT ]" 
+                """
 
-    # SUMMARY OF COMPLYING DATA FILES AND CONFLICTS (ALSO SHOW WHICH ONES ARE IN THE REPO)
-    for exp_type in experiments_checked:
-        filename = experiments_checked[exp_type]
-        if filename == CONFLICT:
-            desc = bc.WARNING + filename + bc.ENDC
-        elif filename == None:
-            desc = bc.FAIL + "No file" + bc.ENDC
-        else:
-            desc = bc.OKGREEN + filename + bc.ENDC
-            filepresent.append(filename)
-            
-            # CHECK IF IN REPO
-            if filename in tracked_files: 
-                desc += bc.OKBLUE + ' (tracked) ' + bc.ENDC
-                tracked.append(filename)
-            else: 
-                desc += bc.OKBLUE+ ' (not tracked) ' + bc.ENDC
-                tobeadded.append(filename)
-        print exp_type + "\t -> \t" + desc
-
-    os.system('rm checked.txt')
-    os.system('rm unchecked.txt')
-    os.system('rm gitfiles.txt')
 
     print ""
 
-    return (tobeadded, filepresent, wrongnames, redundants,tracked_files, unchecked_files, checked_files)
+    return (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot)
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -170,8 +199,11 @@ def query_yes_no(question, default="yes"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
+def get_exp_type(filename):
+    return '_'.join(f.split('_')[:3])
 
-
+def plotdata(datafile, outfile):
+    pass
 
 # MAIN!
 
@@ -183,6 +215,7 @@ group.add_argument('-a', '--add', action='store_true')
 group.add_argument('-c', '--clean', action='store_true')
 group.add_argument('-s', '--smash', action='store_true')
 group.add_argument('-r', '--reset', action='store_true')
+group.add_argument('-p', '--plot', action='store_true')
 args = parser.parse_args()
 
 if args.list:
@@ -190,7 +223,7 @@ if args.list:
 
 elif args.add:
     # commit "green" ones that are not currently tracked
-    (tobeadded, filepresent, wrongnames, redundants, tracked_files, unchecked_files, checked_files) = list_checked()
+    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
     if not len(tobeadded):
         print bc.FAIL + "no files to be added" + bc.ENDC
@@ -208,27 +241,29 @@ elif args.add:
 
 elif args.smash:
     # delete "wrong" files -- wrong names, redundant ones
-    (tobeadded, filepresent, wrongnames, redundants, tracked_files, unchecked_files, checked_files) = list_checked()
+    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
-    if not len(wrongname + redundant):
+    tbd = wrongnames + redundant
+
+    if not len(tbd):
         print bc.FAIL + "no files to be deleted" + bc.ENDC
         sys.exit()
 
     print "following files will be removed from directory:"
-    for f in wrongname + redundant:
+    for f in tbd:
         print '\t' + bc.BOLD + f + bc.ENDC
 
     if not query_yes_no("good?"): sys.exit()
 
-    for f in wrongname + redundant:
-        if f in tracked:
+    for f in tbd:
+        if f in tracked_files:
             os.system('git rm ' + f)
         else:
             os.system('rm ' + f)
 
 elif args.clean:
     # remove all unchecked files using rm
-    (tobeadded, filepresent, wrongnames, redundants, tracked_files, unchecked_files, checked) = list_checked()
+    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
     if not len(unchecked_files):
         print bc.FAIL + "no files to be deleted" + bc.ENDC
@@ -244,7 +279,8 @@ elif args.clean:
         os.remove(f)
 
 elif args.reset:
-    ( t, g, wrongname, redundant, tracked , unchecked_files, checked_files) = list_checked()
+    # remove everything (except for dm, of course)
+    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
     allfiles = unchecked_files + checked_files
     if not len(allfiles):
         print bc.FAIL + "no files to be deleted" + bc.ENDC
@@ -252,18 +288,30 @@ elif args.reset:
 
     print "following files will be removed from directory:"
     for f in allfiles:
-        if f in ignore: continue
         print '\t' + bc.BOLD + f + bc.ENDC
 
     if not query_yes_no("good?"): sys.exit()
 
     for f in allfiles:
-        if f in ignore: continue
         os.remove(f)
 
+elif args.plot:
+    # plot ready_plot
+    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
-    # remove all untracked files using rm
-    # remove all tracked files using git rm
+    if not len(allfiles):
+        print bc.FAIL + "no files to be plotted" + bc.ENDC
+        sys.exit()
+
+    print "following files will be plotted: <original> ---> <plot destination>"
+    for f in ready_plot:
+        ex_type = get_exp_type(f)
+        print '\t' + bc.BOLD + f + ' ---> ' + ex_type + '.png'+ bc.ENDC
+
+    if not query_yes_no("good?"): sys.exit()
+
+    # now actually plot (what if one of them fails?)
+
 else:
     print "no op"
 

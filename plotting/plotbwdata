@@ -16,7 +16,7 @@ if [ "${DATAF}" = "" ] || [ "${OUTF}" = "" ]
 then
     usage;
     exit
-fi
+i
 
 # plot data into latex
 touch $PLOTTERTMP

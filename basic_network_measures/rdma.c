@@ -440,10 +440,9 @@ run_iter_client(void *param)
     static int
 run_iter_server(void *param)
 {
-    DEBUG_PRINT((stdout, "[thread %u] spawned\n", (int) thread));
-
     /* DECLARE COUNTERS, CAST PARAMTER */
     pthread_t thread = pthread_self();
+    DEBUG_PRINT((stdout, "[thread %u] spawned\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
     int rcnt = 0, ccnt = 0;
     int ne, i, initial_recv_count;
