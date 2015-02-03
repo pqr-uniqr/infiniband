@@ -420,7 +420,7 @@ run_iter_client(void *param)
                         }
                     }
                 }
-            } while (ne > 0 && (scnt - ccnt) != 0); 
+            } while (ne > 0 || (scnt - ccnt) != 0); 
 
             if( ne < 0 ){
                 fprintf(stderr, RED "poll cq\n" RESET);
