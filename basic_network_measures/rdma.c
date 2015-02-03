@@ -334,7 +334,8 @@ run_iter_client(void *param)
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
 
-    max_requests_onwire = (config.measure == LATENCY)? 1 : MAX_SEND_WR / 2;
+    //max_requests_onwire = (config.measure == LATENCY)? 1 : MAX_SEND_WR / 2;
+    max_requests_onwire = MAX_SEND_WR / 2;
 
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
@@ -405,7 +406,7 @@ run_iter_client(void *param)
             }
         }
 
-        if(ccnt < config.iter){
+        if(ccnt < config.iter && signaled){
             do{
                 ne = ibv_poll_cq(conn->cq, 1, wc);
                 if( ne > 0 ){
