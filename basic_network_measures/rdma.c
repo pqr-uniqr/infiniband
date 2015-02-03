@@ -407,7 +407,7 @@ run_iter_client(void *param)
                     for(i = 0; i < ne; i ++){
                         DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
                         DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                                    max_requests_onwire));
+                                    (scnt - ccnt), max_requests_onwire));
                         if( wc[i].status != IBV_WC_SUCCESS){
                             check_wc_status(wc[i].status);
                             fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
