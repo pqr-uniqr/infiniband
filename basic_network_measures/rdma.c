@@ -585,7 +585,6 @@ run_iter_server(void *param)
             ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
 
             if(ne > 0){
-                DEBUG_PRINT((stdout, "%d CQEs found\n", ne));
                 for(i = 0; i < ne ; i++){
                     if( wc[i].status != IBV_WC_SUCCESS ){
                         check_wc_status(wc[i].status);
@@ -593,7 +592,7 @@ run_iter_server(void *param)
                         return -1;
                     } else {
                         ccnt++;
-                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, number of RRs on RQ: %d\n", wc[i].wr_id, (rcnt - ccnt)));
+                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, ccnt: %d, number of RRs on RQ: %d\n", wc[i].wr_id, ccnt,(rcnt - ccnt)));
 #ifdef DEBUG
                         csum = checksum(conn->buf, config.xfer_unit);
                         DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
