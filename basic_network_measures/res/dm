@@ -15,7 +15,7 @@ class bc:
 
 ignore = ['dm', 'checked.txt', 'unchecked.txt', 'gitfiles']
 
-
+plotscript_name = "plotting.p"
 CONFLICT = 'CONFLICT'
 experiment_types = ["ip_bw_ib","ip_bw_eth","ip_lat_ib","ip_lat_eth",
     "rdma_bw_r","rdma_bw_w","rdma_bw_s",
@@ -37,7 +37,7 @@ def list_checked(unchecked=False):
 
 
     # GET CHECKED
-    os.system('grep -l "#CHECKED" * > checked.txt')
+    os.system('grep --exclude-dir "plots" -l "#CHECKED" * > checked.txt')
     with open('checked.txt') as checked:
         for filename in checked:
             fn = filename.strip()
@@ -45,7 +45,7 @@ def list_checked(unchecked=False):
                 continue
             checked_files.append(fn)
     # GET UNCHECKED
-    os.system('grep -L "#CHECKED" * > unchecked.txt')
+    os.system('grep --exclude-dir "plots" -L "#CHECKED" * > unchecked.txt')
     with open('unchecked.txt') as unchecked:
         for filename in unchecked:
             fn = filename.strip()
@@ -202,118 +202,165 @@ def query_yes_no(question, default="yes"):
 def get_exp_type(filename):
     return '_'.join(filename.split('_')[:3])
 
-def plotdata(datafile, outfile):
-    pass
+def plotdata(datafile_name, outfile_name):
+    with open(plotscript_name, 'a') as p:
+        p.write('set terminal png\n')
+        p.write('set autoscale\n')
+        
+        if "lat" in outfile_name:
+            # thread, # byte, # iter, latency (us)
+            p.write('set logscale\n')
+            p.write('set xlabel ' + '"buffer size (bytes)"\n')
+            p.write('set ylabel ' + '"latency (us)"\n')
+            p.write('set output "plots/' + outfile_name + '"\n')
+            p.write('plot "' + datafile_name + '" using 2:4 notitle with linespoints\n')
+        elif "bw" in outfile_name:
+            p.write('set logscale\n')
+            p.write('set xlabel ' + '"buffer size (bytes)"\n')
+            p.write('set ylabel ' + '"bandwidth (MB/s)"\n')
+            p.write('set output "plots/' + outfile_name + '"\n')
+            p.write('plot "' + datafile_name + '" using 2:4 notitle with linespoints\n')
+        elif "cpu" in outfile_name: # TODO what if it fails?
+            p.write('set logscale x\n')
+            p.write('set xlabel ' + '"buffer size (bytes)"\n')
+            p.write('set ylabel ' + '"cpu usage (%)"\n')
+            p.write('set output "plots/' + outfile_name + '"\n')
+            p.write('plot "' + datafile_name + '" using 2:5 title "client-user" with linespoints,')
+            p.write('"' + datafile_name + '" using 2:6 title "client-system" with linespoints,')
+            p.write('"' + datafile_name + '" using 2:7 title "server-user" with linespoints,')
+            p.write('"' + datafile_name + '" using 2:8 title "server-system" with linespoints\n')
+
+    os.system('gnuplot ' + plotscript_name)
+    os.remove(plotscript_name)
+
 
 # MAIN!
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-l', '--list', action='store_true')
+    group.add_argument('-a', '--add', action='store_true')
+    group.add_argument('-c', '--clean', action='store_true')
+    group.add_argument('-s', '--smash', action='store_true')
+    group.add_argument('-r', '--reset', action='store_true')
+    group.add_argument('-p', '--plot', action='store_true')
+    args = parser.parse_args()
 
-parser = argparse.ArgumentParser()
-group = parser.add_mutually_exclusive_group()
-group.add_argument('-l', '--list', action='store_true')
-group.add_argument('-a', '--add', action='store_true')
-group.add_argument('-c', '--clean', action='store_true')
-group.add_argument('-s', '--smash', action='store_true')
-group.add_argument('-r', '--reset', action='store_true')
-group.add_argument('-p', '--plot', action='store_true')
-args = parser.parse_args()
+    if args.list:
+        list_checked()
 
-if args.list:
-    list_checked()
+    elif args.add:
+        # commit "green" ones that are not currently tracked
+        (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
-elif args.add:
-    # commit "green" ones that are not currently tracked
-    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
-
-    if not len(tobeadded):
-        print bc.FAIL + "no files to be added" + bc.ENDC
-        sys.exit()
+        if not len(tobeadded):
+            print bc.FAIL + "no files to be added" + bc.ENDC
+            sys.exit()
 
 
-    print "following files will be added to git repo:"
-    for f in tobeadded:
-        print '\t' + bc.BOLD + f + bc.ENDC
+        print "following files will be added to git repo:"
+        for f in tobeadded:
+            print '\t' + bc.BOLD + f + bc.ENDC
 
-    if not query_yes_no("good?"): sys.exit()
+        if not query_yes_no("good?"): sys.exit()
 
-    for f in tobeadded:
-        os.system('git add ' + f)
+        for f in tobeadded:
+            os.system('git add ' + f)
 
-elif args.smash:
-    # delete "wrong" files -- wrong names, redundant ones
-    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
+    elif args.smash:
+        # delete "wrong" files -- wrong names, redundant ones
+        (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
-    tbd = wrongnames + redundant
+        tbd = wrongnames + redundant
 
-    if not len(tbd):
-        print bc.FAIL + "no files to be deleted" + bc.ENDC
-        sys.exit()
+        if not len(tbd):
+            print bc.FAIL + "no files to be deleted" + bc.ENDC
+            sys.exit()
 
-    print "following files will be removed from directory:"
-    for f in tbd:
-        print '\t' + bc.BOLD + f + bc.ENDC
+        print "following files will be removed from directory:"
+        for f in tbd:
+            print '\t' + bc.BOLD + f + bc.ENDC
 
-    if not query_yes_no("good?"): sys.exit()
+        if not query_yes_no("good?"): sys.exit()
 
-    for f in tbd:
-        if f in tracked_files:
-            os.system('git rm ' + f)
-        else:
-            os.system('rm ' + f)
+        for f in tbd:
+            if f in tracked_files:
+                os.system('git rm ' + f)
+            else:
+                os.system('rm ' + f)
 
-elif args.clean:
-    # remove all unchecked files using rm
-    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
+    elif args.clean:
+        # remove all unchecked files using rm
+        (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
-    if not len(unchecked_files):
-        print bc.FAIL + "no files to be deleted" + bc.ENDC
-        sys.exit()
+        if not len(unchecked_files):
+            print bc.FAIL + "no files to be deleted" + bc.ENDC
+            sys.exit()
 
-    print "following files will be removed from directory:"
-    for f in unchecked_files:
-        print '\t' + bc.BOLD + f + bc.ENDC
+        print "following files will be removed from directory:"
+        for f in unchecked_files:
+            print '\t' + bc.BOLD + f + bc.ENDC
 
-    if not query_yes_no("good?"): sys.exit()
+        if not query_yes_no("good?"): sys.exit()
 
-    for f in unchecked_files:
-        os.remove(f)
+        for f in unchecked_files:
+            os.remove(f)
 
-elif args.reset:
-    # remove everything (except for dm, of course)
-    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
-    allfiles = unchecked_files + checked_files
-    if not len(allfiles):
-        print bc.FAIL + "no files to be deleted" + bc.ENDC
-        sys.exit()
+    elif args.reset:
+        # remove everything (except for dm, of course)
+        (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
+        allfiles = unchecked_files + checked_files
+        if not len(allfiles):
+            print bc.FAIL + "no files to be deleted" + bc.ENDC
+            sys.exit()
 
-    print "following files will be removed from directory:"
-    for f in allfiles:
-        print '\t' + bc.BOLD + f + bc.ENDC
+        print "following files will be removed from directory:"
+        for f in allfiles:
+            print '\t' + bc.BOLD + f + bc.ENDC
 
-    if not query_yes_no("good?"): sys.exit()
+        if not query_yes_no("good?"): sys.exit()
 
-    for f in allfiles:
-        os.remove(f)
+        for f in allfiles:
+            os.remove(f)
 
-elif args.plot:
-    # plot ready_plot
-    (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
+    elif args.plot:
+        # plot ready_plot
+        (tobeadded, wrongnames, redundants, tracked_files, unchecked_files, checked_files, ready_plot) = list_checked()
 
-    if not len(allfiles):
-        print bc.FAIL + "no files to be plotted" + bc.ENDC
-        sys.exit()
+        if not os.path.exists('plots'):
+            os.system("mkdir plots")
 
-    print "following files will be plotted: <original> ---> <plot destination>"
-    for f in ready_plot:
-        ex_type = get_exp_type(f)
-        print '\t' + bc.BOLD + f + ' ---> ' + ex_type + '.png'+ bc.ENDC
+        if not len(ready_plot):
+            print bc.FAIL + "no files to be plotted" + bc.ENDC
+            sys.exit()
 
-    if not query_yes_no("good?"): sys.exit()
+        print "following files will be plotted: <original> ---> <plot destination>"
 
-    # now actually plot (what if one of them fails?)
+        # MAKE PLOTFILE NAMES
+        plot_files = dict()
+        for datafile_name in ready_plot:
+            exp_type = get_exp_type(datafile_name)
 
-else:
-    print "no op"
+            plot_files[datafile_name] = [exp_type + '.png']
+            if "bw" in exp_type:
+                plot_files[datafile_name].append( exp_type.replace('bw','cpu') + '.png' )
+
+        # SHOW PLOTTING PLANS
+        for datafile_name in plot_files:
+            for plotfile_name in plot_files[datafile_name]:
+                print '\t' + bc.BOLD + datafile_name + ' ---> ' + bc.OKBLUE + 'plots/' + plotfile_name + bc.ENDC
+
+        if not query_yes_no("good?"): sys.exit()
+
+        # now actually plot (what if one of them fails to plot due to malformed columns or something?)
+        for datafile_name in plot_files:
+            for plotfile_name in plot_files[datafile_name]:
+                plotdata(datafile_name, plotfile_name)
+
+
+    else:
+        print "no op"
 
 
 
