@@ -200,7 +200,7 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 def get_exp_type(filename):
-    return '_'.join(f.split('_')[:3])
+    return '_'.join(filename.split('_')[:3])
 
 def plotdata(datafile, outfile):
     pass
