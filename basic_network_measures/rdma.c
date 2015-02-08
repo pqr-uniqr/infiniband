@@ -422,7 +422,7 @@ run_iter_client(void *param)
                         } else {
                             DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", 
                                         wc[i].wr_id, ccnt));
-                            ccnt += ( config.measure == BANDWIDTH ) CQ_MODERATION : 1;
+                            ccnt += ( config.measure == BANDWIDTH )? CQ_MODERATION : 1;
                         }
 
                     }
