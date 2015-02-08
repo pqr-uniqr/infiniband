@@ -309,7 +309,7 @@ run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rc, scnt=0, ccnt=0, ne, i, signaled=0, max_requests_onwire; // * outstanding *
+    int rc, scnt=0, ccnt=0, ne, i, signaled=1, max_requests_onwire; // * outstanding *
     long int elapsed;
     uint16_t csum;
     pthread_t thread = pthread_self();
@@ -334,8 +334,8 @@ run_iter_client(void *param)
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
 
-    //max_requests_onwire = (config.measure == LATENCY)? 1 : MAX_SEND_WR / 2;
-    max_requests_onwire = MAX_SEND_WR / 2;
+    max_requests_onwire = (config.measure == LATENCY) ? 1 : CQ_MODERATION;
+    //max_requests_onwire = MAX_SEND_WR / 2;
 
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
@@ -360,12 +360,12 @@ run_iter_client(void *param)
         if ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
             DEBUG_PRINT((stdout, GRN "[ENTERING SEND MODE]----------\n"RESET));
             DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                        (scnt - ccnt), MAX_SEND_WR / 2));
+                        (scnt - ccnt), CQ_MODERATION));
         }
 
         while ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
 
-            if( scnt % CQ_MODERATION == 0 ){
+            if( scnt % CQ_MODERATION == 0 && config.measure == BANDWIDTH ){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
                 signaled = 0;
             }
@@ -400,13 +400,14 @@ run_iter_client(void *param)
 
             ++scnt;
 
-            if( scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 ){
+            if( (scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1) && 
+                    config.measure == BANDWIDTH ){
                 sr.send_flags |= IBV_SEND_SIGNALED;
                 signaled = 1;
             }
         }
 
-        if(ccnt < config.iter && signaled){
+        if(ccnt < config.iter){
             do{
                 ne = ibv_poll_cq(conn->cq, 1, wc);
                 if( ne > 0 ){
@@ -421,7 +422,7 @@ run_iter_client(void *param)
                         } else {
                             DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", 
                                         wc[i].wr_id, ccnt));
-                            ccnt += CQ_MODERATION;
+                            ccnt += ( config.measure == BANDWIDTH ) CQ_MODERATION : 1;
                         }
 
                     }
