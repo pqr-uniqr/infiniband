@@ -142,7 +142,7 @@ done
 
 if [ $MTHREAD -gt 0 ]; then
     # GET FIXED XFER SIZE LIMIT  --> POW (recommended: 14)
-    cecho "> transfer buffer size will be fixed to 2^x. Specify x (max 29, 14 recommended)" $white
+    cecho "> transfer buffer size will be fixed to 2^x. Specify x (max 29, 12 recommended)" $white
     while read POW; do
         if [ "0$POW" -gt 29  ] || [ -z "${POW}" ]
         then
@@ -155,7 +155,7 @@ if [ $MTHREAD -gt 0 ]; then
     done 
 
     # GET ITERATIONS --> ITER (recommended: 1000)
-    cecho "> I will run 10^y many iterations per thread. Specify y (max 10, 4 recommended)" $white
+    cecho "> I will run 10^y many iterations per thread. Specify y (max 10, 3 recommended)" $white
     while read ITER; do 
         if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
         then
