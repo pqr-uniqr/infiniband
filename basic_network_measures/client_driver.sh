@@ -17,8 +17,10 @@ cecho(){
     tput sgr0
     return
 }  
+
 printbwheader() { echo -e "#thread\t#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%\tUCPU%(s)\tSCPU%(s)"; }
 printlatheader() { echo -e "#thread\t#bytes\titer.\tlatency"; }
+
 ctrl_c(){
     make clean
     exit
@@ -81,24 +83,27 @@ done
 
 
 # GET NAME OF FILE TO WRITE TO 
-cecho "> Specify name of file (defaults to date/time)" $white
+cecho "> Specify name of file (defaults to <experiment type>_<date/time>)" $white
 while read FILENAME; do
     if [ -n "${FILENAME}" ]
     then
+        # IF SOMETHING LIKE /dev/null
         if [ `expr index ${FILENAME} /` = 1]
         then
             FILEPATH="${FILENAME}"
             break
+        # IF FILE ALREADY EXISTS 
         elif [ -e "$DIR/$FILENAME" ]
         then
             cecho "> file already exists" $red
+        # OTHERWISE, VALID NAME
         else
             FILEPATH="$DIR/$FILENAME"
             cecho "> experiment will be stored in '$FILEPATH'" $green
             break
         fi
     else
-        FILENAME="${EXEC}_${MEASURE}"
+        # GO WITH DEFAULT
         cecho "> defaulting to something like: ${EXEC}_${MEASURE}_${DATE}" $green
         break
     fi
@@ -116,10 +121,67 @@ while read ADDR; do
     fi
 done
 
+# MULTITHREADED?
+cecho "> It this a concurrency experiment? (yes/no)" $white
+while read MTHREAD; do
+    if [ "${MTHREAD}" = 'yes' ] || [ "${MTHREAD}" = 'y' ]
+    then
+        cecho "> multi-threaded experiment" $green
+        MTHREAD=1
+        break
+    elif [ "${MTHREAD}" = 'no' ] || [ "${MTHREAD}" = 'n' ]
+    then
+        cecho "> single-threaded experiment" $green
+        MTHREAD=0
+        break
+    else
+        cecho "> yes or no" $red
+        break
+    fi
+done
 
-if [ "${MEASURE}" = 'bw' ]
-then
-    # GET XFER SIZE
+if [ $MTHREAD -gt 0 ]; then
+    # GET FIXED XFER SIZE LIMIT  --> POW (recommended: 14)
+    cecho "> transfer buffer size will be fixed to 2^x. Specify x (max 29, 14 recommended)" $white
+    while read POW; do
+        if [ "0$POW" -gt 29  ] || [ -z "${POW}" ]
+        then
+            cecho "> try again (max 29)" $red
+        else
+            bytes=`echo "2^$POW" | bc`
+            cecho "> transfer size will be $bytes bytes" $green
+            break
+        fi
+    done 
+
+    # GET ITERATIONS --> ITER (recommended: 1000)
+    cecho "> I will run 10^y many iterations per thread. Specify y (max 10, 4 recommended)" $white
+    while read ITER; do 
+        if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
+        then
+            cecho "> try again(max 10,000,000,000)" $red
+        else
+            ITER=`echo "10^$ITER" | bc`
+            cecho "> $ITER iterations each" $green
+            break
+        fi
+    done
+
+    # GET THREAD NUMBER LIMIT --> THREAD (recommended: 14)
+    cecho "> I will run the above experiment with 2^1 to 2^z threads. Specify z (max 20, 14 recommended)" $white
+    while read THREAD; do
+        if [ -z "${THREAD}" ] || [ "0$THREAD" -gt 20 ]
+        then
+            cecho "> try again (max 20)" $red
+        else
+            MAXTHREAD=`echo "2^$THREAD" | bc`
+            cecho "> up to $MAXTHREAD threads" $green
+            break
+        fi
+    done
+else
+    MAXTHREAD=1
+    # GET XFER SIZE LIMIT --> POW (recommended: 24)
     cecho "> I will test transfer sizes from 2^1 to 2^x. Specify x. (max 29, 24 recommended)" $white
     while read POW; do
         if [ "0$POW" -gt 29  ] || [ -z "${POW}" ]
@@ -132,33 +194,8 @@ then
         fi
     done 
 
-    # GET NUMBER OF ITERATIONS
-    cecho "> I will run y many iterations for each transfer size. Specify y (max 100000, recommended 10000)" $white
-    while read ITER; do
-        if [ "0$ITER" -gt 100000 ] || [ -z "${ITER}" ]
-        then 
-            cecho "> try again (max 100000)" $red
-        else
-            cecho "> $ITER iterations each" $green
-            break
-        fi
-    done
-elif [ "${MEASURE}" = 'lat' ]
-then
-    # GET XFER SIZE
-    cecho "> I will test transfer sizes from 2^1 to 2^x. Specify x. (max 29, 16 recommended)" $white
-    while read POW; do
-        if [ "0$POW" -gt 29  ] || [ -z "${POW}" ]
-        then
-            cecho "> try again (max 29)" $red
-        else
-            bytes=`echo "2^$POW" | bc`
-            cecho "> up to $bytes bytes" $green
-            break
-        fi
-    done 
-
-    cecho "> I will run 10^y many iterations for each transfer sizes. Specify y (max 10, 6 recommended)" $white
+    # GET ITERATIONS --> ITER (recommended: 10000)
+    cecho "> I will run 10^y many iterations for each transfer sizes. Specify y (max 10, 5 recommended)" $white
     while read ITER; do 
         if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
         then
@@ -171,17 +208,8 @@ then
     done
 fi
 
-# GET NUMBER OF THREADS
-cecho "> I will run the experiment specified above for each of the threads. Specify number of threads" $white
-while read THREAD; do
-    if [ "0$THREAD" -gt 100 ] || [ -z "${THREAD}" ]
-    then 
-        cecho "> try again (max 30)" $red
-    else
-        cecho "> $THREAD threads" $green
-        break
-    fi
-done
+
+
 
 # CHECK IF RESULT DIRETORY EXISTS 
 if  ! [ -d "$DIR" ] 
@@ -191,11 +219,13 @@ fi
 
 
 FILEHEADER="# $EXEC experiment to measure $MEASURE:\n" 
-FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $ITER iterations on $THREAD threads (server addr: $ADDR)\n" 
+FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $ITER iterations with up to $MAXTHREAD threads (server addr: $ADDR)\n" 
 FILEHEADER="${FILEHEADER}# to reproduce this result, use $GITVER *\n"
 
 # BRANCH INTO RDMA AND IP SPECIFIC SETTINGS
+
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
+
     # GET VERB FOR RDMA
     cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
     while read OP; do 
@@ -210,13 +240,19 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     done
    
     # FINALIZE FILE NAME
-    if [ -n "${FILENAME}" ]
+    if [ -z "${FILEPATH}" ]
     then
-        FILENAME="${EXEC}_${MEASURE}_${OP}_${DATE}"
+        FILENAME="${EXEC}_${MEASURE}_${OP}"
+        if [ $MTHREAD -gt 0 ]; then
+            FILENAME="${FILENAME}_mthread"
+        fi
+        FILENAME="${FILENAME}_${DATE}"
         FILEPATH="$DIR/$FILENAME"
     fi
 
+
     touch "$FILEPATH"
+
     echo -e $FILEHEADER | tee -a $FILEPATH
 
     if [ "${MEASURE}" = 'bw' ]
@@ -230,11 +266,21 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
+    if [ $MTHREAD -gt 0 ]; then
+        for i in `seq 1 $THREAD`; do
+            threads=`echo "2^$i" | bc`
+            ./$EXEC -v $OP -i $ITER -b $POW -t $threads -m $MEASURE $ADDR | tee -a $FILEPATH
+            sleep 0.1
+        done
+    else
+        for i in `seq 1 $POW`; do
+            ./$EXEC -v $OP -i $ITER -b $i -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
+            sleep 0.1
+        done
+    fi
+
+
     # RUN RDMA EXPERIMENT
-    for i in `seq 1 $POW`; do
-      ./$EXEC -v $OP -i $ITER -b $i -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
-      sleep 0.1
-    done
 
 else
     cecho "> Please specify link type (eth for ethernet, ib for infiniband)" $white
@@ -253,9 +299,13 @@ else
 
 
     # FINALIZE FILE NAME
-    if [ -n "${FILENAME}" ]
+    if [ -z "${FILEPATH}" ]
     then
-        FILENAME="${EXEC}_${MEASURE}_${LT}_${DATE}"
+        FILENAME="${EXEC}_${MEASURE}_${LT}"
+        if [ $MTHREAD -gt 0 ]; then
+            FILENAME="${FILENAME}_mthread"
+        fi
+        FILENAME="${FILENAME}_${DATE}"
         FILEPATH="$DIR/$FILENAME"
     fi
 
@@ -270,15 +320,24 @@ else
         printlatheader | tee -a $FILEPATH
     fi
 
-
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
+
+    if [ $MTHREAD -gt 0 ]; then
+        for i in `seq 1 $THREAD`; do
+            threads=`echo "2^$i" | bc`
+            ./$EXEC -b $POW -i $ITER -t $threads -m $MEASURE $ADDR | tee -a $FILEPATH
+            sleep 0.1
+        done
+    else
+        for i in `seq 1 $POW`; do
+            ./$EXEC -b $i -i $ITER -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
+          sleep 0.1
+        done
+    fi
+
     # RUN IP EXPERIMENT
-    for i in `seq 1 $POW`; do
-        ./$EXEC -b $i -i $ITER -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
-      sleep 0.1
-    done
 fi
 
 make clean
