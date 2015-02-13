@@ -584,6 +584,8 @@ static void print_config( void )
 static void print_report( void )
 {
     double ucpu=0., scpu=0., ucpu_server=0., scpu_server=0., xfer_total, avg_bw, avg_lat; long elapsed; 
+    clock_t totalticks;
+    double ticksper;
     if( config.measure == BANDWIDTH ){
         xfer_total = config.xfer_unit * config.iter * config.threads;
         elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
@@ -595,8 +597,12 @@ static void print_report( void )
         if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
             calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
 
+        
+        totalticks = endticks - startticks;
+        ticksper = ((double) totalticks) / (double) (config.iter);
+
         printf( REPORT_FMT_BW, config.threads, (int) config.xfer_unit, 
-                config.iter, avg_bw, ucpu, scpu, ucpu_server, scpu_server, (endticks-startticks)/config.iter);
+                config.iter, avg_bw, ucpu, scpu, ucpu_server, scpu_server, ticksper);
     } else if( config.measure == LATENCY ){
         avg_lat = (double) latency / (double) config.iter / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads,(int) config.xfer_unit, 
