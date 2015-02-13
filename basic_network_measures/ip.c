@@ -14,6 +14,9 @@ struct timeval tposted;
 struct timeval tcompleted;
 long int latency;
 
+clock_t startticks;
+clock_t endticks;
+
 struct pstat pstart;
 struct pstat pend;
 struct pstat pstart_server;
@@ -142,6 +145,7 @@ int main ( int argc, char *argv[] )
     if( config.measure == BANDWIDTH ){
         get_usage( getpid(), &pstart, CPUNO );
         gettimeofday( &tposted, NULL );
+        startticks = clock();
 
         pthread_cond_broadcast(&start_cond);
         for(i=0; i < config.threads; i++)
@@ -152,6 +156,7 @@ int main ( int argc, char *argv[] )
 
         gettimeofday( &tcompleted, NULL );
         get_usage( getpid(), &pend, CPUNO );
+        endticks = clock();
     } else if ( config.measure = LATENCY ){
         pthread_cond_broadcast(&start_cond);
         for(i=0; i < config.threads; i++)
@@ -591,7 +596,7 @@ static void print_report( void )
             calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
 
         printf( REPORT_FMT_BW, config.threads, (int) config.xfer_unit, 
-                config.iter, avg_bw, ucpu, scpu, ucpu_server, scpu_server);
+                config.iter, avg_bw, ucpu, scpu, ucpu_server, scpu_server, (endticks-startticks)/config.iter);
     } else if( config.measure == LATENCY ){
         avg_lat = (double) latency / (double) config.iter / (double) config.threads;
         printf( REPORT_FMT_LAT, config.threads,(int) config.xfer_unit, 
