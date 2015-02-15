@@ -44,11 +44,8 @@
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
-#define BANDWIDTH 0
-#define LATENCY 1
+#define REPORT_FMT "%d\t%d\t%d\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\n"
 
-#define REPORT_FMT "%-7d\t%d\t%d\t%-7.2f\t%-7.2f\t%7.2f\t%7.2f\t%7.2f\n"
-#define REPORT_FMT_LAT "%-7d\t%d\t%d\t%-7.2f\t\n"
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
         { fprintf(stderr," Cannot Allocate\n"); exit(1);}}
@@ -80,9 +77,7 @@ struct config_t
     size_t xfer_unit;       /* how big is each transfer going to be (bytes) */
     int iter;             /* number of times we are going to transfer */
     enum ibv_wr_opcode opcode;     /* requested op */
-    int crt;            /* what to test for */
     int threads;        /* number of threads to use */
-    int measure;
     int use_event;      /* use events API for polling? */
     struct config_t *config_other;
 };

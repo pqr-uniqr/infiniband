@@ -16,9 +16,7 @@ struct config_t config =
     0,              /* xfer_unit */
     0,              /* iter */
     -1,             /* opcode */
-    0,       /* criteria */
     1,              /* number of threads */
-    BANDWIDTH,      /* measure */
     0,          /* use events */
     NULL,
 };
@@ -68,14 +66,12 @@ main ( int argc, char *argv[] )
             {.name = "xfer-unit", .has_arg = 1, .val = 'b'},
             {.name = "iter", .has_arg = 1, .val = 'i'},
             {.name = "verb", .has_arg=1, .val= 'v'},
-            {.name = "criteria", .has_arg=1, .val='c'},
             {.name = "threads", .has_arg = 1, .val='t'},
-            {.name = "measure", .has_arg = 1, .val='m'},
             {.name = "event", .has_arg = 0, .val='e'},
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:c:t:m:e:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:t:e:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -119,34 +115,12 @@ main ( int argc, char *argv[] )
                     return EXIT_FAILURE;
                 }
                 break;
-            case 'c':
-                //awkward!
-                /*
-                if(optarg[0] == 'b'){
-                    config.crt = CRT_BW;
-                } else if( optarg[0] == 'l' ){
-                    config.crt = CRT_LAT;
-                } else if( optarg[0] == 'c'){
-                    config.crt = CRT_CPU;
-                } else {
-                    config.crt = CRT_DEF;
-                }
-                */
-                break;
             case 't':
                 config.threads = strtoul(optarg, NULL, 0);
                 if( config.threads < 0){
                     usage(argv[0]);
                     return EXIT_FAILURE;
                 }
-                break;
-            case 'm':
-                if( ! strcmp(optarg, "l") || ! strcmp(optarg, "lat") || 
-                        ! strcmp(optarg, "latency") )
-                    config.measure = LATENCY;
-                else if( ! strcmp(optarg, "b") || ! strcmp(optarg, "bw") || 
-                        ! strcmp(optarg, "bandwidth") )
-                    config.measure = BANDWIDTH;
                 break;
             case 'e':
                 config.use_event = 1;
@@ -200,7 +174,7 @@ main ( int argc, char *argv[] )
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     // this is a bit convoluted
-    // unless opcode == IB_SEND, only client will enter here
+    // unless this is an IBSR experiment, only client will enter here
     if( config.opcode != -1 ){
 
         if ( config.server_name ){
@@ -237,10 +211,8 @@ main ( int argc, char *argv[] )
 
         /* SIGNAL THREADS TO START WORK */
 
-        if( config.measure == BANDWIDTH ){
-            get_usage( getpid(), &pstart, CPUNO );
-            gettimeofday( &tposted, NULL );
-        }
+        get_usage( getpid(), &pstart, CPUNO );
+        gettimeofday( &tposted, NULL );
 
         pthread_cond_broadcast(&start_cond);
         for( i=0; i < config.threads; i++ )
@@ -248,11 +220,8 @@ main ( int argc, char *argv[] )
                 perror("pthread_join");
                 goto main_exit;
             }
-
-        if( config.measure == BANDWIDTH ){
-            gettimeofday( &tcompleted, NULL );
-            get_usage( getpid(), &pend, CPUNO );
-        }
+        gettimeofday( &tcompleted, NULL );
+        get_usage( getpid(), &pend, CPUNO );
 
         DEBUG_PRINT((stdout, GRN "threads joined--waiting for socket sync\n" RESET));
     }
@@ -334,9 +303,6 @@ run_iter_client(void *param)
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
 
-    max_requests_onwire = (config.measure == LATENCY) ? 1 : CQ_MODERATION;
-    //max_requests_onwire = MAX_SEND_WR / 2;
-
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
     ALLOCATE(wc, struct ibv_wc, 1);
@@ -357,15 +323,15 @@ run_iter_client(void *param)
     // NEW
     while( scnt < config.iter || ccnt < config.iter ){
 
-        if ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
+        if ( scnt < config.iter && (scnt - ccnt) < CQ_MODERATION ){
             DEBUG_PRINT((stdout, GRN "[ENTERING SEND MODE]----------\n"RESET));
             DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
                         (scnt - ccnt), CQ_MODERATION));
         }
 
-        while ( scnt < config.iter && (scnt - ccnt) < max_requests_onwire ){
+        while ( scnt < config.iter && (scnt - ccnt) < CQ_MODERATION ){
 
-            if( scnt % CQ_MODERATION == 0 && config.measure == BANDWIDTH ){
+            if( scnt % CQ_MODERATION == 0 ){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
                 signaled = 0;
             }
@@ -380,18 +346,6 @@ run_iter_client(void *param)
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
 
-            // latency of request i == timestamp[i+1] - timestamp[i]
-            if( config.measure == LATENCY ){
-                if( !scnt ) gettimeofday(&tposted, NULL);
-                else {
-                    gettimeofday(&tcompleted, NULL);
-                    elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-                        (tposted.tv_sec * 1e6 + tposted.tv_usec);
-                    latency += elapsed;
-                    memcpy(&tposted, &tcompleted, sizeof(struct timeval));
-                }
-            }
-
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
                 fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
                 perror("post_send");
@@ -400,8 +354,7 @@ run_iter_client(void *param)
 
             ++scnt;
 
-            if( (scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1) && 
-                    config.measure == BANDWIDTH ){
+            if( (scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1) ){
                 sr.send_flags |= IBV_SEND_SIGNALED;
                 signaled = 1;
             }
@@ -414,7 +367,7 @@ run_iter_client(void *param)
                     for(i = 0; i < ne; i++){
                         DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
                         DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                                    (scnt - ccnt), max_requests_onwire));
+                                    (scnt - ccnt), CQ_MODERATION));
                         if( wc[i].status != IBV_WC_SUCCESS){
                             check_wc_status(wc[i].status);
                             fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
@@ -422,7 +375,7 @@ run_iter_client(void *param)
                         } else {
                             DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", 
                                         wc[i].wr_id, ccnt));
-                            ccnt += ( config.measure == BANDWIDTH )? CQ_MODERATION : 1;
+                            ccnt += CQ_MODERATION;
                         }
 
                     }
@@ -441,91 +394,6 @@ run_iter_client(void *param)
 
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
-
-
-
-
-    // OLD
-    /* GO! */
-
-    while( scnt < config.iter || ccnt < config.iter ){
-
-        // keep control of number of uncompleted sent requests
-        if( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
-            DEBUG_PRINT((stdout, GRN"[ENTERING SEND MODE]----------\n"RESET));
-            DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                        (scnt - ccnt), MAX_SEND_WR / 2));
-        }
-
-        while( scnt < config.iter && (scnt - ccnt) < MAX_SEND_WR / 2 ){
-            if( config.measure == BANDWIDTH && (scnt % CQ_MODERATION) == 0){
-                sr.send_flags &= ~IBV_SEND_SIGNALED;
-            }
-
-            sr.wr_id = scnt;
-
-            DEBUG_PRINT((stdout, "[wr_id %d]\n", scnt));
-            /* CUSTOMIZE SR */
-
-#ifdef DEBUG
-            memset( conn->buf, scnt % 2, config.xfer_unit );
-            csum = checksum(conn->buf, config.xfer_unit);
-            fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
-#endif
-
-            if( config.measure == LATENCY )
-                gettimeofday( &tposted, NULL );
-
-            if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
-                fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
-                perror("post_send");
-                return -1;
-            }
-
-            ++scnt;
-
-            if( config.measure == BANDWIDTH && scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1 )
-                sr.send_flags |= IBV_SEND_SIGNALED;
-        }
-
-        if( ccnt < config.iter ){
-            do {
-                ne = ibv_poll_cq(conn->cq, 1, wc);
-
-                if( ne > 0 ){
-                    for( i = 0; i < ne; i++){
-                        DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
-                        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                                    (scnt - ccnt), MAX_SEND_WR / 2));
-
-                        if(wc[i].status != IBV_WC_SUCCESS){
-                            check_wc_status(wc[i].status);
-                            fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
-                            return -1;
-                        } else {
-                            if( config.measure == LATENCY ){
-                                ccnt += 1;
-                                gettimeofday( &tcompleted, NULL );
-                                elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-                                    (tposted.tv_sec * 1e6 + tposted.tv_usec);
-                                latency += elapsed;
-                            } else {
-                                ccnt += CQ_MODERATION;
-                            }
-                            DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", wc[i].wr_id, ccnt));
-                        }
-                    }
-                }
-            } while (ne > 0);
-
-            if( ne < 0 ){
-                fprintf(stderr, RED "poll cq\n" RESET);
-                return -1;
-            }
-        }
-
-    }
-
 }
 
     static int
@@ -1173,28 +1041,27 @@ opcode_to_str(int opcode, char **str)
 print_report(unsigned int iters, unsigned size, int duplex,
         int no_cpu_freq_fail)
 {
-    double ucpu=0., scpu=0., ucpu_server=0., scpu_server=0., xfer_total, avg_bw, avg_lat;
-    long elapsed;
+    double power, xfer_total, elapsed, avg_bw, avg_lat,
+           ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
 
-    if( config.measure == BANDWIDTH ){
-        xfer_total = config.xfer_unit * config.iter * config.threads;
-        elapsed = ( tcompleted.tv_sec * 1e6 + tcompleted.tv_usec )
-            - ( tposted.tv_sec * 1e6 + tposted.tv_usec );
-        avg_bw = xfer_total / elapsed;
+    power = log(config.xfer_unit) / log(2);
+    xfer_total = config.xfer_unit * config.iter * config.threads;
+    elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+        (tposted.tv_sec * 1e6 + tposted.tv_usec);
+    avg_bw = xfer_total / elapsed;
+    avg_lat = elapsed / config.iter;
 
-        // to avoid getting nan's
-        if( pend.cpu_total_time - pstart.cpu_total_time )
-            calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
-        if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
-            calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
+    // to avoid NaN's
+    if( pend.cpu_total_time - pstart.cpu_total_time )
+        calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
+    if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
+        calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
 
-        printf(REPORT_FMT, config.threads, (int) config.xfer_unit, config.iter, avg_bw, ucpu, scpu,
-                ucpu_server, scpu_server);
-    } else if (config.measure == LATENCY){
-        avg_lat = (double) latency / (double) config.iter / (double) config.threads;
-        printf( REPORT_FMT_LAT, config.threads, (int) config.xfer_unit, config.iter, avg_lat );
-    }
+    // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
+    printf(REPORT_FMT, config.threads, pow, config.iter, 
+            avg_bw, avg_lat, ucpu, scpu, ucpu_server, scpu_server);
 }
+
 
     static void
 check_wc_status(enum ibv_wc_status status)
