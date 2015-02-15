@@ -14,12 +14,20 @@ class bc:
 
 
 ignore = ['dm', 'checked.txt', 'unchecked.txt', 'gitfiles']
-
 plotscript_name = "plotting.p"
 CONFLICT = 'CONFLICT'
-experiment_types = ["ip_bw_ib","ip_bw_eth","ip_lat_ib","ip_lat_eth",
-    "rdma_bw_r","rdma_bw_w","rdma_bw_s",
-    "rdma_lat_r","rdma_lat_w","rdma_lat_s"]
+experiment_types = [
+        'ip_ib',
+        'ip_eth',
+        'rdma_r',
+        'rdma_w',
+        'rdma_s',
+        'ip_ib_mthread',
+        'ip_eth_mthread',
+        'rdma_r_mthread',
+        'rdma_w_mthread',
+        'rdma_s_mthread'
+    ]
 
 def list_checked(unchecked=False):
     experiments_checked = dict(zip( experiment_types, [None] * len(experiment_types) ))
@@ -31,10 +39,7 @@ def list_checked(unchecked=False):
     unchecked_files = list()# unchecked files (except ignored)
     checked_files = list()  # checked files (except ignored)
 
-
-
     print bc.OKBLUE+ "> listing all checked files" + bc.ENDC + '\n'
-
 
     # GET CHECKED
     os.system('grep --exclude-dir "plots" -l "#CHECKED" * > checked.txt')
@@ -108,7 +113,7 @@ def list_checked(unchecked=False):
 
     
     # SUMMARY OF COMPLYING DATA FILES AND CONFLICTS (ALSO SHOW WHICH ONES ARE IN THE REPO)
-    for exp_type in experiments_checked:
+    for exp_type in sorted(experiments_checked):
         filename = experiments_checked[exp_type]
 
         if filename == CONFLICT:
@@ -125,43 +130,11 @@ def list_checked(unchecked=False):
             else: 
                 desc += bc.OKBLUE+ ' (not tracked) ' + bc.ENDC
                 tobeadded.append(filename)
-        print exp_type + "\t -> \t" + desc
+        print exp_type + "\t->\t" + desc
 
     os.system('rm checked.txt')
     os.system('rm unchecked.txt')
     os.system('rm gitfiles.txt')
-
-
-    """
-    with open('checked.txt') as checked:
-        print ""
-        print "[ ERRORS ]" 
-        for filename in checked:
-            fn = filename.strip()
-
-            if fn == 'dm': 
-                continue
-
-            if ex_type not in experiment_types:
-                print bc.FAIL + fn + bc.WARNING + ': filename does not follow naming convention' + bc.ENDC
-                wrongnames.append(fn)
-                continue
-
-            # THERE SHOULD BE NO MORE THAN ONE CHECKED DATA FILE FOR ANY EXPERIEMTN TYPE
-            curr = experiments_checked[ex_type] 
-
-            if curr == None:
-                experiments_checked[ex_type] = fn
-            elif curr != CONFLICT: # conflict first detected
-                print bc.FAIL + fn + bc.WARNING + ': conflict with ' + curr + bc.ENDC
-                redundants.extend((curr, fn))
-                experiments_checked[ex_type] = CONFLICT
-            else: # curr is CONFLICT
-                print bc.FAIL + fn + bc.WARNING + ': conflict' + bc.ENDC
-                redundants.append(fn)
-
-                """
-
 
     print ""
 
@@ -200,7 +173,10 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 def get_exp_type(filename):
-    return '_'.join(filename.split('_')[:3])
+    if 'mthread' in filename:
+        return '_'.join(filename.split('_')[:3])
+    else:
+        return '_'.join(filename.split('_')[:2])
 
 def plotdata(datafile_name, outfile_name):
     with open(plotscript_name, 'a') as p:
