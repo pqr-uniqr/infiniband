@@ -205,7 +205,6 @@ FILEHEADER="${FILEHEADER}# to reproduce this result, use $GITVER *\n"
 # BRANCH INTO RDMA AND IP SPECIFIC SETTINGS
 
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
-    # GET VERB FOR RDMA
     cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
     while read OP; do 
         if  [ -n "${OP}" ]; then 
@@ -241,16 +240,15 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`
-            ./$EXEC -v $OP -i $ITER -b $POW -t $threads -m $MEASURE $ADDR | tee -a $FILEPATH
+            ./$EXEC -v $OP -i $ITER -b $POW -t $threads $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -v $OP -i $ITER -b $i -t 1 -m $MEASURE $ADDR | tee -a $FILEPATH
+            ./$EXEC -v $OP -i $ITER -b $i -t 1 $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     fi
-
 else
     cecho "> Please specify link type (eth for ethernet, ib for infiniband)" $white
     while read LT; do 
