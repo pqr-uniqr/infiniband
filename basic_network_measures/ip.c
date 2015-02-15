@@ -476,7 +476,7 @@ static void print_report( void )
     double power, xfer_total, elapsed, avg_bw, avg_lat,
            ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
 
-    pow = log(config.xfer_unit) / log(2);
+    power = log(config.xfer_unit) / log(2);
     xfer_total = config.xfer_unit * config.iter * config.threads;
     elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
         (tposted.tv_sec * 1e6 + tposted.tv_usec);
