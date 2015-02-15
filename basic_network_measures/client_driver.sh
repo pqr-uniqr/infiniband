@@ -274,7 +274,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -v $OP -i $ITER -b $i -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
+            ./$EXEC -v $OP -i $ITER -b $i -t 1 -m $MEASURE $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     fi
@@ -332,7 +332,7 @@ else
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -b $i -i $ITER -t $THREAD -m $MEASURE $ADDR | tee -a $FILEPATH
+            ./$EXEC -b $i -i $ITER -t 1 -m $MEASURE $ADDR | tee -a $FILEPATH
           sleep 0.1
         done
     fi

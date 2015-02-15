@@ -483,7 +483,6 @@ static void print_config( void )
 
 static void print_report( void )
 {
-
     double xfer_total, elapsed, avg_bw, avg_lat,
            ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
 
