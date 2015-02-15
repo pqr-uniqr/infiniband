@@ -286,7 +286,6 @@ else
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
-
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`

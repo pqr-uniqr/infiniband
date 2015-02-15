@@ -473,9 +473,10 @@ static void print_config( void )
 
 static void print_report( void )
 {
-    double xfer_total, elapsed, avg_bw, avg_lat,
+    double power, xfer_total, elapsed, avg_bw, avg_lat,
            ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
 
+    pow = log(config.xfer_unit) / log(2);
     xfer_total = config.xfer_unit * config.iter * config.threads;
     elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
         (tposted.tv_sec * 1e6 + tposted.tv_usec);
@@ -489,7 +490,7 @@ static void print_report( void )
         calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
 
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
-    printf(REPORT_FMT, config.threads, config.xfer_unit, config.iter, 
+    printf(REPORT_FMT, config.threads, pow, config.iter, 
             avg_bw, avg_lat, ucpu, scpu, ucpu_server, scpu_server);
 }
 
