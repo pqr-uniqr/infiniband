@@ -80,7 +80,7 @@ then
 fi
 
 touch "$FILEPATH"
-printbwheader | tee $FILEPATH
+printTableHeader | tee -a $FILEPATH
 
 while true 
 do
