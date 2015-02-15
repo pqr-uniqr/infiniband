@@ -489,7 +489,7 @@ static void print_report( void )
         calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
 
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
-    printf(REPORT_FMT, config.threads, pow, config.iter, 
+    printf(REPORT_FMT, config.threads, power, config.iter, 
             avg_bw, avg_lat, ucpu, scpu, ucpu_server, scpu_server);
 }
 
