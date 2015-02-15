@@ -18,8 +18,8 @@ cecho(){
     return
 }  
 
-printbwheader() { echo -e "#thread\t#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%\tUCPU%(s)\tSCPU%(s)"; }
-printlatheader() { echo -e "#thread\t#bytes\titer.\tlatency"; }
+
+printTableHeader(){ echo -e "threads\tbuffer\tbw\tlat\tucpu\tscpu\tucpu_s\tscpu_s"  ;}
 
 ctrl_c(){
     make clean
@@ -62,26 +62,6 @@ else
     exit 1
 fi
 
-
-# WHAT TO MEASURE
-cecho "> what are we measuring? (latency, bandwidth)" $white 
-while read MEASURE; do
-    if [ "${MEASURE}" = 'b' ] || [ "${MEASURE}" = 'bw' ] || [ "${MEASURE}" = 'bandwidth' ]
-    then
-        cecho "> bandwidth selected" $green
-        MEASURE='bw'
-        break
-    elif [ "${MEASURE}" = 'l' ] || [ "${MEASURE}" = 'lat' ] || [ "${MEASURE}" = 'latency' ]
-    then
-        cecho "> latency selected" $green
-        MEASURE='lat'
-        break
-    else
-        cecho "> no such thing. try again ('b' or 'bw' for bandwidth, 'l' or 'lat' for latency)" $red
-    fi
-done
-
-
 # GET NAME OF FILE TO WRITE TO 
 cecho "> Specify name of file (defaults to <experiment type>_<date/time>)" $white
 while read FILENAME; do
@@ -104,7 +84,7 @@ while read FILENAME; do
         fi
     else
         # GO WITH DEFAULT
-        cecho "> defaulting to something like: ${EXEC}_${MEASURE}_${DATE}" $green
+        cecho "> defaulting to something like: ${EXEC}_${DATE}" $green
         break
     fi
 done
@@ -218,14 +198,13 @@ then
 fi
 
 
-FILEHEADER="# $EXEC experiment to measure $MEASURE:\n" 
+FILEHEADER="# $EXEC experiment:\n" 
 FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $ITER iterations with up to $MAXTHREAD threads (server addr: $ADDR)\n" 
 FILEHEADER="${FILEHEADER}# to reproduce this result, use $GITVER *\n"
 
 # BRANCH INTO RDMA AND IP SPECIFIC SETTINGS
 
 if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
-
     # GET VERB FOR RDMA
     cecho "> Please specify the operation ('r' for RDMA READ, 'w' for RDMA WRITE, 's' for IB SEND)" $white
     while read OP; do 
@@ -242,7 +221,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     # FINALIZE FILE NAME
     if [ -z "${FILEPATH}" ]
     then
-        FILENAME="${EXEC}_${MEASURE}_${OP}"
+        FILENAME="${EXEC}_${OP}"
         if [ $MTHREAD -gt 0 ]; then
             FILENAME="${FILENAME}_mthread"
         fi
@@ -254,14 +233,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     touch "$FILEPATH"
 
     echo -e $FILEHEADER | tee -a $FILEPATH
-
-    if [ "${MEASURE}" = 'bw' ]
-    then
-        printbwheader | tee -a $FILEPATH
-    elif [ "${MEASURE}" = 'lat' ]
-    then
-        printlatheader | tee -a $FILEPATH
-    fi
+    printTableHeader | tee -a $FILEPATH
 
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
@@ -278,9 +250,6 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
             sleep 0.1
         done
     fi
-
-
-    # RUN RDMA EXPERIMENT
 
 else
     cecho "> Please specify link type (eth for ethernet, ib for infiniband)" $white
@@ -301,7 +270,7 @@ else
     # FINALIZE FILE NAME
     if [ -z "${FILEPATH}" ]
     then
-        FILENAME="${EXEC}_${MEASURE}_${LT}"
+        FILENAME="${EXEC}_${LT}"
         if [ $MTHREAD -gt 0 ]; then
             FILENAME="${FILENAME}_mthread"
         fi
@@ -311,14 +280,8 @@ else
 
     touch "$FILEPATH"
     echo -e $FILEHEADER | tee -a $FILEPATH
+    printTableHeader | tee -a $FILEPATH
 
-    if [ "${MEASURE}" = 'bw' ]
-    then
-        printbwheader | tee -a $FILEPATH
-    elif [ "${MEASURE}" = 'lat' ]
-    then
-        printlatheader | tee -a $FILEPATH
-    fi
 
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
@@ -327,17 +290,15 @@ else
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`
-            ./$EXEC -b $POW -i $ITER -t $threads -m $MEASURE $ADDR | tee -a $FILEPATH
+            ./$EXEC -b $POW -i $ITER -t $threads $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -b $i -i $ITER -t 1 -m $MEASURE $ADDR | tee -a $FILEPATH
+            ./$EXEC -b $i -i $ITER -t 1 $ADDR | tee -a $FILEPATH
           sleep 0.1
         done
     fi
-
-    # RUN IP EXPERIMENT
 fi
 
 make clean

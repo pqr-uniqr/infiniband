@@ -36,10 +36,6 @@
 
 #define CPUNO 0
 
-
-#define BANDWIDTH 0
-#define LATENCY 1
-
 #ifdef DEBUG
 # define DEBUG_PRINT(x) fprintf x
 #else
@@ -49,7 +45,7 @@
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
-#define REPORT_FMT "%d \t %d \t %d \t %7.2f \t %7.2f \t %7.2f \t %7.2f \t %7.2f \t %7.2f \n"
+#define REPORT_FMT "%d\t%d\t%d\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\n"
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
@@ -62,7 +58,6 @@ struct config_t {
     size_t xfer_unit;
     int iter;
     int threads;
-    int measure;
     struct config_t *config_other;
 };
 
