@@ -48,8 +48,8 @@
 
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
-#define REPORT_FMT_BW      "%-7d\t%d\t%d\t%-7.2f\t%-7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\n" // TODO temporary
-#define REPORT_FMT_LAT     "%-7d\t%d\t%d\t%-7.2f\t\n"
+
+#define REPORT_FMT "%d \t %d \t %d \t %7.2f \t %7.2f \t %7.2f \t %7.2f \t %7.2f \t %7.2f \n"
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
@@ -77,8 +77,7 @@ struct resources {
 };
 
 
-static int run_iter_bw(void *param);
-static int run_iter_lat(void *param);
+static int run_iter(void *param);
 static void resources_init(struct resources *res);
 static int resources_create(struct resources *res);
 static int sock_connect(const char *servername, int port);

@@ -55,17 +55,17 @@ int main ( int argc, char *argv[] )
         if( (c = getopt_long(argc, argv, "b:i:t:m:", long_options, NULL)) == -1 ) break;
 
         switch(c){
-            case 'b':
-                config.xfer_unit = pow(2, strtoul(optarg,NULL,0));
-                if(config.xfer_unit < 0){
-                    return 1;
-                }
-                break;
             case 'i':
                 config.iter = strtoul(optarg,NULL,0);
                 break;
             case 't':
                 config.threads = strtoul(optarg, NULL, 0);
+                break;
+            case 'b':
+                config.xfer_unit = pow(2, strtoul(optarg,NULL,0));
+                if(config.xfer_unit < 0){
+                    return 1;
+                }
                 break;
             case 'm':
                 if( ! strcmp(optarg, "l") || ! strcmp(optarg, "lat") || 
@@ -116,16 +116,10 @@ int main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    // TODO this code might be better off somewhere else
-    if(config.measure == BANDWIDTH){
-        functorun = (void * (*)(void *)) &run_iter_bw;
-    } else if(config.measure == LATENCY){
-        functorun = (void * (*)(void *)) &run_iter_lat;
-    }
 
-    for(i=0;i < config.threads; i++){
-        if( errno = pthread_create( &threads[i], &attr, functorun, 
-                    (void *) res.conn[i]) ){
+    for( i=0; i < config.threads; i++ ){
+        if( errno = pthread_create(&threads[i], &attr, 
+                    (void *(*)(void*))&run_iter, (void *) res.conn[i]) ){
             perror("pthread_create");
             goto main_exit;
         }
@@ -140,31 +134,20 @@ int main ( int argc, char *argv[] )
     } while (i);
     DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
+    get_usage( getpid(), &pstart, CPUNO );
+    gettimeofday( &tposted, NULL );
+    startticks = clock();
 
-    /* SIGNAL THREADS TO START WORK  & AND BEGIN MEASUREMENT */
-    if( config.measure == BANDWIDTH ){
-        get_usage( getpid(), &pstart, CPUNO );
-        gettimeofday( &tposted, NULL );
-        startticks = clock();
+    pthread_cond_broadcast(&start_cond);
+    for(i=0; i < config.threads; i++)
+        if(errno = pthread_join(threads[i], NULL)){
+            perror("pthread_join");
+            goto main_exit;
+        }
 
-        pthread_cond_broadcast(&start_cond);
-        for(i=0; i < config.threads; i++)
-            if(errno = pthread_join(threads[i], NULL)){
-                perror("pthread_join");
-                goto main_exit;
-            }
-
-        gettimeofday( &tcompleted, NULL );
-        get_usage( getpid(), &pend, CPUNO );
-        endticks = clock();
-    } else if ( config.measure = LATENCY ){
-        pthread_cond_broadcast(&start_cond);
-        for(i=0; i < config.threads; i++)
-            if(errno = pthread_join(threads[i], NULL)){
-                perror("pthread_join");
-                goto main_exit;
-            }
-    }
+    endticks = clock();
+    gettimeofday( &tcompleted, NULL );
+    get_usage( getpid(), &pend, CPUNO );
 
     DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
     DEBUG_PRINT((stdout, YEL "run_iter finished, headed to final socket sync\n" RESET));
@@ -194,7 +177,7 @@ main_exit:
     return EXIT_SUCCESS;
 }				
 
-static int run_iter_bw(void *param)
+static int run_iter(void * param)
 {
     int i, rc, bytes_read, left_to_read;
     uint16_t csum;
@@ -209,7 +192,7 @@ static int run_iter_bw(void *param)
     pthread_mutex_lock( &start_mutex );
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
-        return -1;
+        return 1;
     }
     cnt_threads++;
     pthread_cond_wait( &start_cond, &start_mutex );
@@ -264,89 +247,6 @@ static int run_iter_bw(void *param)
 #endif
         }
     }
-
-    return 0;
-}
-
-static int run_iter_lat(void *param)
-{
-    latency = 0;
-    int i, rc, bytes_read, left_to_read;
-    uint16_t csum;
-    char *read_to;
-    long elapsed;
-    struct connection *conn = (struct connection *) param;
-    pthread_t thread = pthread_self();
-
-    DEBUG_PRINT((stdout, MAG "[ thread %u ] spawned\n" RESET , (int) thread));
-
-    /* WAIT TO SYNCHRONIZE */
-
-    pthread_mutex_lock( &start_mutex );
-    if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
-        perror("pthread_setaffinity");
-        return -1;
-    }
-    cnt_threads++;
-    pthread_cond_wait( &start_cond, &start_mutex );
-    pthread_mutex_unlock( &start_mutex );
-
-    DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
-
-    for(i = 0; i < config.iter; i++){
-        rc = 0;
-    
-        DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
-
-        if( config.server_name ){
-
-            memset(conn->buf, i % 2, config.xfer_unit);
-#ifdef DEBUG
-            csum = checksum(conn->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
-#endif
-            gettimeofday( &tposted, NULL );
-
-            rc = write(conn->sock, conn->buf, config.xfer_unit);
-
-            gettimeofday( &tcompleted, NULL );
-            elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
-                (tposted.tv_sec * 1e6 + tposted.tv_usec);
-            latency += elapsed;
-
-            if(rc < config.xfer_unit){
-                fprintf(stderr, "Failed writing data to socket in run_iter\n");
-                return 1;
-            }
-
-            DEBUG_PRINT((stdout, GRN "%d bytes written to socket\n" RESET, rc));
-        } else {
-            read_to = conn->buf;
-            left_to_read = config.xfer_unit;
-            bytes_read = 0;
-
-            while( left_to_read ){
-                rc = read(conn->sock, read_to, left_to_read);
-    
-                if( rc < 0 ){
-                    fprintf(stderr, "failed to read from socket in run_iter\n");
-                    return 1;
-                }
-                
-                DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
-                left_to_read -= rc;
-                bytes_read += rc;
-                read_to += rc;
-            }
-
-#ifdef DEBUG
-            DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
-            csum = checksum(conn->buf, bytes_read);
-            DEBUG_PRINT((stdout, WHT "\tchecksum on received data = %0x\n" RESET, csum));
-#endif
-        }
-    }
-
     return 0;
 }
 
@@ -583,25 +483,25 @@ static void print_config( void )
 
 static void print_report( void )
 {
-    double ucpu=0., scpu=0., ucpu_server=0., scpu_server=0., xfer_total, avg_bw, avg_lat; long elapsed; 
-    if( config.measure == BANDWIDTH ){
-        xfer_total = config.xfer_unit * config.iter * config.threads;
-        elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) - 
-            (tposted.tv_sec * 1e6 + tposted.tv_usec);
-        avg_bw = xfer_total / elapsed;
 
-        if( pend.cpu_total_time - pstart.cpu_total_time )
-            calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
-        if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
-            calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
+    double xfer_total, elapsed, avg_bw, avg_lat,
+           ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
 
-        printf( REPORT_FMT_BW, config.threads, (int) config.xfer_unit, 
-                config.iter, avg_bw, ucpu, scpu, ucpu_server, scpu_server, (endticks-startticks)/config.iter);
-    } else if( config.measure == LATENCY ){
-        avg_lat = (double) latency / (double) config.iter / (double) config.threads;
-        printf( REPORT_FMT_LAT, config.threads,(int) config.xfer_unit, 
-                config.iter, avg_lat);
-    }
+    xfer_total = config.xfer_unit * config.iter * config.threads;
+    elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+        (tposted.tv_sec * 1e6 + tposted.tv_usec);
+    avg_bw = xfer_total / elapsed;
+    avg_lat = elapsed / config.iter;
+
+    // to avoid NaN's
+    if( pend.cpu_total_time - pstart.cpu_total_time )
+        calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
+    if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
+        calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
+
+    // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
+    printf(REPORT_FMT, config.threads, config.xfer_unit, config.iter, 
+            avg_bw, avg_lat, ucpu, scpu, ucpu_server, scpu_server);
 }
 
 static uint16_t checksum(void *vdata, size_t length)
