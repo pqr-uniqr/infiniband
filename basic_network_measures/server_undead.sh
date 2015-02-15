@@ -22,8 +22,7 @@ ctrl_c(){
     make clean
     exit
 }
-
-printbwheader() { echo -e "#bytes\titer.\tAvg. BW\tUCPU%\tSCPU%"; }
+printTableHeader(){ echo -e "threads\tbuffer\tbw\tlat\tucpu\tscpu\tucpu_s\tscpu_s"  ;}
 
 trap ctrl_c SIGINT
 
