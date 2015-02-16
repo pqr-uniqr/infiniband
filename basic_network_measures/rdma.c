@@ -68,11 +68,11 @@ main ( int argc, char *argv[] )
             {.name = "verb", .has_arg=1, .val= 'v'},
             {.name = "threads", .has_arg = 1, .val='t'},
             {.name = "event", .has_arg = 0, .val='e'},
-            {.name = "length", .has_arg = 0, .val='l'},
+            {.name = "length", .has_arg = 1, .val='l'},
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:t:e:l:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long( argc, argv, "p:d:g:b:i:v:t:e:l:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -85,6 +85,7 @@ main ( int argc, char *argv[] )
             case 'g':
                 config.gid_idx = strtoul (optarg, NULL, 0);
                 if (config.gid_idx < 0){
+                    printf("gididx\n");
                     usage (argv[0]);
                     return EXIT_FAILURE;
                 }
@@ -92,6 +93,7 @@ main ( int argc, char *argv[] )
             case 'b':
                 config.xfer_unit = pow(2,strtoul(optarg,NULL,0));
                 if(config.xfer_unit < 0){
+                    printf("xfer\n");
                     usage(argv[0]);
                     return EXIT_FAILURE;
                 }
@@ -99,6 +101,7 @@ main ( int argc, char *argv[] )
             case 'i':
                 config.iter = strtoul(optarg, NULL, 0);
                 if(config.iter < 0){
+                    printf("iter\n");
                     usage(argv[0]);
                     return EXIT_FAILURE;
                 }
@@ -112,6 +115,7 @@ main ( int argc, char *argv[] )
                 } else if( 's' == optarg[0] ){
                     config.opcode = IBV_WR_SEND; 
                 } else {
+                    printf("verb\n");
                     usage(argv[0]);
                     return EXIT_FAILURE;
                 }
@@ -119,6 +123,7 @@ main ( int argc, char *argv[] )
             case 't':
                 config.threads = strtoul(optarg, NULL, 0);
                 if( config.threads < 0){
+                    printf("threads\n");
                     usage(argv[0]);
                     return EXIT_FAILURE;
                 }
@@ -128,7 +133,9 @@ main ( int argc, char *argv[] )
                 break;
             case 'l':
                 config.length = strtoul(optarg, NULL, 0);
+                break;
             default:
+                printf("default\n");
                 usage (argv[0]);
                 return EXIT_FAILURE;
         }
@@ -801,6 +808,7 @@ resources_create (struct resources *res)
     }
     config.xfer_unit =  MAX(config.xfer_unit, config_other->xfer_unit);
     config.iter =       MAX(config.iter, config_other->iter);
+    config.length =     MAX(config.length, config_other->length);
     config.threads =    MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     config.config_other = config_other;
@@ -812,7 +820,6 @@ resources_create (struct resources *res)
     }
 
     DEBUG_PRINT((stdout, "cq size: %d\n", cq_size));
-
 
     if( !config.server_name && config_other->opcode == IBV_WR_SEND )
         config.opcode = IBV_WR_SEND;
