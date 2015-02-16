@@ -343,7 +343,7 @@ run_iter_client(void *param)
             DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, signaled));
 
 #ifdef DEBUG
-            memset( conn->buf, scnt % 2, config.xfer_unit );
+            //memset( conn->buf, scnt % 2, config.xfer_unit );
             csum = checksum(conn->buf, config.xfer_unit);
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
