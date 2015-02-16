@@ -397,7 +397,6 @@ run_iter_client(void *param)
         elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
             (tposted.tv_sec * 1e6 + tposted.tv_usec);
 
-
         if(final){
             if( !config.iter ) config.iter = scnt;
             DEBUG_PRINT((stdout, "finishing\n"));
@@ -497,7 +496,7 @@ run_iter_server(void *param)
                         DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
 #endif
 
-                        if( !config.iter || config.iter && rcnt < config.iter ){
+                        if( !config.iter || (config.iter && rcnt < config.iter) ){
                             rr.wr_id = rcnt;
                             if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
                                 perror("ibv_post_recv");

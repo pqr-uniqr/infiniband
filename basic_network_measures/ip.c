@@ -6,15 +6,12 @@ struct config_t config = {
     0,  /* xfer unit */
     0,  /* iterations  */
     1, /* threads */
+    0, /* length */
     NULL,
 };
 
 struct timeval tposted;
 struct timeval tcompleted;
-long int latency;
-
-clock_t startticks;
-clock_t endticks;
 
 struct pstat pstart;
 struct pstat pend;
@@ -47,6 +44,7 @@ int main ( int argc, char *argv[] )
             {.name="xfer-unit", .has_arg=1, .val='b'},
             {.name="iter", .has_arg=1, .val='i'},
             {.name="threads", .has_arg=1, .val='t'},
+            {.name="length", .has_arg=1, .val='l'},
             {.name=NULL, .has_arg=0, .val='\0'},
         };
 
@@ -64,6 +62,9 @@ int main ( int argc, char *argv[] )
                 if(config.xfer_unit < 0){
                     return 1;
                 }
+                break;
+            case 'l':
+                config.length = strtoul(optarg, NULL, 0);
                 break;
             default:
                 return 1;
@@ -106,7 +107,6 @@ int main ( int argc, char *argv[] )
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-
     for( i=0; i < config.threads; i++ ){
         if( errno = pthread_create(&threads[i], &attr, 
                     (void *(*)(void*))&run_iter, (void *) res.conn[i]) ){
@@ -124,10 +124,6 @@ int main ( int argc, char *argv[] )
     } while (i);
     DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
-    get_usage( getpid(), &pstart, CPUNO );
-    gettimeofday( &tposted, NULL );
-    startticks = clock();
-
     pthread_cond_broadcast(&start_cond);
     for(i=0; i < config.threads; i++)
         if(errno = pthread_join(threads[i], NULL)){
@@ -135,7 +131,6 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
-    endticks = clock();
     gettimeofday( &tcompleted, NULL );
     get_usage( getpid(), &pend, CPUNO );
 
@@ -169,7 +164,8 @@ main_exit:
 
 static int run_iter(void * param)
 {
-    int i, rc, bytes_read, left_to_read;
+    int i = 0, rc, bytes_read, left_to_read, final=0;
+    long int elapsed;
     uint16_t csum;
     char *read_to;
     struct connection *conn = (struct connection *) param;
@@ -190,27 +186,41 @@ static int run_iter(void * param)
 
     DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
 
-    for(i = 0; i < config.iter; i++){
+    get_usage(getpid(), &pstart, CPUNO);
+    gettimeofday( &tposted, NULL );
+
+    while(1){
         rc = 0;
-    
+
         DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
 
         if( config.server_name ){
-
 #ifdef DEBUG
-            memset(conn->buf, i % 2, config.xfer_unit);
             csum = checksum(conn->buf, config.xfer_unit);
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
 
             rc = write(conn->sock, conn->buf, config.xfer_unit);
 
-            if(rc < config.xfer_unit){
+            if( rc < config.xfer_unit ){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
                 return 1;
             }
 
             DEBUG_PRINT((stdout, GRN "%d bytes written to socket\n" RESET, rc));
+
+            gettimeofday( &tcompleted, NULL);
+            elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+                (tposted.tv_sec * 1e6 + tposted.tv_usec);
+
+            if( final ){
+                if( !config.iter ) config.iter = ++i;
+                break;
+            }
+
+            if( (config.length && elapsed > (config.length * 1e6)) || 
+                    ( config.iter && (++i) == config.iter - 1) )
+                final = 1;
         } else {
             read_to = conn->buf;
             left_to_read = config.xfer_unit;
@@ -230,6 +240,9 @@ static int run_iter(void * param)
                 read_to += rc;
             }
 
+            if( (!config.iter && read_to[0] == 1) || (++i) == config.iter)
+                break;
+
 #ifdef DEBUG
             DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
             csum = checksum(conn->buf, bytes_read);
@@ -237,6 +250,9 @@ static int run_iter(void * param)
 #endif
         }
     }
+
+    get_usage(getpid(), &pend, CPUNO);
+
     return 0;
 }
 
@@ -284,6 +300,7 @@ static int resources_create(struct resources *res)
     }
     config.xfer_unit = MAX(config.xfer_unit, config_other->xfer_unit);
     config.iter = MAX(config.iter, config_other->iter);
+    config.length = MAX(config.length, config_other->length);
     config.config_other = config_other;
     config.threads = MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc(sizeof(pthread_t) * config.threads);
@@ -307,7 +324,7 @@ static int resources_create(struct resources *res)
             fprintf(stderr, "failed to malloc c->buf\n");
             return -1;
         }
-        memset(c->buf, 0x1, config.xfer_unit);
+        memset(c->buf, 0, config.xfer_unit);
         DEBUG_PRINT((stdout, "\tbuffer setup\n"));
 
         /* ESTABLISH TCP CONNECTION */
@@ -315,7 +332,6 @@ static int resources_create(struct resources *res)
          *  in attempting to avoid a race condition of client calling connect()
          *  even before server does accept(), for now we just make the client
          *  wait for a second.
-         *  ... don't try this at home
          */
 
         struct timespec hackpauselen;

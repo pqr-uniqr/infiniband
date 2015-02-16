@@ -58,6 +58,7 @@ struct config_t {
     size_t xfer_unit;
     int iter;
     int threads;
+    int length;
     struct config_t *config_other;
 };
 
