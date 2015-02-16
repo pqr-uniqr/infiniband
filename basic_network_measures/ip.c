@@ -244,8 +244,12 @@ static int run_iter(void * param)
                 read_to += rc;
             }
 
-            if( (!config.iter && read_to[0] == 1) || (++i) == config.iter)
+            DEBUG_PRINT((stdout, "first byte of buffer: %c\n", (int) conn->buf[0]));
+
+            if( (!config.iter && conn->buf[0]) || (++i) == config.iter){
+                config.iter = i;
                 break;
+            }
 
 #ifdef DEBUG
             DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
