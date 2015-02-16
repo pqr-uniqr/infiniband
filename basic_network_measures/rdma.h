@@ -79,6 +79,7 @@ struct config_t
     enum ibv_wr_opcode opcode;     /* requested op */
     int threads;        /* number of threads to use */
     int use_event;      /* use events API for polling? */
+    int length;         /* length of experiment in seconds (takes precedence over iterations) */
     struct config_t *config_other;
 };
 
@@ -147,7 +148,7 @@ static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
 
 /* UTIL */
-static void print_report(unsigned int iters, unsigned size, int duplex, int no_cpu_freq_fail);
+static void print_report();
 static void usage(const char *argv0);
 static void opcode_to_str(int code, char **str);
 static void print_config(void);

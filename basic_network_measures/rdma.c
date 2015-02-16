@@ -18,6 +18,7 @@ struct config_t config =
     -1,             /* opcode */
     1,              /* number of threads */
     0,          /* use events */
+    0,          /* length  */
     NULL,
 };
 
@@ -48,7 +49,6 @@ main ( int argc, char *argv[] )
     struct resources res;
     struct timeval cur_time;
 
-
     pthread_attr_t attr;
     CPU_ZERO( &cpuset );
     CPU_SET( CPUNO, &cpuset );
@@ -61,17 +61,17 @@ main ( int argc, char *argv[] )
         static struct option long_options[] = {
             {.name = "port",.has_arg = 1,.val = 'p'},
             {.name = "ib-dev",.has_arg = 1,.val = 'd'},
-            //{.name = "ib-port",.has_arg = 1,.val = 'i'},
             {.name = "gid-idx",.has_arg = 1,.val = 'g'},
             {.name = "xfer-unit", .has_arg = 1, .val = 'b'},
             {.name = "iter", .has_arg = 1, .val = 'i'},
             {.name = "verb", .has_arg=1, .val= 'v'},
             {.name = "threads", .has_arg = 1, .val='t'},
             {.name = "event", .has_arg = 0, .val='e'},
+            {.name = "length", .has_arg = 0, .val='l'},
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:t:e:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc,argv, "p:d:g:b:i:v:t:e:l:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -125,6 +125,8 @@ main ( int argc, char *argv[] )
             case 'e':
                 config.use_event = 1;
                 break;
+            case 'l':
+                config.length = strtoul(optarg, NULL, 0);
             default:
                 usage (argv[0]);
                 return EXIT_FAILURE;
@@ -211,17 +213,13 @@ main ( int argc, char *argv[] )
 
         /* SIGNAL THREADS TO START WORK */
 
-        get_usage( getpid(), &pstart, CPUNO );
-        gettimeofday( &tposted, NULL );
-
         pthread_cond_broadcast(&start_cond);
         for( i=0; i < config.threads; i++ )
             if( errno = pthread_join(threads[i], NULL) ){
                 perror("pthread_join");
                 goto main_exit;
             }
-        gettimeofday( &tcompleted, NULL );
-        get_usage( getpid(), &pend, CPUNO );
+
 
         DEBUG_PRINT((stdout, GRN "threads joined--waiting for socket sync\n" RESET));
     }
@@ -267,7 +265,7 @@ main_exit:
     /* REPORT ON EXPERIMENT TO STDOUT */
 
     if(rc){
-        print_report(config.iter, config.xfer_unit, 0, 0);
+        print_report();
         return EXIT_SUCCESS;
     }
     return EXIT_FAILURE;
@@ -277,6 +275,7 @@ main_exit:
 run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
+
     struct ib_assets *conn = (struct ib_assets *) param;
     int rc, scnt=0, ccnt=0, ne, i, signaled=1, max_requests_onwire; // * outstanding *
     long int elapsed;
@@ -320,7 +319,11 @@ run_iter_client(void *param)
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
-    // NEW
+    get_usage( getpid(), &pstart, CPUNO );
+    gettimeofday( &tposted, NULL );
+
+    //----------------------old------------------------
+
     while( scnt < config.iter || ccnt < config.iter ){
 
         if ( scnt < config.iter && (scnt - ccnt) < CQ_MODERATION ){
@@ -389,6 +392,9 @@ run_iter_client(void *param)
         }
 
     }
+
+    gettimeofday( &tcompleted, NULL );
+    get_usage( getpid(), &pend, CPUNO );
 
     free(wc);
 
@@ -1004,7 +1010,7 @@ print_config (void)
     fprintf(stdout, "%s operation requested\n", op);
 
     if ( !config.iter|| !config.xfer_unit )
-        fprintf(stdout, RED "Size of transfer not specified.\n" YEL );
+        fprintf(stdout, RED "transfer spec not specified.\n" YEL );
     else
         fprintf(stdout, "%d iters, each %zd bytes, %d threads\n", 
                 config.iter, config.xfer_unit, config.threads );
@@ -1034,16 +1040,19 @@ opcode_to_str(int opcode, char **str)
     return;
 }
 
+
+
 /*  note on units: bytes/microseconds turns out to be the same as MB/sec
  *
  * */
     static void
-print_report(unsigned int iters, unsigned size, int duplex,
-        int no_cpu_freq_fail)
+print_report()
 {
     double xfer_total, elapsed, avg_bw, avg_lat,
            ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
+
     int power = log(config.xfer_unit) / log(2);
+
     xfer_total = config.xfer_unit * config.iter * config.threads;
     elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
         (tposted.tv_sec * 1e6 + tposted.tv_usec);
