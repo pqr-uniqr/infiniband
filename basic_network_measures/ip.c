@@ -200,6 +200,7 @@ static int run_iter(void * param)
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
 
+
             rc = write(conn->sock, conn->buf, config.xfer_unit);
             i++;
 
@@ -220,8 +221,10 @@ static int run_iter(void * param)
             }
 
             if( (config.length && elapsed > (config.length * 1e6)) || 
-                    ( config.iter && i == config.iter - 1) )
+                    ( config.iter && i == config.iter - 1) ){
                 final = 1;
+                memset(conn->buf, 1,1);
+            }
         } else {
             read_to = conn->buf;
             left_to_read = config.xfer_unit;
