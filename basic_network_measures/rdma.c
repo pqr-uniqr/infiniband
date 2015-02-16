@@ -514,6 +514,8 @@ run_iter_server(void *param)
         }
 
         if( conn->buf[0] ){
+            DEBUG_PRINT((stdout, "final iteration recognized #%d\n",rcnt))
+            if(!config.iter) config.iter = rcnt;
             break;
         }
     }
