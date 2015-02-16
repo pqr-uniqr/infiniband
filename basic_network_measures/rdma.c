@@ -228,7 +228,6 @@ main ( int argc, char *argv[] )
                 goto main_exit;
             }
 
-
         DEBUG_PRINT((stdout, GRN "threads joined--waiting for socket sync\n" RESET));
     }
 
@@ -285,7 +284,7 @@ run_iter_client(void *param)
     /* DECLARE AND INITIALIZE */
 
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rc, scnt=0, ccnt=0, ne, i, signaled=1, max_requests_onwire; // * outstanding *
+    int final = 0,rc, scnt=0, ccnt=0, ne, i, signaled=1, max_requests_onwire; // * outstanding *
     long int elapsed;
     uint16_t csum;
     pthread_t thread = pthread_self();
@@ -334,7 +333,6 @@ run_iter_client(void *param)
     while(1) {
         // send 50 new requests
         while(scnt - ccnt < CQ_MODERATION && (!config.iter || scnt < config.iter)){
-
             if( scnt % CQ_MODERATION == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
                 signaled = 0;
@@ -349,6 +347,8 @@ run_iter_client(void *param)
             csum = checksum(conn->buf, config.xfer_unit);
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
+            if( final && scnt % CQ_MODERATION - 1 )
+                memset(conn->buf, 1, 1);
 
             if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
                 fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
@@ -396,18 +396,19 @@ run_iter_client(void *param)
         gettimeofday( &tcompleted, NULL);
         elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
             (tposted.tv_sec * 1e6 + tposted.tv_usec);
-   
 
-        // completion accounted for every request, experiment either long enough or exhausted iter
-        if( scnt == ccnt && 
-                ( !config.iter && elapsed > (config.length * 1e6) || 
-                  ( config.iter && scnt >= config.iter && ccnt >= config.iter ) )
-                ){
+
+        if(final){
             if( !config.iter ) config.iter = scnt;
             break;
         }
-
-
+   
+        // completion accounted for every request, experiment either long enough or exhausted iter
+        //
+        if( scnt == ccnt && ( !config.iter && elapsed > (config.length * 1e6) || 
+                  ( config.iter && scnt >= config.iter - CQ_MODERATION && 
+                    ccnt >= config.iter - CQ_MODERATION) ) )
+            final = 1
     }
 
     get_usage( getpid(), &pend, CPUNO );
@@ -415,82 +416,6 @@ run_iter_client(void *param)
     free(wc);
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
-
-
-    //----------------------old------------------------
-    /*
-
-    while( scnt < config.iter || ccnt < config.iter ){
-
-        while ( scnt < config.iter && (scnt - ccnt) < CQ_MODERATION ){
-
-            if( scnt % CQ_MODERATION == 0 ){
-                sr.send_flags &= ~IBV_SEND_SIGNALED;
-                signaled = 0;
-            }
-
-            sr.wr_id = scnt;
-
-            DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, signaled));
-
-#ifdef DEBUG
-            memset( conn->buf, scnt % 2, config.xfer_unit );
-            csum = checksum(conn->buf, config.xfer_unit);
-            fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
-#endif
-
-            if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
-                fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
-                perror("post_send");
-                return -1;
-            }
-
-            ++scnt;
-
-            if( (scnt % CQ_MODERATION == CQ_MODERATION -1 || scnt == config.iter - 1) ){
-                sr.send_flags |= IBV_SEND_SIGNALED;
-                signaled = 1;
-            }
-        }
-
-        if(ccnt < config.iter){
-            do{
-                ne = ibv_poll_cq(conn->cq, 1, wc);
-                if( ne > 0 ){
-                    for(i = 0; i < ne; i++){
-                        DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
-                        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                                    (scnt - ccnt), CQ_MODERATION));
-                        if( wc[i].status != IBV_WC_SUCCESS){
-                            check_wc_status(wc[i].status);
-                            fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
-                            return -1;
-                        } else {
-                            DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", 
-                                        wc[i].wr_id, ccnt));
-                            ccnt += CQ_MODERATION;
-                        }
-
-                    }
-                }
-            } while( ne > 0);
-        }
-
-        if( ne < 0 ){
-            fprintf(stderr, RED "poll cq\n" RESET);
-            return -1;
-        }
-
-    }
-
-    gettimeofday( &tcompleted, NULL );
-    get_usage( getpid(), &pend, CPUNO );
-
-    free(wc);
-
-    DEBUG_PRINT((stdout, "finishing run_iter\n"));
-    return 0;
-    */
 }
 
     static int
@@ -546,6 +471,63 @@ run_iter_server(void *param)
     pthread_mutex_unlock( &start_mutex );
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
+
+    gettimeofday( &tposted, NULL );
+    get_usage( getpid(), &pstart, CPUNO );
+
+    while( (!config.iter) || (config.iter && ccnt < config.iter) ){
+        do {
+            ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
+
+            if(ne > 0){
+                for(i = 0; i < ne ; i++){
+                    if( wc[i].status != IBV_WC_SUCCESS ){
+                        check_wc_status(wc[i].status);
+                        DEBUG_PRINT((stdout, "Completion with error. wr_id: %lu\n", wc[i].wr_id));
+                        return -1;
+                    } else {
+                        ccnt++;
+                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, ccnt: %d
+                                    , number of RRs on RQ: %d\n", wc[i].wr_id, ccnt,(rcnt - ccnt)));
+#ifdef DEBUG
+                        csum = checksum(conn->buf, config.xfer_unit);
+                        DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
+#endif
+
+                        if( !config.iter || config.iter && rcnt < config.iter ){
+                            rr.wr_id = rcnt;
+                            if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
+                                perror("ibv_post_recv");
+                                return -1;
+                            }
+                            DEBUG_PRINT((stdout, "posted new RR. wr_id = %d\n", rcnt));
+                            rcnt++;
+                        }
+                    }
+                }
+            }
+        } while( ne > 0 )
+
+        if( ne < 0 ){
+            fprintf(stderr, RED "poll cq\n" RESET);
+            return -1;
+        }
+
+        if( conn->buff[0] ){
+            break;
+        }
+    }
+
+    gettimeofday( &tcompleted, NULL );
+    get_usage( getpid(), &pend, CPUNO );
+
+    free(wc);
+    DEBUG_PRINT((stdout, "finishing run_iter\n"));
+    return 0;
+
+    
+
+
     while( ccnt < config.iter ){
         do {
             ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
@@ -584,9 +566,6 @@ run_iter_server(void *param)
         }
     }
 
-    free(wc);
-    DEBUG_PRINT((stdout, "finishing run_iter\n"));
-    return 0;
 }
 
 
