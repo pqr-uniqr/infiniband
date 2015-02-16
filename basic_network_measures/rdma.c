@@ -400,6 +400,7 @@ run_iter_client(void *param)
 
         if(final){
             if( !config.iter ) config.iter = scnt;
+            DEBUG_PRINT((stdout, "finishing\n"));
             break;
         }
    
@@ -407,8 +408,10 @@ run_iter_client(void *param)
         //
         if( scnt == ccnt && ( !config.iter && elapsed > (config.length * 1e6) || 
                   ( config.iter && scnt >= config.iter - CQ_MODERATION && 
-                    ccnt >= config.iter - CQ_MODERATION) ) )
+                    ccnt >= config.iter - CQ_MODERATION) ) ){
+            DEBUG_PRINT((stdout, "final batch\n"));
             final = 1;
+        }
     }
 
     get_usage( getpid(), &pend, CPUNO );
