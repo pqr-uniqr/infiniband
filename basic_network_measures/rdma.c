@@ -25,6 +25,7 @@ struct config_t config =
 struct timeval tposted; 
 struct timeval tcompleted;
 long int latency;
+long int iterations;
 
 struct pstat pstart;
 struct pstat pend;
@@ -322,15 +323,97 @@ run_iter_client(void *param)
     get_usage( getpid(), &pstart, CPUNO );
     gettimeofday( &tposted, NULL );
 
+
+    while(1) {
+        // send 50 new requests
+        while(scnt - ccnt < CQ_MODERATION && (!config.iter || scnt < config.iter)){
+
+            if( scnt % CQ_MODERATION == 0){
+                sr.send_flags &= ~IBV_SEND_SIGNALED;
+                signaled = 0;
+            }
+
+            sr.wr_id = scnt;
+
+            DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, signaled));
+
+#ifdef DEBUG
+            memset( conn->buf, scnt % 2, config.xfer_unit );
+            csum = checksum(conn->buf, config.xfer_unit);
+            fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
+#endif
+
+            if( ( errno = ibv_post_send(conn->qp, &sr, &bad_wr) ) ){
+                fprintf(stdout, RED "scnt - ccnt = %d\n" RESET,(scnt - ccnt));
+                perror("post_send");
+                return -1;
+            }
+
+            ++scnt;
+
+            if( (scnt % CQ_MODERATION == CQ_MODERATION - 1) ||
+                    (config.iter && scnt == config.iter - 1) ){
+                sr.send_flags |= IBV_SEND_SIGNALED;
+                signaled = 1;
+            }
+        }
+
+        // retrieve completion and add to ccnt
+        if( ccnt < scnt ){
+            do {
+                ne = ibv_poll_cq(conn->cq, 1, wc);
+                if( ne > 0 ){
+                    for(i = 0; i < ne; i++){
+                        DEBUG_PRINT((stdout, GRN"[POLL RETURNED]----------\n"RESET));
+                        DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
+                                    (scnt - ccnt), CQ_MODERATION));
+                        if( wc[i].status != IBV_WC_SUCCESS){
+                            check_wc_status(wc[i].status);
+                            fprintf(stderr, "Completion with error. wr_id: %lu\n", wc[i].wr_id);
+                            return -1;
+                        } else {
+                            DEBUG_PRINT((stdout, "Completion success: wr_id: %lu ccnt: %d\n", 
+                                        wc[i].wr_id, ccnt));
+                            ccnt += CQ_MODERATION;
+                        }
+                    }
+                }
+            } while ( ne > 0 );
+        }
+
+        if( ne < 0 ){
+            fprintf(stderr, RED "poll cq\n" RESET);
+            return -1;
+        }
+
+        gettimeofday( &tcompleted, NULL);
+        elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+            (tposted.tv_sec * 1e6 + tposted.tv_usec);
+   
+
+        // completion accounted for every request, experiment either long enough or exhausted iter
+        if( scnt == ccnt && 
+                ( !config.iter && elapsed > (config.length * 1e6) || 
+                  ( config.iter && scnt >= config.iter && ccnt >= config.iter ) )
+                ){
+            if( !config.iter ) config.iter = scnt;
+            break;
+        }
+
+
+    }
+
+    get_usage( getpid(), &pend, CPUNO );
+
+    free(wc);
+    DEBUG_PRINT((stdout, "finishing run_iter\n"));
+    return 0;
+
+
     //----------------------old------------------------
+    /*
 
     while( scnt < config.iter || ccnt < config.iter ){
-
-        if ( scnt < config.iter && (scnt - ccnt) < CQ_MODERATION ){
-            DEBUG_PRINT((stdout, GRN "[ENTERING SEND MODE]----------\n"RESET));
-            DEBUG_PRINT((stdout, "%d requests on wire (max %d allowed)\n", 
-                        (scnt - ccnt), CQ_MODERATION));
-        }
 
         while ( scnt < config.iter && (scnt - ccnt) < CQ_MODERATION ){
 
@@ -400,6 +483,7 @@ run_iter_client(void *param)
 
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
+    */
 }
 
     static int
