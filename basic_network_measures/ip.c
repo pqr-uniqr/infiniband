@@ -48,7 +48,7 @@ int main ( int argc, char *argv[] )
             {.name=NULL, .has_arg=0, .val='\0'},
         };
 
-        if( (c = getopt_long(argc, argv, "b:i:t:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long(argc, argv, "b:i:t:l:", long_options, NULL)) == -1 ) break;
 
         switch(c){
             case 'i':
