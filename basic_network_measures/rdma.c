@@ -572,7 +572,6 @@ run_iter_server(void *param)
             return -1;
         }
     }
-
 }
 
 
@@ -872,6 +871,8 @@ resources_create (struct resources *res)
             fprintf(stderr, RED "malloc on buf\n" RESET);
             return -1;
         }
+
+        memset(res->assets[i]->buf, 0, config.xfer_unit);
 
         mr_flags = IBV_ACCESS_LOCAL_WRITE | 
             IBV_ACCESS_REMOTE_READ |
