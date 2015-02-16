@@ -19,7 +19,7 @@ cecho(){
 }  
 
 
-printTableHeader(){ echo -e "threads\tbuffer\tbw\tlat\tucpu\tscpu\tucpu_s\tscpu_s"  ;}
+printTableHeader(){ echo -e "threads\tbuffer\titer\tbw\tlat\tucpu\tscpu\tucpu_s\tscpu_s"  ;}
 
 ctrl_c(){
     make clean
