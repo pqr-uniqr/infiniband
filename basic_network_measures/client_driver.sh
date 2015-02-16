@@ -134,7 +134,19 @@ if [ $MTHREAD -gt 0 ]; then
         fi
     done 
 
-    # GET ITERATIONS --> ITER (recommended: 1000)
+    # GET LENGTH OF EXPERIMENT (recommended: 10000) 
+    cecho "> I will run each experiment for y seconds. Specify y (min 1, max 60, 5 recommended)" $white
+    while read LEN; do 
+        if [ -z "${LEN}" ] || [ "0$LEN" -gt 60 ]
+        then
+            cecho "> try again(max 60 secs)" $red
+        else
+            cecho "> $LEN seconds each" $green
+            break
+        fi
+    done
+
+
     cecho "> I will run 10^y many iterations per thread. Specify y (max 10, 3 recommended)" $white
     while read ITER; do 
         if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
@@ -174,15 +186,14 @@ else
         fi
     done 
 
-    # GET ITERATIONS --> ITER (recommended: 10000)
-    cecho "> I will run 10^y many iterations for each transfer sizes. Specify y (max 10, 5 recommended)" $white
-    while read ITER; do 
-        if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
+    # GET LENGTH OF EXPERIMENT (recommended: 10000) 
+    cecho "> I will run each experiment for y seconds. Specify y (min 1, max 60, 5 recommended)" $white
+    while read LEN; do 
+        if [ -z "${LEN}" ] || [ "0$LEN" -gt 60 ]
         then
-            cecho "> try again(max 10,000,000,000)" $red
+            cecho "> try again(max 60 secs)" $red
         else
-            ITER=`echo "10^$ITER" | bc`
-            cecho "> $ITER iterations each" $green
+            cecho "> $LEN seconds each" $green
             break
         fi
     done
@@ -199,7 +210,7 @@ fi
 
 
 FILEHEADER="# $EXEC experiment:\n" 
-FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $ITER iterations with up to $MAXTHREAD threads (server addr: $ADDR)\n" 
+FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $LEN seconds with up to $MAXTHREAD threads (server addr: $ADDR)\n" 
 FILEHEADER="${FILEHEADER}# to reproduce this result, use $GITVER *\n"
 
 # BRANCH INTO RDMA AND IP SPECIFIC SETTINGS
@@ -240,12 +251,12 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`
-            ./$EXEC -v $OP -i $ITER -b $POW -t $threads $ADDR | tee -a $FILEPATH
+            ./$EXEC -v $OP -l $LEN -b $POW -t $threads $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -v $OP -i $ITER -b $i -t 1 $ADDR | tee -a $FILEPATH
+            ./$EXEC -v $OP -l $LEN -b $i -t 1 $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     fi
@@ -287,12 +298,12 @@ else
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`
-            ./$EXEC -b $POW -i $ITER -t $threads $ADDR | tee -a $FILEPATH
+            ./$EXEC -b $POW -l $LEN -t $threads $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -b $i -i $ITER -t 1 $ADDR | tee -a $FILEPATH
+            ./$EXEC -b $i -l $LEN -t 1 $ADDR | tee -a $FILEPATH
           sleep 0.1
         done
     fi
