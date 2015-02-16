@@ -198,6 +198,7 @@ def plotdata(datafile_name, outfile_name):
             p.write('plot "' + datafile_name + '" using 2:4 notitle with linespoints\n')
         elif "cpu" in outfile_name: # TODO what if it fails?
             p.write('set logscale x\n')
+            p.write('set yrange[0:110]')
             p.write('set xlabel ' + '"buffer size (bytes)"\n')
             p.write('set ylabel ' + '"cpu usage (%)"\n')
             p.write('set output "plots/' + outfile_name + '"\n')
