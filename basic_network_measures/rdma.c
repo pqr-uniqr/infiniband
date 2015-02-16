@@ -408,7 +408,7 @@ run_iter_client(void *param)
         if( scnt == ccnt && ( !config.iter && elapsed > (config.length * 1e6) || 
                   ( config.iter && scnt >= config.iter - CQ_MODERATION && 
                     ccnt >= config.iter - CQ_MODERATION) ) )
-            final = 1
+            final = 1;
     }
 
     get_usage( getpid(), &pend, CPUNO );
@@ -487,7 +487,7 @@ run_iter_server(void *param)
                         return -1;
                     } else {
                         ccnt++;
-                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, ccnt: %d
+                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, ccnt: %d \
                                     , number of RRs on RQ: %d\n", wc[i].wr_id, ccnt,(rcnt - ccnt)));
 #ifdef DEBUG
                         csum = checksum(conn->buf, config.xfer_unit);
@@ -506,14 +506,14 @@ run_iter_server(void *param)
                     }
                 }
             }
-        } while( ne > 0 )
+        } while( ne > 0 );
 
         if( ne < 0 ){
             fprintf(stderr, RED "poll cq\n" RESET);
             return -1;
         }
 
-        if( conn->buff[0] ){
+        if( conn->buf[0] ){
             break;
         }
     }
