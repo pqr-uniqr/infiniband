@@ -201,6 +201,7 @@ static int run_iter(void * param)
 #endif
 
             rc = write(conn->sock, conn->buf, config.xfer_unit);
+            i++;
 
             if( rc < config.xfer_unit ){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
@@ -219,7 +220,7 @@ static int run_iter(void * param)
             }
 
             if( (config.length && elapsed > (config.length * 1e6)) || 
-                    ( config.iter && (++i) == config.iter - 1) )
+                    ( config.iter && i == config.iter - 1) )
                 final = 1;
         } else {
             read_to = conn->buf;
