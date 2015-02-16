@@ -449,7 +449,7 @@ run_iter_server(void *param)
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
     //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
-    initial_recv_count = MIN(MAX_RECV_WR, config.iter);
+    initial_recv_count = config.iter? MIN(MAX_RECV_WR, config.iter):MAX_RECV_WR;
     DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
     for(i = 0; i < initial_recv_count ; i++){
         rr.wr_id = rcnt;
