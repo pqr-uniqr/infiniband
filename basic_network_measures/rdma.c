@@ -172,7 +172,6 @@ main ( int argc, char *argv[] )
     }
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
 
-
     /* server begins CPU measurement if not IBSR */
     if( !config.server_name && config.opcode == -1){
         get_usage( getpid(), &pstart, CPUNO );
@@ -770,6 +769,7 @@ resources_create (struct resources *res)
     config.iter =       MAX(config.iter, config_other->iter);
     config.length =     MAX(config.length, config_other->length);
     config.threads =    MAX(config.threads, config_other->threads);
+    config.use_event = config.use_event || config_other->use_event;
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     config.config_other = config_other;
 
@@ -778,7 +778,6 @@ resources_create (struct resources *res)
     } else {
         cq_size = MAX_RECV_WR;
     }
-
     DEBUG_PRINT((stdout, "cq size: %d\n", cq_size));
 
     if( !config.server_name && config_other->opcode == IBV_WR_SEND )
@@ -816,6 +815,16 @@ resources_create (struct resources *res)
         return -1;
     }
 
+
+    /* SET UP COMPLETION EVENT CHANNEL */
+    if(config.use_event){
+        res->channel = ibv_create_comp_channel(res->ib_ctx);
+        if( ! res->channel ){
+            fprintf(stderr,RED "open_device\n" RESET);
+            return -1;
+        }
+    }
+
     /* GET LOCAL PORT PROPERTIES */
     if( 0 != (errno = ibv_query_port(res->ib_ctx, config.ib_port, &res->port_attr)) ){
         perror("query_port");
@@ -843,9 +852,16 @@ resources_create (struct resources *res)
         }
 
         /* CREATE COMPLETION QUEUE */
-        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, cq_size, NULL,NULL, 0)) ){
+        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, cq_size, NULL, config.channel, 0)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
             return -1;
+        }
+
+        if( config.use_event ){
+            if(ibv_req_notify_cq(res->assets[i]->cq, 0)){
+                fprintf(stderr, RED "ibv_req_notify_cq\n" RESET);
+                return -1;
+            }
         }
 
 

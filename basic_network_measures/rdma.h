@@ -100,7 +100,6 @@ struct cm_con_data_t
 // one for every ib connection
 struct ib_assets
 {
-    struct ibv_comp_channel *channel; /* completion event channel (if use_event is set) */
     struct ibv_pd *pd;		/* PD handle */
     struct ibv_cq *cq;		/* CQ handle */
     struct ibv_qp *qp;		/* QP handle */
@@ -112,6 +111,7 @@ struct ib_assets
 struct resources 
 {
     /* Device attributes */
+    struct ibv_comp_channel *channel; /* completion event channel (if use_event is set) */
     struct ibv_device_attr device_attr;
     struct ibv_port_attr port_attr;	/* IB port attributes */
     struct ibv_context *ib_ctx;	/* device handle */
