@@ -38,7 +38,7 @@
 #define MAX_SEND_SGE 1
 #define MAX_RECV_SGE 1
 
-#define CPUNO 0
+#define CPUNO 10
 #define CQ_SIZE 1
 #define WC_SIZE 1
 
