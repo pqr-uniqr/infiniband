@@ -128,9 +128,10 @@ struct proctime_t
 };
 
 
-/*  */
+/* THREAD FUNCTIONS */
 static int run_iter_client( void *param );
 static int run_iter_server( void *param );
+static void poll_and_notify( void *param );
 
 /* QUEUE PAIR STATE MODIFICATION */
 static int modify_qp_to_init(struct ibv_qp *qp);

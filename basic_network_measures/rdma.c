@@ -36,8 +36,10 @@ int cnt_threads;
 
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
+pthread_cond_t *conditions;
 cpu_set_t cpuset;
 pthread_t *threads;
+pthread_t polling_thread;
 
 /* MAIN */
     int
@@ -179,6 +181,9 @@ main ( int argc, char *argv[] )
     
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
+    conditions = malloc(sizeof(pthread_cond_t) * config.threads);
+    for(i=0;i<config.threads;i++)
+        pthread_cond_init(&conditions[i], NULL);
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
@@ -186,11 +191,16 @@ main ( int argc, char *argv[] )
     // unless this is an IBSR experiment, only client will enter here
     if( config.opcode != -1 ){
 
-        if ( config.server_name ){
-            functorun = (void *(*)(void *)) &run_iter_client;
-        } else {
-            functorun = (void *(*)(void *)) &run_iter_server;
-        }
+        // TODO start polling thread if events are used
+        if( config.use_event && (errno = pthread_create(&polling_thread, 
+                        &attr, (void *(*)(void *)) &poll_and_notify, (void *) NULL)) ){
+                perror("polling thread pthread_create");
+                goto main_exit;
+            }
+
+
+        functorun = config.server_name? 
+            (void *(*)(void *)) &run_iter_client : (void *(*)(void *)) &run_iter_server;
 
         for(i=0; i < config.threads; i++){
             if( errno = pthread_create( &threads[i], &attr, functorun, 
@@ -226,6 +236,11 @@ main ( int argc, char *argv[] )
                 perror("pthread_join");
                 goto main_exit;
             }
+
+        if( errno = pthread_join(polling_thread, NULL) ){
+            perror("polling thread pthread_join");
+            goto main_exit;
+        }
 
         DEBUG_PRINT((stdout, GRN "threads joined--waiting for socket sync\n" RESET));
     }
@@ -276,6 +291,9 @@ main_exit:
     }
     return EXIT_FAILURE;
 }
+
+
+/* THREAD FUNCTIONS */
 
     static int
 run_iter_client(void *param)
@@ -547,6 +565,16 @@ run_iter_server(void *param)
 
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
+}
+
+static void
+poll_and_notify(void *param)
+{
+    // TODO get_cq_event
+    
+    // TODO notify respective CQ
+    
+    // TODO ack
 }
 
 
@@ -852,7 +880,7 @@ resources_create (struct resources *res)
         }
 
         /* CREATE COMPLETION QUEUE */
-        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, cq_size, NULL, config.channel, 0)) ){
+        if( !(res->assets[i]->cq = ibv_create_cq(res->ib_ctx, cq_size, NULL, res->channel, 0)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
             return -1;
         }
