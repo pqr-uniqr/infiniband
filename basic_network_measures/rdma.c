@@ -527,7 +527,7 @@ run_iter_server(void *param)
     gettimeofday( &tcompleted, NULL );
     get_usage( getpid(), &pend, CPUNO );
 
-    numa_free(sizeof(struct ibv_wc));
+    numa_free(wc, sizeof(struct ibv_wc));
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
 
