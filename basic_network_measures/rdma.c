@@ -312,7 +312,6 @@ run_iter_client(void *param)
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
     wc = (struct ibv_wc *) numa_alloc_local(sizeof(struct ibv_wc));
-    //ALLOCATE(wc, struct ibv_wc, 1);
 
     /* WAIT TO SYNCHRONIZE */
 
@@ -416,7 +415,7 @@ run_iter_client(void *param)
 
     get_usage( getpid(), &pend, CPUNO );
 
-    free(wc);
+    numa_free(wc, sizeof(struct ibv_wc));
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
 }
@@ -447,7 +446,6 @@ run_iter_server(void *param)
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
-    //ALLOCATE(wc, struct ibv_wc, WC_SIZE);
     wc = (struct ibv_wc *) numa_alloc_local(sizeof(struct ibv_wc));
     
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
@@ -529,7 +527,7 @@ run_iter_server(void *param)
     gettimeofday( &tcompleted, NULL );
     get_usage( getpid(), &pend, CPUNO );
 
-    free(wc);
+    numa_free(sizeof(struct ibv_wc));
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
 
