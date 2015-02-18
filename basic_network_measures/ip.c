@@ -159,12 +159,12 @@ int main ( int argc, char *argv[] )
     print_report();
 main_exit:
     for(i = 0; i < config.threads; i++){
-        close(res->conn[i]->sock);
-        numa_free(res->conn[i]->buf, config.xfer_unit);
-        numa_free(res->conn[i], sizeof(struct connection));
+        close(res.conn[i]->sock);
+        numa_free(res.conn[i]->buf, config.xfer_unit);
+        numa_free(res.conn[i], sizeof(struct connection));
     }
 
-    numa_free(res->conn, sizeof(struct connection *) * config.threads);
+    numa_free(res.conn, sizeof(struct connection *) * config.threads);
 
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&start_mutex);
