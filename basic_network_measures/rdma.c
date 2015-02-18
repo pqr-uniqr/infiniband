@@ -592,6 +592,7 @@ run_iter_server(void *param)
 static void
 poll_and_notify(void *param)
 {
+    DEBUG_PRINT((stdout, "polling thread here\n"));
     struct resources *res = (struct resources *) param;
     struct ibv_cq *ev_cq;
     void *ev_ctx;
@@ -599,9 +600,13 @@ poll_and_notify(void *param)
     while(1){
         if( ibv_get_cq_event(res->channel, &ev_cq, &ev_ctx) ){
             fprintf(stderr, RED "ibv_get_cq_event failed\n" RESET);
+            return;
         }
         
-        pthread_cond_signal( &polling_conditions[ev_cq->handle] );
+        if( pthread_cond_signal( &(polling_conditions[ev_cq->handle]) ) ){
+            fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
+            return;
+        }
         
         ibv_ack_cq_events( ev_cq, 1 );
     }
