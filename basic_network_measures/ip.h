@@ -21,6 +21,7 @@
 #include <netdb.h>
 #include <math.h>
 #include <errno.h>
+#include <numa.h>
 
 #include "getusage.c"
 
