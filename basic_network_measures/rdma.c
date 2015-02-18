@@ -36,7 +36,8 @@ int cnt_threads;
 
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
-pthread_cond_t *conditions;
+pthread_cond_t *polling_conditions;
+pthread_mutex_t *polling_mutexes;
 cpu_set_t cpuset;
 pthread_t *threads;
 pthread_t polling_thread;
@@ -181,9 +182,12 @@ main ( int argc, char *argv[] )
     
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
-    conditions = malloc(sizeof(pthread_cond_t) * config.threads);
-    for(i=0;i<config.threads;i++)
-        pthread_cond_init(&conditions[i], NULL);
+    polling_conditions = malloc( sizeof(pthread_cond_t) * config.threads );
+    polling_mutexes = malloc( sizeof(pthread_mutex_t) * config.threads );
+    for(i=0;i<config.threads;i++) {
+        pthread_cond_init( &( polling_conditions[i] ), NULL );
+        pthread_mutex_init( &( polling_mutexes[i] ), NULL );
+    }
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
@@ -193,7 +197,7 @@ main ( int argc, char *argv[] )
 
         // TODO start polling thread if events are used
         if( config.use_event && (errno = pthread_create(&polling_thread, 
-                        &attr, (void *(*)(void *)) &poll_and_notify, (void *) NULL)) ){
+                        &attr, (void *(*)(void *)) &poll_and_notify, (void *) &res)) ){
                 perror("polling thread pthread_create");
                 goto main_exit;
             }
@@ -237,8 +241,9 @@ main ( int argc, char *argv[] )
                 goto main_exit;
             }
 
-        if( errno = pthread_join(polling_thread, NULL) ){
-            perror("polling thread pthread_join");
+        //TODO do something that will tell polling thread to quit || pthread_cancel
+        if( errno = pthread_cancel(polling_thread) ){
+            perror("polling thread pthread_cancel");
             goto main_exit;
         }
 
@@ -301,12 +306,18 @@ run_iter_client(void *param)
     /* DECLARE AND INITIALIZE */
 
     struct ib_assets *conn = (struct ib_assets *) param;
-    int final = 0,rc, scnt=0, ccnt=0, ne, i, signaled=1, max_requests_onwire; // * outstanding *
+    int final = 0,rc, scnt=0, ccnt=0, ne, i, signaled=1, cq_handle = conn->cq->handle;
     long int elapsed;
     uint16_t csum;
     pthread_t thread = pthread_self();
+    pthread_cond_t my_cond; 
+    pthread_mutex_t my_mutex; 
+    if( config.use_event ){
+        my_cond = polling_conditions[cq_handle];
+        my_mutex = polling_mutexes[cq_handle];
+    }
 
-    DEBUG_PRINT((stdout, "[thread %u] spawned \n", (int) thread));
+    DEBUG_PRINT((stdout, "[thread %u] spawned, handle #%d \n", (int) thread, cq_handle));
 
     struct ibv_send_wr sr;
     struct ibv_sge sge;
@@ -386,6 +397,13 @@ run_iter_client(void *param)
             }
         }
 
+
+        if( config.use_event ){
+            pthread_mutex_lock( &my_mutex );
+            pthread_cond_wait( &my_cond, &my_mutex );
+            pthread_mutex_unlock( &my_mutex );
+        }
+
         // retrieve completion and add to ccnt
         if( ccnt < scnt ){
             do {
@@ -414,18 +432,21 @@ run_iter_client(void *param)
             return -1;
         }
 
-        gettimeofday( &tcompleted, NULL);
-        elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-            (tposted.tv_sec * 1e6 + tposted.tv_usec);
 
         if(final){
             if( !config.iter ) config.iter = scnt;
             DEBUG_PRINT((stdout, "finishing\n"));
             break;
         }
-   
+
+        if( config.use_event )
+            ibv_req_notify_cq(conn->cq, 0);
+
+        gettimeofday( &tcompleted, NULL);
+        elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+            (tposted.tv_sec * 1e6 + tposted.tv_usec);
+
         // completion accounted for every request, experiment either long enough or exhausted iter
-        //
         if( scnt == ccnt && ( !config.iter && elapsed > (config.length * 1e6) || 
                   ( config.iter && scnt >= config.iter - CQ_MODERATION && 
                     ccnt >= config.iter - CQ_MODERATION) ) ){
@@ -570,11 +591,19 @@ run_iter_server(void *param)
 static void
 poll_and_notify(void *param)
 {
-    // TODO get_cq_event
-    
-    // TODO notify respective CQ
-    
-    // TODO ack
+    struct resources *res = (struct resources *) param;
+    struct ibv_cq *ev_cq;
+    void *ev_ctx;
+
+    while(1){
+        if( ibv_get_cq_event(res->channel, &ev_cq, &ev_ctx) ){
+            fprintf(stderr, RED "ibv_get_cq_event failed\n" RESET);
+        }
+        
+        pthread_cond_signal( &polling_conditions[ev_cq->handle] );
+        
+        ibv_ack_cq_events( ev_cq, 1 );
+    }
 }
 
 
