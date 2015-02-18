@@ -1,7 +1,7 @@
 CFLAGS= -g -std=c99 -D_GNU_SOURCE -pthread -L /lib64 
 CC=gcc
 LD=gcc 
-LIB= -libverbs -lm -lpthread
+LIB= -libverbs -lm -lpthread -lnuma
 all: rdma
 
 rdma: rdma.c
