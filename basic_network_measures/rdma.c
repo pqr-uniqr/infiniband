@@ -311,7 +311,8 @@ run_iter_client(void *param)
 
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
-    ALLOCATE(wc, struct ibv_wc, 1);
+    wc = (struct ibv_wc *) numa_alloc_local(sizeof(struct ibv_wc));
+    //ALLOCATE(wc, struct ibv_wc, 1);
 
     /* WAIT TO SYNCHRONIZE */
 
@@ -446,7 +447,8 @@ run_iter_server(void *param)
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
-    ALLOCATE(wc, struct ibv_wc, WC_SIZE);
+    //ALLOCATE(wc, struct ibv_wc, WC_SIZE);
+    wc = (struct ibv_wc *) numa_alloc_local(sizeof(struct ibv_wc));
     
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
