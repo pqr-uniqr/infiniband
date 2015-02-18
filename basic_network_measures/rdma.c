@@ -75,7 +75,7 @@ main ( int argc, char *argv[] )
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long( argc, argv, "p:d:g:b:i:v:t:e:l:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long( argc, argv, "p:d:g:b:i:v:t:el:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
