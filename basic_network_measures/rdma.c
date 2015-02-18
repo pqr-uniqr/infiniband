@@ -782,7 +782,6 @@ resources_create (struct resources *res)
     }
     DEBUG_PRINT((stdout, "TCP connection was established\n"));
 
-
     /* EXCHANGE CONFIG INFO */
     config_other = (struct config_t *) malloc( sizeof(struct config_t) );
     if( -1 == sock_sync_data( res->sock, sizeof(struct config_t), (char *) &config, 
@@ -847,11 +846,13 @@ resources_create (struct resources *res)
     }
 
     /* ALLOCATE SPACE ALL ASSETS FOR EACH CONNECTION */
-    res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) * config.threads);
+    //res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) * config.threads);
+    res->assets = (struct ib_assets **) numa_alloc_local( sizeof(struct ib_assets *) * config.threads);
 
     for( i = 0; i < config.threads; i++){
 
-        res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
+        //res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
+        res->assets[i] = (struct ib_assets *) numa_alloc_local(sizeof(struct ib_assets));
 
         if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
@@ -866,7 +867,8 @@ resources_create (struct resources *res)
 
 
         /* CREATE & REGISTER MEMORY BUFFER */
-        if( ! (res->assets[i]->buf = (char *) malloc(config.xfer_unit)) ){
+        //if( ! (res->assets[i]->buf = (char *) malloc(config.xfer_unit)) ){
+        if( ! (res->assets[i]->buf = (char *) numa_alloc_local(config.xfer_unit)) ){
             fprintf(stderr, RED "malloc on buf\n" RESET);
             return -1;
         }
@@ -924,6 +926,8 @@ resources_destroy( struct resources *res )
         }
     }
 
+    numa_free(res->assets, sizeof(struct ib_assets *) * config.threads);
+
     if( res->ib_ctx && (-1 == ibv_close_device(res->ib_ctx)) ){
         fprintf(stderr, RED "close_device failed\n" RESET);
         return -1;
@@ -941,7 +945,7 @@ resources_destroy( struct resources *res )
 conn_destroy( struct ib_assets *conn )
 {
     if (conn->buf)
-        free(conn->buf);
+        numa_free(conn->buf, config.xfer_unit);
 
     if (conn->qp && (errno = ibv_destroy_qp(conn->qp)) ){
         perror("destroy_qp");
@@ -963,6 +967,7 @@ conn_destroy( struct ib_assets *conn )
         return -1;
     }
 
+    numa_free(conn, sizeof(struct ib_assets) );
     return 0;
 }
 

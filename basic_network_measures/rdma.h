@@ -12,6 +12,7 @@
 #include <endian.h>
 #include <byteswap.h>
 #include <getopt.h>
+#include <numa.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
