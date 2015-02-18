@@ -196,8 +196,9 @@ main ( int argc, char *argv[] )
     if( config.opcode != -1 ){
 
         // TODO start polling thread if events are used
-        if( config.use_event && (errno = pthread_create(&polling_thread, 
-                        &attr, (void *(*)(void *)) &poll_and_notify, (void *) &res)) ){
+        if( config.use_event && 
+                (errno = pthread_create(&polling_thread, &attr, 
+                                        (void *(*)(void *)) &poll_and_notify, (void *) &res)) ){
                 perror("polling thread pthread_create");
                 goto main_exit;
             }
@@ -242,7 +243,7 @@ main ( int argc, char *argv[] )
             }
 
         //TODO do something that will tell polling thread to quit || pthread_cancel
-        if( errno = pthread_cancel(polling_thread) ){
+        if( config.use_event && (errno = pthread_cancel(polling_thread)) ){
             perror("polling thread pthread_cancel");
             goto main_exit;
         }
