@@ -21,7 +21,10 @@
 #include <netdb.h>
 #include <math.h>
 #include <errno.h>
-#include <numa.h>
+
+#ifdef NUMA
+    #include <numa.h>
+#endif
 
 #include "getusage.c"
 

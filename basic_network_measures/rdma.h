@@ -12,12 +12,15 @@
 #include <endian.h>
 #include <byteswap.h>
 #include <getopt.h>
-#include <numa.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <infiniband/verbs.h>
+
+#ifdef NUMA
+    #include <numa.h>
+#endif
 
 #include "getusage.c"
 

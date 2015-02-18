@@ -160,11 +160,20 @@ int main ( int argc, char *argv[] )
 main_exit:
     for(i = 0; i < config.threads; i++){
         close(res.conn[i]->sock);
+#ifdef NUMA
         numa_free(res.conn[i]->buf, config.xfer_unit);
         numa_free(res.conn[i], sizeof(struct connection));
+#else
+        free(res.conn[i]->buf);
+        free(res.conn[i]);
+#endif
     }
 
+#ifdef NUMA
     numa_free(res.conn, sizeof(struct connection *) * config.threads);
+#else
+    free(res.conn);
+#endif
 
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&start_mutex);
@@ -332,10 +341,14 @@ static int resources_create(struct resources *res)
 
     /* SET UP TCP CONNECTION AND BUFFER FOR EACH THREAD */
 
-    //res->conn = (struct connection **) malloc(sizeof(struct connection *) * 
-            //config.threads);
+
+#ifdef NUMA
     res->conn = (struct connection **) numa_alloc_local(sizeof(struct connection *) * 
             config.threads);
+#else
+    res->conn = (struct connection **) malloc(sizeof(struct connection *) * 
+            config.threads);
+#endif
 
     for(i=0; i<config.threads; i++){
         portno++;
@@ -343,13 +356,18 @@ static int resources_create(struct resources *res)
         /* SET UP BUFFER */
         DEBUG_PRINT((stdout, "setting up connection and buffer for %dth socket on port %u\n", i, portno));
 
-        //res->conn[i] = (struct connection *) malloc(sizeof(struct connection));
+#ifdef NUMA
         res->conn[i] = (struct connection *) numa_alloc_local(sizeof(struct connection));
+#else
+        res->conn[i] = (struct connection *) malloc(sizeof(struct connection));
+#endif
         struct connection *c = res->conn[i];
 
-        // TODO
-        //if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
+#ifdef NUMA
         if( !(c->buf = (char *) numa_alloc_local( config.xfer_unit )) ){
+#else
+        if( !(c->buf = (char *) malloc( config.xfer_unit )) ){
+#endif
             fprintf(stderr, "failed to malloc c->buf\n");
             return -1;
         }

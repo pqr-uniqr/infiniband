@@ -311,7 +311,11 @@ run_iter_client(void *param)
 
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
+#ifdef NUMA
     wc = (struct ibv_wc *) numa_alloc_local(sizeof(struct ibv_wc));
+#else
+    wc = (struct ibv_wc *) malloc(sizeof(struct ibv_wc));
+#endif
 
     /* WAIT TO SYNCHRONIZE */
 
@@ -415,7 +419,12 @@ run_iter_client(void *param)
 
     get_usage( getpid(), &pend, CPUNO );
 
+#ifdef NUMA
     numa_free(wc, sizeof(struct ibv_wc));
+#else
+    free(wc);
+#endif
+
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
 }
@@ -446,7 +455,11 @@ run_iter_server(void *param)
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
+#ifdef NUMA
     wc = (struct ibv_wc *) numa_alloc_local(sizeof(struct ibv_wc));
+#else
+    wc = (struct ibv_wc *) malloc(sizeof(struct ibv_wc));
+#endif
     
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
@@ -527,50 +540,14 @@ run_iter_server(void *param)
     gettimeofday( &tcompleted, NULL );
     get_usage( getpid(), &pend, CPUNO );
 
+#ifdef NUMA
     numa_free(wc, sizeof(struct ibv_wc));
+#else
+    free(wc);
+#endif
+
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
-
-    
-
-
-    while( ccnt < config.iter ){
-        do {
-            ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
-
-            if(ne > 0){
-                for(i = 0; i < ne ; i++){
-                    if( wc[i].status != IBV_WC_SUCCESS ){
-                        check_wc_status(wc[i].status);
-                        DEBUG_PRINT((stdout, "Completion with error. wr_id: %lu\n", wc[i].wr_id));
-                        return -1;
-                    } else {
-                        ccnt++;
-                        DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, ccnt: %d, number of RRs on RQ: %d\n", wc[i].wr_id, ccnt,(rcnt - ccnt)));
-#ifdef DEBUG
-                        csum = checksum(conn->buf, config.xfer_unit);
-                        DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
-#endif
-                        if( rcnt < config.iter ){
-                            rr.wr_id = rcnt;
-                            if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
-                                perror("ibv_post_recv");
-                                return -1;
-                            }
-                            DEBUG_PRINT((stdout, "posted new RR. wr_id = %d\n", rcnt));
-                            rcnt++;
-                        }
-                    }
-                }
-            }
-
-        } while( ne > 0 );
-
-        if( ne < 0 ){
-            fprintf(stderr, RED "poll cq\n" RESET);
-            return -1;
-        }
-    }
 }
 
 
@@ -846,13 +823,19 @@ resources_create (struct resources *res)
     }
 
     /* ALLOCATE SPACE ALL ASSETS FOR EACH CONNECTION */
-    //res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) * config.threads);
+#ifdef NUMA
     res->assets = (struct ib_assets **) numa_alloc_local( sizeof(struct ib_assets *) * config.threads);
+#else
+    res->assets = (struct ib_assets **) malloc( sizeof(struct ib_assets *) * config.threads);
+#endif
 
     for( i = 0; i < config.threads; i++){
 
-        //res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
+#ifdef NUMA
         res->assets[i] = (struct ib_assets *) numa_alloc_local(sizeof(struct ib_assets));
+#else
+        res->assets[i] = (struct ib_assets *) malloc(sizeof(struct ib_assets));
+#endif
 
         if( ! (res->assets[i]->pd = ibv_alloc_pd(res->ib_ctx)) ){
             fprintf(stderr, RED "alloc_pd\n" RESET);
@@ -867,8 +850,11 @@ resources_create (struct resources *res)
 
 
         /* CREATE & REGISTER MEMORY BUFFER */
-        //if( ! (res->assets[i]->buf = (char *) malloc(config.xfer_unit)) ){
+#ifdef NUMA
         if( ! (res->assets[i]->buf = (char *) numa_alloc_local(config.xfer_unit)) ){
+#else
+        if( ! (res->assets[i]->buf = (char *) malloc(config.xfer_unit)) ){
+#endif
             fprintf(stderr, RED "malloc on buf\n" RESET);
             return -1;
         }
@@ -926,7 +912,11 @@ resources_destroy( struct resources *res )
         }
     }
 
+#ifdef NUMA
     numa_free(res->assets, sizeof(struct ib_assets *) * config.threads);
+#else
+    free(res->assets);
+#endif
 
     if( res->ib_ctx && (-1 == ibv_close_device(res->ib_ctx)) ){
         fprintf(stderr, RED "close_device failed\n" RESET);
@@ -944,8 +934,13 @@ resources_destroy( struct resources *res )
     static int
 conn_destroy( struct ib_assets *conn )
 {
-    if (conn->buf)
+    if (conn->buf){
+#ifdef NUMA
         numa_free(conn->buf, config.xfer_unit);
+#else
+        free(conn->buf);
+#endif
+    }
 
     if (conn->qp && (errno = ibv_destroy_qp(conn->qp)) ){
         perror("destroy_qp");
@@ -967,7 +962,11 @@ conn_destroy( struct ib_assets *conn )
         return -1;
     }
 
+#ifdef NUMA
     numa_free(conn, sizeof(struct ib_assets) );
+#else
+    free(conn);
+#endif
     return 0;
 }
 
