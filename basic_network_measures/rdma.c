@@ -71,12 +71,12 @@ main ( int argc, char *argv[] )
             {.name = "iter", .has_arg = 1, .val = 'i'},
             {.name = "verb", .has_arg=1, .val= 'v'},
             {.name = "threads", .has_arg = 1, .val='t'},
-            {.name = "event", .has_arg = 0, .val='e'},
+            {.name = "event", .has_arg = 1, .val='e'},
             {.name = "length", .has_arg = 1, .val='l'},
             {.name = NULL,.has_arg = 0,.val = '\0'},
         };
 
-        if( (c = getopt_long( argc, argv, "p:d:g:b:i:v:t:el:", long_options, NULL)) == -1 ) break;
+        if( (c = getopt_long( argc, argv, "p:d:g:b:i:v:t:e:l:", long_options, NULL)) == -1 ) break;
 
         switch (c)
         {
@@ -133,7 +133,7 @@ main ( int argc, char *argv[] )
                 }
                 break;
             case 'e':
-                config.use_event = 1;
+                config.use_event = strtoul(optarg,NULL,0);
                 break;
             case 'l':
                 config.length = strtoul(optarg, NULL, 0);

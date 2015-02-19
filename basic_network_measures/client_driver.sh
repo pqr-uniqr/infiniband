@@ -199,9 +199,6 @@ else
     done
 fi
 
-
-
-
 # CHECK IF RESULT DIRETORY EXISTS 
 if  ! [ -d "$DIR" ] 
 then
@@ -225,6 +222,24 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
                 cecho "> $OP received" $green
                 break
             fi
+        fi
+    done
+
+    cecho "> Use events instead of busy polling? (yes/no)" $white
+    while read EVENT; do
+        if [ "${EVENT}" = 'yes' ] || [ "${EVENT}" = 'y' ]
+        then
+            cecho "> using events api" $green
+            EVENT=1
+            break
+        elif [ "${EVENT}" = 'no' ] || [ "${EVENT}" = 'n' ]
+        then
+            cecho "> using busy polling" $green
+            EVENT=0
+            break
+        else
+            cecho "> yes or no" $red
+            break
         fi
     done
    
@@ -251,12 +266,12 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`
-            ./$EXEC -v $OP -l $LEN -b $POW -t $threads $ADDR | tee -a $FILEPATH
+            ./$EXEC -v $OP -l $LEN -b $POW -t $threads -e $EVENT $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -v $OP -l $LEN -b $i -t 1 $ADDR | tee -a $FILEPATH
+            ./$EXEC -v $OP -l $LEN -b $i -t 1 -e $EVENT $ADDR | tee -a $FILEPATH
             sleep 0.1
         done
     fi
