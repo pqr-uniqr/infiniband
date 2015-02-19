@@ -33,6 +33,7 @@ struct pstat pstart_server;
 struct pstat pend_server;
 
 int cnt_threads;
+int max_cq_handle;
 
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
@@ -182,8 +183,8 @@ main ( int argc, char *argv[] )
     
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
-    polling_conditions = malloc( sizeof(pthread_cond_t) * config.threads );
-    polling_mutexes = malloc( sizeof(pthread_mutex_t) * config.threads );
+    polling_conditions = malloc( sizeof(pthread_cond_t) * max_cq_handle);
+    polling_mutexes = malloc( sizeof(pthread_mutex_t) * max_cq_handle );
     for(i=0;i<config.threads;i++) {
         pthread_cond_init( &( polling_conditions[i] ), NULL );
         pthread_mutex_init( &( polling_mutexes[i] ), NULL );
@@ -813,6 +814,7 @@ resources_create (struct resources *res)
     struct config_t *config_other;
     size_t size;
     int i, j, rc, mr_flags = 0, cq_size, num_devices;
+    max_cq_handle = 0;
 
 
     /* ESTABLISH TCP CONNECTION */
@@ -929,6 +931,10 @@ resources_create (struct resources *res)
             return -1;
         }
 
+        if( res->assets[i]->cq->handle > max_cq_handle ){
+            max_cq_handle = res->assets[i]->cq->handle;
+        }
+    
         if( config.use_event ){
             if(ibv_req_notify_cq(res->assets[i]->cq, 0)){
                 fprintf(stderr, RED "ibv_req_notify_cq\n" RESET);
@@ -984,6 +990,8 @@ resources_create (struct resources *res)
 
         DEBUG_PRINT((stdout, "QP was created, QP number=0x%x\n", res->assets[i]->qp->qp_num));
     }
+
+    DEBUG_PRINT((stdout, "max cq handle: %u\n", max_cq_handle));
 
     return 0;
 }
