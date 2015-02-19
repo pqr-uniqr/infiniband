@@ -35,7 +35,7 @@ struct pstat pend_server;
 int cnt_threads;
 int max_cq_handle;
 
-pthread_mutex_t start_mutex;
+pthread_mutex_t shared_mutex;
 pthread_cond_t start_cond;
 pthread_cond_t *polling_conditions;
 pthread_mutex_t *polling_mutexes;
@@ -181,7 +181,7 @@ main ( int argc, char *argv[] )
         get_usage( getpid(), &pstart, CPUNO );
     }
     
-    pthread_mutex_init(&start_mutex, NULL);
+    pthread_mutex_init(&shared_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
     polling_conditions = malloc( sizeof(pthread_cond_t) * (max_cq_handle+1));
     polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
@@ -217,9 +217,9 @@ main ( int argc, char *argv[] )
             }
 
         do{
-            pthread_mutex_lock( &start_mutex );
+            pthread_mutex_lock( &shared_mutex);
             i = (cnt_threads < config.threads);
-            pthread_mutex_unlock( &start_mutex );
+            pthread_mutex_unlock( &shared_mutex);
         } while (i);
         DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
@@ -282,7 +282,7 @@ main_exit:
         fprintf(stderr, RED "resources_destroy\n" RESET);
 
     pthread_attr_destroy(&attr);
-    pthread_mutex_destroy(&start_mutex);
+    pthread_mutex_destroy(&shared_mutex);
     pthread_cond_destroy(&start_cond);
 
     if (config.dev_name) free ((char *) config.dev_name);
@@ -308,15 +308,19 @@ run_iter_client(void *param)
 
     struct ib_assets *conn = (struct ib_assets *) param;
     int final = 0,rc, scnt=0, ccnt=0, ne, i, signaled=1, cq_handle = conn->cq->handle;
+    long int tposted_us;
+
+    pthread_mutex_lock( &shared_mutex);
+    int use_event = config.use_event, opcode = config.opcode, xfer_unit = config.xfer_unit, 
+        iter = config.iter, length = config.length;
+    pthread_mutex_unlock( &shared_mutex);
+
     long int elapsed;
     uint16_t csum;
     pthread_t thread = pthread_self();
+    struct timeval tnow;
     pthread_cond_t *my_cond; 
     pthread_mutex_t *my_mutex; 
-    if( config.use_event ){
-        my_cond = &polling_conditions[cq_handle];
-        my_mutex = &polling_mutexes[cq_handle];
-    }
 
     DEBUG_PRINT((stdout, "[thread %u] spawned, handle #%d \n", (unsigned int) thread, cq_handle));
 
@@ -325,15 +329,15 @@ run_iter_client(void *param)
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
     sge.lkey = conn->mr->lkey;
-    sge.length = config.xfer_unit;
+    sge.length = xfer_unit;
     memset(&sr, 0, sizeof(sr));
     sr.sg_list = &sge;
     sr.num_sge = 1;
-    sr.opcode = config.opcode;
+    sr.opcode = opcode;
     sr.next = NULL;
     sr.send_flags |= IBV_SEND_SIGNALED;
     sr.wr_id = 0;
-    if( config.opcode != IBV_WR_SEND ){
+    if( opcode != IBV_WR_SEND ){
         sr.wr.rdma.remote_addr = conn->remote_props.addr;
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
@@ -348,24 +352,27 @@ run_iter_client(void *param)
 
     /* WAIT TO SYNCHRONIZE */
 
-    pthread_mutex_lock( &start_mutex );
+    pthread_mutex_lock( &shared_mutex);
+    if( use_event ){
+        my_cond = &polling_conditions[cq_handle];
+        my_mutex = &polling_mutexes[cq_handle];
+    }
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
         return -1;
     }
     cnt_threads++;
-    pthread_cond_wait( &start_cond, &start_mutex );
-    pthread_mutex_unlock( &start_mutex );
-
-    DEBUG_PRINT((stdout, "[thread %u] starting\n", (unsigned int) thread));
-
-    get_usage( getpid(), &pstart, CPUNO );
+    // by doing this, tposted will be set to the when the last thread entered waiting
     gettimeofday( &tposted, NULL );
-
+    get_usage( getpid(), &pstart, CPUNO );
+    pthread_cond_wait( &start_cond, &shared_mutex);
+    tposted_us = tposted.tv_sec * 1e6 + tposted.tv_usec;
+    pthread_mutex_unlock( &shared_mutex);
+    DEBUG_PRINT((stdout, "[thread %u] starting\n", (unsigned int) thread));
 
     while(1) {
         // send 50 new requests
-        while(scnt - ccnt < CQ_MODERATION && (!config.iter || scnt < config.iter)){
+        while(scnt - ccnt < CQ_MODERATION && (!iter || scnt < iter)){
             if( scnt % CQ_MODERATION == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
                 signaled = 0;
@@ -376,8 +383,7 @@ run_iter_client(void *param)
             DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, signaled));
 
 #ifdef DEBUG
-            //memset( conn->buf, scnt % 2, config.xfer_unit );
-            csum = checksum(conn->buf, config.xfer_unit);
+            csum = checksum(conn->buf, xfer_unit);
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
 #endif
             if( final && scnt % CQ_MODERATION - 1 )
@@ -392,7 +398,7 @@ run_iter_client(void *param)
             ++scnt;
 
             if( (scnt % CQ_MODERATION == CQ_MODERATION - 1) ||
-                    (config.iter && scnt == config.iter - 1) ){
+                    (iter && scnt == iter - 1) ){
                 sr.send_flags |= IBV_SEND_SIGNALED;
                 signaled = 1;
             }
@@ -400,7 +406,7 @@ run_iter_client(void *param)
 
         DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
 
-        if( config.use_event ){
+        if( use_event ){
             pthread_mutex_lock( my_mutex );
             pthread_cond_wait( my_cond, my_mutex );
             pthread_mutex_unlock( my_mutex );
@@ -436,30 +442,32 @@ run_iter_client(void *param)
             return -1;
         }
 
-
         if(final){
-            if( !config.iter ) config.iter = scnt;
-            DEBUG_PRINT((stdout, "finishing\n"));
+            pthread_mutex_lock( &shared_mutex );
+            if( !iter ) config.iter += scnt;
+            gettimeofday(&tcompleted, NULL);
+            get_usage( getpid(), &pend, CPUNO );
+            pthread_mutex_unlock(&shared_mutex);
+
+            DEBUG_PRINT((stdout, "[thread %u ]finishing\n", (unsigned int)thread));
             break;
         }
 
-        if( config.use_event )
+        if( use_event )
             ibv_req_notify_cq(conn->cq, 0);
 
-        gettimeofday( &tcompleted, NULL);
-        elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-            (tposted.tv_sec * 1e6 + tposted.tv_usec);
+        gettimeofday( &tnow, NULL);
+        elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) - tposted_us;
 
         // completion accounted for every request, experiment either long enough or exhausted iter
-        if( scnt == ccnt && ( !config.iter && elapsed > (config.length * 1e6) || 
-                  ( config.iter && scnt >= config.iter - CQ_MODERATION && 
-                    ccnt >= config.iter - CQ_MODERATION) ) ){
+        if( scnt == ccnt && ( !iter && (elapsed > (length * 1e6)) || 
+                  ( iter && scnt >= iter - CQ_MODERATION && 
+                    ccnt >= iter - CQ_MODERATION) ) ){
             DEBUG_PRINT((stdout, "final batch\n"));
             final = 1;
         }
     }
 
-    get_usage( getpid(), &pend, CPUNO );
 
 #ifdef NUMA
     numa_free(wc, sizeof(struct ibv_wc));
@@ -524,14 +532,14 @@ run_iter_server(void *param)
         }
     }
 
-    pthread_mutex_lock( &start_mutex );
+    pthread_mutex_lock( &shared_mutex);
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
         return -1;
     }
     cnt_threads++;
-    pthread_cond_wait( &start_cond, &start_mutex );
-    pthread_mutex_unlock( &start_mutex );
+    pthread_cond_wait( &start_cond, &shared_mutex);
+    pthread_mutex_unlock( &shared_mutex);
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
@@ -1243,7 +1251,6 @@ print_report()
 {
     double xfer_total, elapsed, avg_bw, avg_lat,
            ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
-
     int power = log(config.xfer_unit) / log(2);
 
     xfer_total = config.xfer_unit * config.iter * config.threads;

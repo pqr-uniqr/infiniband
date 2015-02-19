@@ -79,7 +79,7 @@ struct config_t
     int ib_port;			/* local IB port to work with */
     int gid_idx;			/* gid index to use */
     size_t xfer_unit;       /* how big is each transfer going to be (bytes) */
-    int iter;             /* number of times we are going to transfer */
+    long int iter;             /* number of times we are going to transfer */
     enum ibv_wr_opcode opcode;     /* requested op */
     int threads;        /* number of threads to use */
     int use_event;      /* use events API for polling? */
