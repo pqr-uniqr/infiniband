@@ -185,7 +185,7 @@ main ( int argc, char *argv[] )
     pthread_cond_init(&start_cond, NULL);
     polling_conditions = malloc( sizeof(pthread_cond_t) * (max_cq_handle+1));
     polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
-    for(i=0;i<config.threads;i++) {
+    for(i=0;i<(max_cq_handle+1);i++) {
         pthread_cond_init( &( polling_conditions[i] ), NULL );
         pthread_mutex_init( &( polling_mutexes[i] ), NULL );
     }
@@ -402,7 +402,9 @@ run_iter_client(void *param)
 
         if( config.use_event ){
             pthread_mutex_lock( &my_mutex );
+            DEBUG_PRINT((stdout, "[thread %u] here!\n",(unsigned int)thread));
             pthread_cond_wait( &my_cond, &my_mutex );
+            DEBUG_PRINT((stdout, "[thread %u] here2!\n",(unsigned int)thread));
             pthread_mutex_unlock( &my_mutex );
         }
 
