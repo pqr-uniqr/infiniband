@@ -881,7 +881,7 @@ resources_create (struct resources *res)
     if( !config.server_name && config_other->opcode == IBV_WR_SEND )
         config.opcode = IBV_WR_SEND;
 
-    DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
+    DEBUG_PRINT((stdout, "buffer %zd bytes, %ld iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
 
     /* GET IB DEVICES AND SELECT ONE */
@@ -1213,7 +1213,7 @@ print_config (void)
     if ( !config.iter|| !config.xfer_unit )
         fprintf(stdout, RED "transfer spec not specified.\n" YEL );
     else
-        fprintf(stdout, "%d iters, each %zd bytes, %d threads\n", 
+        fprintf(stdout, "%ld iters, each %zd bytes, %d threads\n", 
                 config.iter, config.xfer_unit, config.threads );
 
     fprintf (stdout, "CONFIG------------------------------------------\n\n" RESET);
