@@ -183,8 +183,8 @@ main ( int argc, char *argv[] )
     
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
-    polling_conditions = malloc( sizeof(pthread_cond_t) * max_cq_handle);
-    polling_mutexes = malloc( sizeof(pthread_mutex_t) * max_cq_handle );
+    polling_conditions = malloc( sizeof(pthread_cond_t) * (max_cq_handle+1));
+    polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
     for(i=0;i<config.threads;i++) {
         pthread_cond_init( &( polling_conditions[i] ), NULL );
         pthread_mutex_init( &( polling_mutexes[i] ), NULL );
