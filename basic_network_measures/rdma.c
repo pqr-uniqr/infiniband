@@ -478,9 +478,11 @@ run_iter_server(void *param)
     pthread_t thread = pthread_self();
     DEBUG_PRINT((stdout, "[thread %u] spawned\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rcnt = 0, ccnt = 0, cq_handle = conn->cq->cq_handle;
+    int rcnt = 0, ccnt = 0, cq_handle = conn->cq->handle;
     int ne, i, initial_recv_count;
     uint16_t csum;
+    pthread_cond_t *my_cond; 
+    pthread_mutex_t *my_mutex; 
     if( config.use_event ){
         my_cond = &polling_conditions[cq_handle];
         my_mutex = &polling_mutexes[cq_handle];
