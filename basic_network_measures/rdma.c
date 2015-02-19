@@ -318,7 +318,7 @@ run_iter_client(void *param)
         my_mutex = polling_mutexes[cq_handle];
     }
 
-    DEBUG_PRINT((stdout, "[thread %u] spawned, handle #%d \n", thread, cq_handle));
+    DEBUG_PRINT((stdout, "[thread %u] spawned, handle #%d \n", (unsigned int) thread, cq_handle));
 
     struct ibv_send_wr sr;
     struct ibv_sge sge;
@@ -357,7 +357,7 @@ run_iter_client(void *param)
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
 
-    DEBUG_PRINT((stdout, "[thread %u] starting\n", thread));
+    DEBUG_PRINT((stdout, "[thread %u] starting\n", (unsigned int) thread));
 
     get_usage( getpid(), &pstart, CPUNO );
     gettimeofday( &tposted, NULL );
@@ -398,7 +398,7 @@ run_iter_client(void *param)
             }
         }
 
-        DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",thread));
+        DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
 
         if( config.use_event ){
             pthread_mutex_lock( &my_mutex );
@@ -406,7 +406,7 @@ run_iter_client(void *param)
             pthread_mutex_unlock( &my_mutex );
         }
 
-        DEBUG_PRINT((stdout, "[thread %u] released from cond_wait\n", thread));
+        DEBUG_PRINT((stdout, "[thread %u] released from cond_wait\n", (unsigned int )thread));
 
         // retrieve completion and add to ccnt
         if( ccnt < scnt ){
@@ -596,14 +596,14 @@ static void
 poll_and_notify(void *param)
 {
     pthread_t thread = pthread_self();
-    DEBUG_PRINT((stdout, "[thread %u] polling thread here\n", thread));
+    DEBUG_PRINT((stdout, "[thread %u] polling thread here\n", (unsigned int)thread));
 
     struct resources *res = (struct resources *) param;
     struct ibv_cq *ev_cq;
     void *ev_ctx;
 
     while(1){
-        DEBUG_PRINT((stdout, "[thread %u] about to call get_cq_evnet \n", thread));
+        DEBUG_PRINT((stdout, "[thread %u] about to call get_cq_evnet \n", (unsigned int)thread));
         if( ibv_get_cq_event(res->channel, &ev_cq, &ev_ctx) ){
             fprintf(stderr, RED "ibv_get_cq_event failed\n" RESET);
             return;
@@ -614,7 +614,7 @@ poll_and_notify(void *param)
             fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
             return;
         }
-        DEBUG_PRINT((stdout, "[thread %u] relevant worker thread notified\n", thread));
+        DEBUG_PRINT((stdout, "[thread %u] relevant worker thread notified\n", (unsigned int)thread));
         
         ibv_ack_cq_events( ev_cq, 1 );
 
