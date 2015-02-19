@@ -402,9 +402,7 @@ run_iter_client(void *param)
 
         if( config.use_event ){
             pthread_mutex_lock( my_mutex );
-            DEBUG_PRINT((stdout, "[thread %u] here!\n",(unsigned int)thread));
             pthread_cond_wait( my_cond, my_mutex );
-            DEBUG_PRINT((stdout, "[thread %u] here2!\n",(unsigned int)thread));
             pthread_mutex_unlock( my_mutex );
         }
 
@@ -480,9 +478,13 @@ run_iter_server(void *param)
     pthread_t thread = pthread_self();
     DEBUG_PRINT((stdout, "[thread %u] spawned\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
-    int rcnt = 0, ccnt = 0;
+    int rcnt = 0, ccnt = 0, cq_handle = conn->cq->cq_handle;
     int ne, i, initial_recv_count;
     uint16_t csum;
+    if( config.use_event ){
+        my_cond = &polling_conditions[cq_handle];
+        my_mutex = &polling_mutexes[cq_handle];
+    }
 
     /* CONSTRUCT RECEIVE REQUEST */
     struct ibv_sge sge; 
@@ -535,6 +537,15 @@ run_iter_server(void *param)
     get_usage( getpid(), &pstart, CPUNO );
 
     while( (!config.iter) || (config.iter && ccnt < config.iter) ){
+
+        DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
+        if( config.use_event ){
+            pthread_mutex_lock(my_mutex);
+            pthread_cond_wait( my_cond, my_mutex );
+            pthread_mutex_unlock(my_mutex);
+        }
+        DEBUG_PRINT((stdout, "[thread %u] released from cond_wait\n", (unsigned int )thread));
+
         do {
             ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
 
@@ -574,11 +585,12 @@ run_iter_server(void *param)
 
         if( conn->buf[0] ){
             DEBUG_PRINT((stdout, "final iteration recognized #%d\n",rcnt));
-
             if(!config.iter) config.iter = rcnt;
-
             break;
         }
+
+        if( config.use_event )
+            ibv_req_notify_cq(conn->cq, 0);
     }
 
     gettimeofday( &tcompleted, NULL );
