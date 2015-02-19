@@ -38,8 +38,7 @@ int max_cq_handle;
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
 pthread_cond_t *polling_conditions;
-//pthread_mutex_t *polling_mutexes;
-pthread_mutex_t polling_mutex;
+pthread_mutex_t *polling_mutexes;
 cpu_set_t cpuset;
 pthread_t *threads;
 pthread_t polling_thread;
@@ -185,11 +184,10 @@ main ( int argc, char *argv[] )
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
     polling_conditions = malloc( sizeof(pthread_cond_t) * (max_cq_handle+1));
-    //polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
-    pthread_mutex_init(&polling_mutex,NULL);
+    polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
     for(i=0;i<(max_cq_handle+1);i++) {
         pthread_cond_init( &( polling_conditions[i] ), NULL );
-        //pthread_mutex_init( &( polling_mutexes[i] ), NULL );
+        pthread_mutex_init( &( polling_mutexes[i] ), NULL );
     }
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -313,13 +311,11 @@ run_iter_client(void *param)
     long int elapsed;
     uint16_t csum;
     pthread_t thread = pthread_self();
-    pthread_cond_t my_cond; 
-    pthread_mutex_t my_mutex; 
-
+    pthread_cond_t *my_cond; 
+    pthread_mutex_t *my_mutex; 
     if( config.use_event ){
-        my_cond = polling_conditions[cq_handle];
-        //my_mutex = polling_mutexes[cq_handle];
-        my_mutex = polling_mutex;
+        my_cond = &polling_conditions[cq_handle];
+        my_mutex = &polling_mutexes[cq_handle];
     }
 
     DEBUG_PRINT((stdout, "[thread %u] spawned, handle #%d \n", (unsigned int) thread, cq_handle));
@@ -405,11 +401,11 @@ run_iter_client(void *param)
         DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
 
         if( config.use_event ){
-            pthread_mutex_lock( &my_mutex );
+            pthread_mutex_lock( my_mutex );
             DEBUG_PRINT((stdout, "[thread %u] here!\n",(unsigned int)thread));
-            pthread_cond_wait( &my_cond, &my_mutex );
+            pthread_cond_wait( my_cond, my_mutex );
             DEBUG_PRINT((stdout, "[thread %u] here2!\n",(unsigned int)thread));
-            pthread_mutex_unlock( &my_mutex );
+            pthread_mutex_unlock( my_mutex );
         }
 
         DEBUG_PRINT((stdout, "[thread %u] released from cond_wait\n", (unsigned int )thread));
