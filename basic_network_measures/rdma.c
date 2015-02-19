@@ -195,14 +195,6 @@ main ( int argc, char *argv[] )
     // unless this is an IBSR experiment, only client will enter here
     if( config.opcode != -1 ){
 
-        // TODO start polling thread if events are used
-        if( config.use_event && 
-                (errno = pthread_create(&polling_thread, &attr, 
-                                        (void *(*)(void *)) &poll_and_notify, (void *) &res)) ){
-                perror("polling thread pthread_create");
-                goto main_exit;
-            }
-
 
         functorun = config.server_name? 
             (void *(*)(void *)) &run_iter_client : (void *(*)(void *)) &run_iter_server;
@@ -215,6 +207,13 @@ main ( int argc, char *argv[] )
             }
         }
         DEBUG_PRINT((stdout, GRN "threads created\n" RESET));
+
+        if( config.use_event && 
+                (errno = pthread_create(&polling_thread, &attr, 
+                                        (void *(*)(void *)) &poll_and_notify, (void *) &res)) ){
+                perror("polling thread pthread_create");
+                goto main_exit;
+            }
 
         do{
             pthread_mutex_lock( &start_mutex );
