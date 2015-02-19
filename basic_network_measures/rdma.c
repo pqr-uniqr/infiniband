@@ -1253,7 +1253,11 @@ print_report()
            ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
     int power = log(config.xfer_unit) / log(2);
 
-    xfer_total = config.xfer_unit * config.iter * config.threads;
+    if (config.use_event)
+        xfer_total = config.xfer_unit * config.iter;
+    else
+        xfer_total = config.xfer_unit * config.iter * config.threads;
+
     elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
         (tposted.tv_sec * 1e6 + tposted.tv_usec);
     avg_bw = xfer_total / elapsed;
