@@ -614,7 +614,7 @@ poll_and_notify(void *param)
             fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
             return;
         }
-        DEBUG_PRINT((stdout, "[thread %u] relevant worker thread notified\n", (unsigned int)thread));
+        DEBUG_PRINT((stdout, "[thread %u] relevant worker thread (handle: %d) notified\n", (unsigned int) thread, ev_cq->handle ));
         
         ibv_ack_cq_events( ev_cq, 1 );
 
