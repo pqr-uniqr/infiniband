@@ -68,7 +68,7 @@ while read FILENAME; do
     if [ -n "${FILENAME}" ]
     then
         # IF SOMETHING LIKE /dev/null
-        if [ `expr index ${FILENAME} /` = 1]
+        if [ `expr index ${FILENAME} /` = 1 ]
         then
             FILEPATH="${FILENAME}"
             break
