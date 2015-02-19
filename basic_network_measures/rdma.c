@@ -608,7 +608,7 @@ poll_and_notify(void *param)
             fprintf(stderr, RED "ibv_get_cq_event failed\n" RESET);
             return;
         }
-        DEBUG_PRINT((stdout, "[thread %u] event recieved\n", thread));
+        DEBUG_PRINT((stdout, "[thread %u] event recieved\n", (unsigned int)thread));
         
         if( pthread_cond_signal( &(polling_conditions[ev_cq->handle]) ) ){
             fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
@@ -618,7 +618,7 @@ poll_and_notify(void *param)
         
         ibv_ack_cq_events( ev_cq, 1 );
 
-        DEBUG_PRINT((stdout, "[thread %u] event acked\n", thread));
+        DEBUG_PRINT((stdout, "[thread %u] event acked\n", (unsigned int)thread));
     }
 }
 
