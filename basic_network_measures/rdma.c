@@ -35,7 +35,6 @@ struct pstat pend_server;
 int cnt_threads;
 int max_cq_handle;
 
-int temp;
 
 pthread_mutex_t shared_mutex;
 pthread_cond_t start_cond;
@@ -320,8 +319,6 @@ run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
 
-    temp = 0;
-
     struct ib_assets *conn = (struct ib_assets *) param;
     int final = 0,rc, scnt=0, ccnt=0, ne, i, signaled=1, cq_handle = conn->cq->handle;
     long int tposted_us;
@@ -372,8 +369,6 @@ run_iter_client(void *param)
     if( use_event ){
         my_cond = &(polling[cq_handle].condition);
         my_mutex = &(polling[cq_handle].mutex);
-        //my_cond = &polling_conditions[cq_handle];
-        //my_mutex = &polling_mutexes[cq_handle];
     }
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
@@ -393,10 +388,6 @@ run_iter_client(void *param)
 
     while(1) {
         // send 50 new requests
-        if(temp++ > 1000){
-            printf(".\n");
-            temp = 0;
-        }
 
         while(scnt - ccnt < CQ_MODERATION && (!iter || scnt < iter)){
             if( scnt % CQ_MODERATION == 0){
@@ -523,8 +514,6 @@ run_iter_server(void *param)
     if( config.use_event ){
         my_cond = &(polling[cq_handle].condition);
         my_mutex = &(polling[cq_handle].mutex);
-        //my_cond = &polling_conditions[cq_handle];
-        //my_mutex = &polling_mutexes[cq_handle];
     }
 
     /* CONSTRUCT RECEIVE REQUEST */
@@ -661,15 +650,14 @@ poll_and_notify(void *param)
 
     while(1){
         DEBUG_PRINT((stdout, "[thread %u] about to call get_cq_evnet \n", (unsigned int)thread));
-        printf("poll 1\n");
         if( ibv_get_cq_event(res->channel, &ev_cq, &ev_ctx) ){
             fprintf(stderr, RED "ibv_get_cq_event failed\n" RESET);
             return;
         }
         DEBUG_PRINT((stdout, "[thread %u] event recieved\n", (unsigned int)thread));
-        printf("poll 2\n");
      
         //DO WE NEED TO CALL THE LOCK?
+        pthread_mutex_lock(&polling[ev_cq->handle].mutex);
         while(1){
             if(polling[ev_cq->handle].semaphore){
                 if( (errno = pthread_cond_signal(&(polling[ev_cq->handle].condition))) ){
@@ -680,20 +668,10 @@ poll_and_notify(void *param)
                 break;
             }
         }
-        /*  
-        if( pthread_cond_signal( &(polling[ev_cq->handle].condition) ) ){
-            fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
-            return;
-        }
-        if( pthread_cond_signal( &(polling_conditions[ev_cq->handle]) ) ){
-            fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
-            return;
-        } */
-        printf("poll 3\n");
+        pthread_mutex_unlock(&polling[ev_cq->handle].mutex);
         DEBUG_PRINT((stdout, "[thread %u] relevant worker thread (handle: %d) notified\n", (unsigned int) thread, ev_cq->handle ));
         
         ibv_ack_cq_events( ev_cq, 1 );
-        printf("poll 4\n");
 
         DEBUG_PRINT((stdout, "[thread %u] event acked\n", (unsigned int)thread));
     }
