@@ -35,6 +35,8 @@ struct pstat pend_server;
 int cnt_threads;
 int max_cq_handle;
 
+int temp;
+
 pthread_mutex_t shared_mutex;
 pthread_cond_t start_cond;
 pthread_cond_t *polling_conditions;
@@ -306,6 +308,8 @@ run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
 
+    temp = 0;
+
     struct ib_assets *conn = (struct ib_assets *) param;
     int final = 0,rc, scnt=0, ccnt=0, ne, i, signaled=1, cq_handle = conn->cq->handle;
     long int tposted_us;
@@ -365,13 +369,20 @@ run_iter_client(void *param)
     // by doing this, tposted will be set to the when the last thread entered waiting
     gettimeofday( &tposted, NULL );
     get_usage( getpid(), &pstart, CPUNO );
+
     pthread_cond_wait( &start_cond, &shared_mutex);
+
     tposted_us = tposted.tv_sec * 1e6 + tposted.tv_usec;
     pthread_mutex_unlock( &shared_mutex);
+
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (unsigned int) thread));
 
     while(1) {
         // send 50 new requests
+        if(temp++ > 1000){
+            printf(".");
+            temp = 0;
+        }
         while(scnt - ccnt < CQ_MODERATION && (!iter || scnt < iter)){
             if( scnt % CQ_MODERATION == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
