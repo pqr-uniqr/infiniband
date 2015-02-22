@@ -641,21 +641,26 @@ poll_and_notify(void *param)
     struct ibv_cq *ev_cq;
     void *ev_ctx;
 
+
     while(1){
         DEBUG_PRINT((stdout, "[thread %u] about to call get_cq_evnet \n", (unsigned int)thread));
+        printf("poll 1\n");
         if( ibv_get_cq_event(res->channel, &ev_cq, &ev_ctx) ){
             fprintf(stderr, RED "ibv_get_cq_event failed\n" RESET);
             return;
         }
         DEBUG_PRINT((stdout, "[thread %u] event recieved\n", (unsigned int)thread));
+        printf("poll 2\n");
         
         if( pthread_cond_signal( &(polling_conditions[ev_cq->handle]) ) ){
             fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
             return;
         }
+        printf("poll 3\n");
         DEBUG_PRINT((stdout, "[thread %u] relevant worker thread (handle: %d) notified\n", (unsigned int) thread, ev_cq->handle ));
         
         ibv_ack_cq_events( ev_cq, 1 );
+        printf("poll 4\n");
 
         DEBUG_PRINT((stdout, "[thread %u] event acked\n", (unsigned int)thread));
     }
