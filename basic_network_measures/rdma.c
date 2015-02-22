@@ -419,9 +419,9 @@ run_iter_client(void *param)
 
         if( use_event ){
             pthread_mutex_lock( my_mutex );
-            printf("1\n")
+            printf("1\n");
             pthread_cond_wait( my_cond, my_mutex );
-            printf("2\n")
+            printf("2\n");
             pthread_mutex_unlock( my_mutex );
         }
 
