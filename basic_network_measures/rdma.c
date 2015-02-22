@@ -39,8 +39,13 @@ int temp;
 
 pthread_mutex_t shared_mutex;
 pthread_cond_t start_cond;
-pthread_cond_t *polling_conditions;
-pthread_mutex_t *polling_mutexes;
+
+
+// TODO really need a better name than this
+struct event_polling_t *polling;
+//pthread_cond_t *polling_conditions;
+//pthread_mutex_t *polling_mutexes;
+
 cpu_set_t cpuset;
 pthread_t *threads;
 pthread_t polling_thread;
@@ -185,11 +190,18 @@ main ( int argc, char *argv[] )
     
     pthread_mutex_init(&shared_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
-    polling_conditions = malloc( sizeof(pthread_cond_t) * (max_cq_handle+1));
-    polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
+
+
+    polling = malloc( sizeof(struct event_polling_t) * (max_cq_handle + 1) );
+    //polling_conditions = malloc( sizeof(pthread_cond_t) * (max_cq_handle+1));
+    //polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
+
     for(i=0;i<(max_cq_handle+1);i++) {
-        pthread_cond_init( &( polling_conditions[i] ), NULL );
-        pthread_mutex_init( &( polling_mutexes[i] ), NULL );
+        polling[i].semaphore = 0;
+        pthread_cond_init(&polling[i].condition, NULL);
+        pthread_mutex_init(&polling[i].mutex, NULL);
+        //pthread_cond_init( &( polling_conditions[i] ), NULL );
+        //pthread_mutex_init( &( polling_mutexes[i] ), NULL );
     }
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -358,8 +370,10 @@ run_iter_client(void *param)
 
     pthread_mutex_lock( &shared_mutex);
     if( use_event ){
-        my_cond = &polling_conditions[cq_handle];
-        my_mutex = &polling_mutexes[cq_handle];
+        my_cond = &(polling[cq_handle].condition);
+        my_mutex = &(polling[cq_handle].mutex);
+        //my_cond = &polling_conditions[cq_handle];
+        //my_mutex = &polling_mutexes[cq_handle];
     }
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
@@ -383,6 +397,7 @@ run_iter_client(void *param)
             printf(".\n");
             temp = 0;
         }
+
         while(scnt - ccnt < CQ_MODERATION && (!iter || scnt < iter)){
             if( scnt % CQ_MODERATION == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
@@ -419,10 +434,8 @@ run_iter_client(void *param)
 
         if( use_event ){
             pthread_mutex_lock( my_mutex );
-            printf("1\n");
-            if (final) printf("final\n");
+            polling[cq_handle].semaphore++;
             pthread_cond_wait( my_cond, my_mutex );
-            printf("2\n");
             pthread_mutex_unlock( my_mutex );
         }
 
@@ -508,8 +521,10 @@ run_iter_server(void *param)
     pthread_cond_t *my_cond; 
     pthread_mutex_t *my_mutex; 
     if( config.use_event ){
-        my_cond = &polling_conditions[cq_handle];
-        my_mutex = &polling_mutexes[cq_handle];
+        my_cond = &(polling[cq_handle].condition);
+        my_mutex = &(polling[cq_handle].mutex);
+        //my_cond = &polling_conditions[cq_handle];
+        //my_mutex = &polling_mutexes[cq_handle];
     }
 
     /* CONSTRUCT RECEIVE REQUEST */
@@ -567,6 +582,7 @@ run_iter_server(void *param)
         DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
         if( config.use_event ){
             pthread_mutex_lock(my_mutex);
+            polling[cq_handle].semaphore++;
             pthread_cond_wait( my_cond, my_mutex );
             pthread_mutex_unlock(my_mutex);
         }
@@ -652,11 +668,27 @@ poll_and_notify(void *param)
         }
         DEBUG_PRINT((stdout, "[thread %u] event recieved\n", (unsigned int)thread));
         printf("poll 2\n");
-        
-        if( pthread_cond_signal( &(polling_conditions[ev_cq->handle]) ) ){
+     
+        //DO WE NEED TO CALL THE LOCK?
+        while(1){
+            if(polling[ev_cq->handle].semaphore){
+                if( (errno = pthread_cond_signal(&(polling[ev_cq->handle].condition))) ){
+                    fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
+                    return;
+                }
+                polling[ev_cq->handle].semaphore--;
+                break;
+            }
+        }
+        /*  
+        if( pthread_cond_signal( &(polling[ev_cq->handle].condition) ) ){
             fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
             return;
         }
+        if( pthread_cond_signal( &(polling_conditions[ev_cq->handle]) ) ){
+            fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
+            return;
+        } */
         printf("poll 3\n");
         DEBUG_PRINT((stdout, "[thread %u] relevant worker thread (handle: %d) notified\n", (unsigned int) thread, ev_cq->handle ));
         

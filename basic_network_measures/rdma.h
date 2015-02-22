@@ -70,6 +70,13 @@ struct metrics_t
     long unsigned max;
 };
 
+struct event_polling_t
+{
+    int semaphore;
+    pthread_cond_t condition;
+    pthread_mutex_t mutex;
+};
+
 // store configuration fed through command line
 struct config_t
 {
