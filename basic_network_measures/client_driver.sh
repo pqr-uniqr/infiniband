@@ -146,19 +146,6 @@ if [ $MTHREAD -gt 0 ]; then
         fi
     done
 
-
-    cecho "> I will run 10^y many iterations per thread. Specify y (max 10, 3 recommended)" $white
-    while read ITER; do 
-        if [ -z "${ITER}" ] || [ "0$ITER" -gt 10 ]
-        then
-            cecho "> try again(max 10,000,000,000)" $red
-        else
-            ITER=`echo "10^$ITER" | bc`
-            cecho "> $ITER iterations each" $green
-            break
-        fi
-    done
-
     # GET THREAD NUMBER LIMIT --> THREAD (recommended: 14)
     cecho "> I will run the above experiment with 2^1 to 2^z threads. Specify z (max 20, 14 recommended)" $white
     while read THREAD; do
