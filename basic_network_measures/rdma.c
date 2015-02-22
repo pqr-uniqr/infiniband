@@ -419,7 +419,9 @@ run_iter_client(void *param)
 
         if( use_event ){
             pthread_mutex_lock( my_mutex );
+            printf("1\n")
             pthread_cond_wait( my_cond, my_mutex );
+            printf("2\n")
             pthread_mutex_unlock( my_mutex );
         }
 
@@ -464,8 +466,10 @@ run_iter_client(void *param)
             break;
         }
 
-        if( use_event )
-            ibv_req_notify_cq(conn->cq, 0);
+        if( use_event && errno = ibv_req_notify_cq(conn->cq, 0)){
+            perror("ibv_post_recv");
+            return -1;
+        }
 
         gettimeofday( &tnow, NULL);
         elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) - tposted_us;
