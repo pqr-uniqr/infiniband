@@ -380,7 +380,7 @@ run_iter_client(void *param)
     while(1) {
         // send 50 new requests
         if(temp++ > 1000){
-            printf(".");
+            printf(".\n");
             temp = 0;
         }
         while(scnt - ccnt < CQ_MODERATION && (!iter || scnt < iter)){
