@@ -466,7 +466,7 @@ run_iter_client(void *param)
             break;
         }
 
-        if( use_event && errno = ibv_req_notify_cq(conn->cq, 0)){
+        if( use_event && (errno = ibv_req_notify_cq(conn->cq, 0))){
             perror("ibv_post_recv");
             return -1;
         }
