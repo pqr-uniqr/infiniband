@@ -508,10 +508,16 @@ run_iter_server(void *param)
     struct ib_assets *conn = (struct ib_assets *) param;
     int rcnt = 0, ccnt = 0, cq_handle = conn->cq->handle;
     int ne, i, initial_recv_count;
+
+    pthread_mutex_lock(&shared_mutex);
+    int use_event = config.use_event, opcode = config.opcode, xfer_unit = config.xfer_unit,
+        iter = config.iter, length = config.length;
+    pthread_mutex_unlock(&shared_mutex);
+
     uint16_t csum;
     pthread_cond_t *my_cond; 
     pthread_mutex_t *my_mutex; 
-    if( config.use_event ){
+    if( use_event ){
         my_cond = &(polling[cq_handle].condition);
         my_mutex = &(polling[cq_handle].mutex);
     }
@@ -521,7 +527,7 @@ run_iter_server(void *param)
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
     sge.lkey = conn->mr->lkey;
-    sge.length = config.xfer_unit;
+    sge.length = xfer_unit;
     struct ibv_recv_wr rr;
     memset(&rr, 0, sizeof(rr));
     rr.sg_list = &sge;
@@ -540,7 +546,7 @@ run_iter_server(void *param)
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
     //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
-    initial_recv_count = config.iter? MIN(MAX_RECV_WR, config.iter):MAX_RECV_WR;
+    initial_recv_count = iter? MIN(MAX_RECV_WR, iter):MAX_RECV_WR;
     DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
     for(i = 0; i < initial_recv_count ; i++){
         rr.wr_id = rcnt;
@@ -559,17 +565,17 @@ run_iter_server(void *param)
     }
     cnt_threads++;
     pthread_cond_wait( &start_cond, &shared_mutex);
+    gettimeofday( &tposted, NULL );
+    get_usage( getpid(), &pstart, CPUNO );
     pthread_mutex_unlock( &shared_mutex);
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
-    gettimeofday( &tposted, NULL );
-    get_usage( getpid(), &pstart, CPUNO );
 
-    while( (!config.iter) || (config.iter && ccnt < config.iter) ){
+    while( (!iter) || (iter && ccnt < iter) ){
 
         DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
-        if( config.use_event ){
+        if( use_event ){
             pthread_mutex_lock(my_mutex);
             polling[cq_handle].semaphore++;
             pthread_cond_wait( my_cond, my_mutex );
@@ -591,11 +597,16 @@ run_iter_server(void *param)
                         DEBUG_PRINT((stdout, "Completion success: wr_id: %lu, ccnt: %d \
                                     , number of RRs on RQ: %d\n", wc[i].wr_id, ccnt,(rcnt - ccnt)));
 #ifdef DEBUG
-                        csum = checksum(conn->buf, config.xfer_unit);
+                        csum = checksum(conn->buf, xfer_unit);
                         DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
 #endif
 
-                        if( !config.iter || (config.iter && rcnt < config.iter) ){
+                        if( use_event && (errno = ibv_req_notify_cq(conn->cq, 0))){
+                            perror("ibv_post_recv");
+                            return -1;
+                        }
+
+                        if( !iter || (iter && rcnt < iter) ){
                             rr.wr_id = rcnt;
                             if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
                                 perror("ibv_post_recv");
@@ -616,16 +627,18 @@ run_iter_server(void *param)
 
         if( conn->buf[0] ){
             DEBUG_PRINT((stdout, "final iteration recognized #%d\n",rcnt));
-            if(!config.iter) config.iter = rcnt;
+            if(!iter) iter = rcnt;
             break;
         }
 
-        if( config.use_event )
+        if( use_event )
             ibv_req_notify_cq(conn->cq, 0);
     }
 
+    pthread_mutex_lock( &shared_mutex );
     gettimeofday( &tcompleted, NULL );
     get_usage( getpid(), &pend, CPUNO );
+    pthread_mutex_unlock( &shared_mutex );
 
 #ifdef NUMA
     numa_free(wc, sizeof(struct ibv_wc));
