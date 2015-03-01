@@ -84,5 +84,5 @@ printTableHeader | tee -a $FILEPATH
 
 while true 
 do
-    ./$EXEC | tee -a $FILEPATH
+    ./$EXEC &> | tee -a $FILEPATH
 done
