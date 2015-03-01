@@ -253,12 +253,12 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`
-            ./$EXEC -v $OP -l $LEN -b $POW -t $threads -e $EVENT $ADDR &> | tee -a $FILEPATH
+            ./$EXEC -v $OP -l $LEN -b $POW -t $threads -e $EVENT $ADDR 2>&1 | tee -a $FILEPATH
             sleep 0.1
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -v $OP -l $LEN -b $i -t 1 -e $EVENT $ADDR &> | tee -a $FILEPATH
+            ./$EXEC -v $OP -l $LEN -b $i -t 1 -e $EVENT $ADDR 2>&1 | tee -a $FILEPATH
             sleep 0.1
         done
     fi
@@ -300,12 +300,12 @@ else
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
             threads=`echo "2^$i" | bc`
-            ./$EXEC -b $POW -l $LEN -t $threads $ADDR  &> | tee -a $FILEPATH
+            ./$EXEC -b $POW -l $LEN -t $threads $ADDR  2>&1 | tee -a $FILEPATH
             sleep 0.1
         done
     else
         for i in `seq 1 $POW`; do
-            ./$EXEC -b $i -l $LEN -t 1 $ADDR &> | tee -a $FILEPATH
+            ./$EXEC -b $i -l $LEN -t 1 $ADDR 2>&1 | tee -a $FILEPATH
           sleep 0.1
         done
     fi
