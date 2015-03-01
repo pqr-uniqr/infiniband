@@ -601,11 +601,6 @@ run_iter_server(void *param)
                         DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
 #endif
 
-                        if( use_event && (errno = ibv_req_notify_cq(conn->cq, 0))){
-                            perror("ibv_post_recv");
-                            return -1;
-                        }
-
                         if( !iter || (iter && rcnt < iter) ){
                             rr.wr_id = rcnt;
                             if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
