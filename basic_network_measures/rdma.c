@@ -661,7 +661,6 @@ poll_and_notify(void *param)
      
         //DO WE NEED TO CALL THE LOCK?
         while(1){
-            pthread_mutex_lock(&polling[ev_cq->handle].mutex);
             if(polling[ev_cq->handle].semaphore){
                 if( (errno = pthread_cond_signal(&(polling[ev_cq->handle].condition))) ){
                     fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
@@ -670,7 +669,6 @@ poll_and_notify(void *param)
                 polling[ev_cq->handle].semaphore--;
                 break;
             } 
-            pthread_mutex_unlock(&polling[ev_cq->handle].mutex);
         }
         DEBUG_PRINT((stdout, "[thread %u] relevant worker thread (handle: %d) notified\n", (unsigned int) thread, ev_cq->handle ));
         
