@@ -574,14 +574,14 @@ run_iter_server(void *param)
 
     while( (!iter) || (iter && ccnt < iter) ){
 
-        DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
         if( use_event ){
+            DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
             pthread_mutex_lock(my_mutex);
             polling[cq_handle].semaphore++;
             pthread_cond_wait( my_cond, my_mutex );
             pthread_mutex_unlock(my_mutex);
+            DEBUG_PRINT((stdout, "[thread %u] released from cond_wait\n", (unsigned int )thread));
         }
-        DEBUG_PRINT((stdout, "[thread %u] released from cond_wait\n", (unsigned int )thread));
 
         do {
             ne = ibv_poll_cq(conn->cq, WC_SIZE, wc);
