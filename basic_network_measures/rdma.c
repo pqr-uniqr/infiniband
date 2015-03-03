@@ -662,9 +662,9 @@ poll_and_notify(void *param)
         DEBUG_PRINT((stdout, "[thread %u] event recieved\n", (unsigned int)thread));
      
         //DO WE NEED TO CALL THE LOCK?
-        pthread_mutex_lock(&polling[ev_cq->handle].mutex);
         while(1){
             if(polling[ev_cq->handle].semaphore){
+            pthread_mutex_lock(&polling[ev_cq->handle].mutex);
                 if( (errno = pthread_cond_signal(&(polling[ev_cq->handle].condition))) ){
                     fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
                     return;
