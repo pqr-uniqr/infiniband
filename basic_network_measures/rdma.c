@@ -420,6 +420,7 @@ run_iter_client(void *param)
         if( use_event ){
             DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
             pthread_mutex_lock( my_mutex );
+            DEBUG_PRINT((stdout, "[thread %u] acquired lock\n",(unsigned int)thread));
             polling[cq_handle].semaphore++;
             pthread_cond_wait( my_cond, my_mutex );
             pthread_mutex_unlock( my_mutex );
@@ -660,6 +661,7 @@ poll_and_notify(void *param)
         DEBUG_PRINT((stdout, "[thread %u] event recieved\n", (unsigned int)thread));
      
         //DO WE NEED TO CALL THE LOCK?
+        pthread_mutex_lock(&polling[ev_cq->handle].mutex);
         while(1){
             if(polling[ev_cq->handle].semaphore){
                 if( (errno = pthread_cond_signal(&(polling[ev_cq->handle].condition))) ){
@@ -670,6 +672,8 @@ poll_and_notify(void *param)
                 break;
             } 
         }
+        pthread_mutex_unlock(&polling[ev_cq->handle].mutex);
+
         DEBUG_PRINT((stdout, "[thread %u] relevant worker thread (handle: %d) notified\n", (unsigned int) thread, ev_cq->handle ));
         
         ibv_ack_cq_events( ev_cq, 1 );
