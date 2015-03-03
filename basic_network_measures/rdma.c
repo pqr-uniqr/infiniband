@@ -192,15 +192,11 @@ main ( int argc, char *argv[] )
 
 
     polling = malloc( sizeof(struct event_polling_t) * (max_cq_handle + 1) );
-    //polling_conditions = malloc( sizeof(pthread_cond_t) * (max_cq_handle+1));
-    //polling_mutexes = malloc( sizeof(pthread_mutex_t) * (max_cq_handle+1) );
 
     for(i=0;i<(max_cq_handle+1);i++) {
         polling[i].semaphore = 0;
         pthread_cond_init(&polling[i].condition, NULL);
         pthread_mutex_init(&polling[i].mutex, NULL);
-        //pthread_cond_init( &( polling_conditions[i] ), NULL );
-        //pthread_mutex_init( &( polling_mutexes[i] ), NULL );
     }
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -208,7 +204,6 @@ main ( int argc, char *argv[] )
     // this is a bit convoluted
     // unless this is an IBSR experiment, only client will enter here
     if( config.opcode != -1 ){
-
 
         functorun = config.server_name? 
             (void *(*)(void *)) &run_iter_client : (void *(*)(void *)) &run_iter_server;
@@ -665,8 +660,8 @@ poll_and_notify(void *param)
         DEBUG_PRINT((stdout, "[thread %u] event recieved\n", (unsigned int)thread));
      
         //DO WE NEED TO CALL THE LOCK?
-        pthread_mutex_lock(&polling[ev_cq->handle].mutex);
         while(1){
+            pthread_mutex_lock(&polling[ev_cq->handle].mutex);
             if(polling[ev_cq->handle].semaphore){
                 if( (errno = pthread_cond_signal(&(polling[ev_cq->handle].condition))) ){
                     fprintf(stderr, RED "pthread_cond_signal failed\n" RESET);
@@ -674,9 +669,9 @@ poll_and_notify(void *param)
                 }
                 polling[ev_cq->handle].semaphore--;
                 break;
-            }
+            } 
+            pthread_mutex_unlock(&polling[ev_cq->handle].mutex);
         }
-        pthread_mutex_unlock(&polling[ev_cq->handle].mutex);
         DEBUG_PRINT((stdout, "[thread %u] relevant worker thread (handle: %d) notified\n", (unsigned int) thread, ev_cq->handle ));
         
         ibv_ack_cq_events( ev_cq, 1 );
