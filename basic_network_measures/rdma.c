@@ -209,7 +209,7 @@ main ( int argc, char *argv[] )
             (void *(*)(void *)) &run_iter_client : (void *(*)(void *)) &run_iter_server;
 
         for(i=0; i < config.threads; i++){
-            res.assets[i].t_num = i;
+            res.assets[i]->t_num = i;
             if( errno = pthread_create( &threads[i], &attr, functorun, 
                         (void *) res.assets[i]) ){
                 perror("pthread_create");
@@ -353,7 +353,7 @@ run_iter_client(void *param)
 
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(conn.t_num, &cpuset);
+    CPU_SET(conn->t_num, &cpuset);
 
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
@@ -533,6 +533,10 @@ run_iter_server(void *param)
     rr.num_sge = 1;
     rr.next = NULL;
     rr.wr_id = 0;
+
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(0, &cpuset);
 
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
