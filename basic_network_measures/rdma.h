@@ -41,7 +41,7 @@
 #define MAX_SEND_SGE 1
 #define MAX_RECV_SGE 1
 
-#define CPUNO 10
+#define CPUNO 0
 #define CQ_SIZE 1
 #define WC_SIZE 1
 
@@ -107,6 +107,7 @@ struct cm_con_data_t
 // one for every ib connection
 struct ib_assets
 {
+    int t_num;              // thread number (i-th thread)
     struct ibv_pd *pd;		/* PD handle */
     struct ibv_cq *cq;		/* CQ handle */
     struct ibv_qp *qp;		/* QP handle */

@@ -29,23 +29,22 @@ long int iterations;
 
 struct pstat pstart;
 struct pstat pend;
+
 struct pstat pstart_server;
 struct pstat pend_server;
 
 int cnt_threads;
 int max_cq_handle;
 
-
 pthread_mutex_t shared_mutex;
 pthread_cond_t start_cond;
-
 
 // TODO really need a better name than this
 struct event_polling_t *polling;
 //pthread_cond_t *polling_conditions;
 //pthread_mutex_t *polling_mutexes;
 
-cpu_set_t cpuset;
+//cpu_set_t cpuset;
 pthread_t *threads;
 pthread_t polling_thread;
 
@@ -61,8 +60,10 @@ main ( int argc, char *argv[] )
     struct timeval cur_time;
 
     pthread_attr_t attr;
+    /*
     CPU_ZERO( &cpuset );
     CPU_SET( CPUNO, &cpuset );
+    */
     cnt_threads = 0;
 
     /* PROCESS CL ARGUMENTS */
@@ -190,7 +191,6 @@ main ( int argc, char *argv[] )
     pthread_mutex_init(&shared_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
 
-
     polling = malloc( sizeof(struct event_polling_t) * (max_cq_handle + 1) );
 
     for(i=0;i<(max_cq_handle+1);i++) {
@@ -209,6 +209,7 @@ main ( int argc, char *argv[] )
             (void *(*)(void *)) &run_iter_client : (void *(*)(void *)) &run_iter_server;
 
         for(i=0; i < config.threads; i++){
+            res.assets[i].t_num = i;
             if( errno = pthread_create( &threads[i], &attr, functorun, 
                         (void *) res.assets[i]) ){
                 perror("pthread_create");
@@ -350,6 +351,10 @@ run_iter_client(void *param)
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
 
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(conn.t_num, &cpuset);
+
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
 #ifdef NUMA
@@ -416,7 +421,6 @@ run_iter_client(void *param)
             }
         }
 
-
         if( use_event ){
             DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
             pthread_mutex_lock( my_mutex );
@@ -426,7 +430,6 @@ run_iter_client(void *param)
             pthread_mutex_unlock( my_mutex );
             DEBUG_PRINT((stdout, "[thread %u] released from cond_wait\n", (unsigned int )thread));
         }
-
 
         // retrieve completion and add to ccnt
         if( ccnt < scnt ){
