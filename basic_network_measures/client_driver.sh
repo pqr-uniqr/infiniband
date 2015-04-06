@@ -147,19 +147,19 @@ if [ $MTHREAD -gt 0 ]; then
     done
 
     # GET THREAD NUMBER LIMIT --> THREAD (recommended: 14)
-    cecho "> I will run the above experiment with 2^1 to 2^z threads. Specify z (max 20, 14 recommended)" $white
+
+    cecho "> I will run the above experiment with 1 to z threads. Specify z (max 40)" $white
     while read THREAD; do
-        if [ -z "${THREAD}" ] || [ "0$THREAD" -gt 20 ]
-        then
+        if [ -z "${THREAD}" ] || [ "0$THREAD" -gt 40 ]
+        then 
             cecho "> try again (max 20)" $red
         else
-            MAXTHREAD=`echo "2^$THREAD" | bc`
-            cecho "> up to $MAXTHREAD threads" $green
+            cecho "> up to $THREAD threads" $green
             break
         fi
     done
 else
-    MAXTHREAD=1
+    THREAD=1
     # GET XFER SIZE LIMIT --> POW (recommended: 24)
     cecho "> I will test transfer sizes from 2^1 to 2^x. Specify x. (max 29, 24 recommended)" $white
     while read POW; do
@@ -194,7 +194,7 @@ fi
 
 
 FILEHEADER="# $EXEC experiment:\n" 
-FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $LEN seconds with up to $MAXTHREAD threads (server addr: $ADDR)\n" 
+FILEHEADER="${FILEHEADER}# Up to 2^$POW bytes, each $LEN seconds with up to $THREAD threads (server addr: $ADDR)\n" 
 FILEHEADER="${FILEHEADER}# to reproduce this result, use $GITVER *\n"
 
 # BRANCH INTO RDMA AND IP SPECIFIC SETTINGS
@@ -252,8 +252,7 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
 
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
-            threads=`echo "2^$i" | bc`
-            ./$EXEC -v $OP -l $LEN -b $POW -t $threads -e $EVENT $ADDR 2>&1 | tee -a $FILEPATH
+            ./$EXEC -v $OP -l $LEN -b $POW -t $i -e $EVENT $ADDR 2>&1 | tee -a $FILEPATH
             sleep 0.1
         done
     else
@@ -293,14 +292,12 @@ else
     echo -e $FILEHEADER | tee -a $FILEPATH
     printTableHeader | tee -a $FILEPATH
 
-
     cecho "starting experiment..." $green
     cecho "STDERR: " $red
 
     if [ $MTHREAD -gt 0 ]; then
         for i in `seq 1 $THREAD`; do
-            threads=`echo "2^$i" | bc`
-            ./$EXEC -b $POW -l $LEN -t $threads $ADDR  2>&1 | tee -a $FILEPATH
+            ./$EXEC -b $POW -l $LEN -t $i $ADDR  2>&1 | tee -a $FILEPATH
             sleep 0.1
         done
     else
