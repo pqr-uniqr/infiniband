@@ -97,11 +97,13 @@ int main ( int argc, char *argv[] )
    
     rc = 0;
 
+    /* SYNC HERE */
     if( sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, "sync error while in data transfer\n");
         return 1;
     }
 
+    /* START WORKER THREADS */
     pthread_mutex_init(&start_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
     pthread_attr_init(&attr);
@@ -117,6 +119,7 @@ int main ( int argc, char *argv[] )
 
     DEBUG_PRINT((stdout, GRN "threads created\n" RESET));
 
+    /* MAKE SURE ALL THREAD IS SET UP BEFORE MOVING ON */
     do{
         pthread_mutex_lock( &start_mutex );
         i = (cnt_threads < config.threads);
@@ -124,6 +127,7 @@ int main ( int argc, char *argv[] )
     } while (i);
     DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
+    /* JOIN POINT */
     pthread_cond_broadcast(&start_cond);
     for(i=0; i < config.threads; i++)
         if(errno = pthread_join(threads[i], NULL)){
@@ -208,22 +212,13 @@ static int run_iter(void * param)
     pthread_cond_wait( &start_cond, &start_mutex );
     pthread_mutex_unlock( &start_mutex );
 
-    DEBUG_PRINT((stdout, YEL "XFER STARTS-------------------\n" RESET ));
-
     get_usage(getpid(), &pstart, CPUNO);
     gettimeofday( &tposted, NULL );
 
     while(1){
         rc = 0;
 
-        DEBUG_PRINT((stdout, YEL "ITERATION %d\n" RESET , i));
-
         if( config.server_name ){
-#ifdef DEBUG
-            csum = checksum(conn->buf, config.xfer_unit);
-            DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
-#endif
-
             rc = write(conn->sock, conn->buf, config.xfer_unit);
             i++;
 
@@ -232,17 +227,11 @@ static int run_iter(void * param)
                 return 1;
             }
 
-            DEBUG_PRINT((stdout, GRN "%d bytes written to socket\n" RESET, rc));
-
             gettimeofday( &tnow, NULL);
             elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) -
                 (tposted.tv_sec * 1e6 + tposted.tv_usec);
-            //gettimeofday( &tcompleted, NULL);
-            //elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-                //(tposted.tv_sec * 1e6 + tposted.tv_usec);
 
             if( final ){
-                gettimeofday(&tcompleted, NULL);
                 if( !config.iter ) config.iter = ++i;
                 break;
             }
@@ -265,24 +254,20 @@ static int run_iter(void * param)
                     return 1;
                 }
                 
-                DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
+                //DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
                 left_to_read -= rc;
                 bytes_read += rc;
                 read_to += rc;
             }
 
-            DEBUG_PRINT((stdout, "first byte of buffer: %c\n", (int) conn->buf[0]));
+            if ( (int) conn->buf[0] ){
+                DEBUG_PRINT((stdout, "first byte set to 1 -- final iteration"));
+            }
 
             if( (!config.iter && conn->buf[0]) || (++i) == config.iter){
                 config.iter = i;
                 break;
             }
-
-#ifdef DEBUG
-            DEBUG_PRINT((stdout, GRN "%d bytes total read from socket\n" RESET, bytes_read));
-            csum = checksum(conn->buf, bytes_read);
-            DEBUG_PRINT((stdout, WHT "\tchecksum on received data = %0x\n" RESET, csum));
-#endif
         }
     }
 
