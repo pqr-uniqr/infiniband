@@ -264,7 +264,7 @@ static int run_iter(void * param)
             }
 
             if( (!config.iter && conn->buf[0]) || (++i) == config.iter){
-                DEBUG_PRINT((stdout, MAG "[ thread %u ] about to break\n" RESET));
+                DEBUG_PRINT((stdout, MAG "[ thread %u ] about to break\n" RESET, (int) thread));
                 config.iter = i;
                 break;
             }
