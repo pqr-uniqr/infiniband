@@ -377,7 +377,7 @@ run_iter_client(void *param)
     cnt_threads++;
     // by doing this, tposted will be set to the when the last thread entered waiting
     gettimeofday( &tposted, NULL );
-    get_usage( getpid(), &pstart, CPUNO );
+    get_usage( getpid(), &pstart, conn->t_num);
 
     pthread_cond_wait( &start_cond, &shared_mutex);
 
@@ -463,7 +463,7 @@ run_iter_client(void *param)
             pthread_mutex_lock( &shared_mutex );
             if( !iter ) config.iter += scnt;
             gettimeofday(&tcompleted, NULL);
-            get_usage( getpid(), &pend, CPUNO );
+            get_usage( getpid(), &pend, conn->t_num);
             pthread_mutex_unlock(&shared_mutex);
 
             DEBUG_PRINT((stdout, "[thread %u ]finishing\n", (unsigned int)thread));
@@ -573,7 +573,6 @@ run_iter_server(void *param)
     pthread_mutex_unlock( &shared_mutex);
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
-
 
     while( (!iter) || (iter && ccnt < iter) ){
 

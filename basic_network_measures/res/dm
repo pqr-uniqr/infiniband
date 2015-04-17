@@ -179,6 +179,8 @@ def get_exp_type(filename):
         return '_'.join(filename.split('_')[:2])
 
 def plotdata(datafile_name, outfile_name):
+    print "plotdata here"
+    outfile_name = "rdma_r_cpu"
     with open(plotscript_name, 'a') as p:
         p.write('set terminal png\n')
         p.write('set autoscale\n')
@@ -198,7 +200,7 @@ def plotdata(datafile_name, outfile_name):
             p.write('plot "' + datafile_name + '" using 2:4 notitle with linespoints\n')
         elif "cpu" in outfile_name: # TODO what if it fails?
             p.write('set logscale x\n')
-            p.write('set yrange[0:110]')
+            p.write('set yrange[0:110];')
             p.write('set xlabel ' + '"buffer size (bytes)"\n')
             p.write('set ylabel ' + '"cpu usage (%)"\n')
             p.write('set output "plots/' + outfile_name + '"\n')

@@ -192,6 +192,7 @@ static int run_iter(void * param)
     uint16_t csum;
     char *read_to;
     struct connection *conn = (struct connection *) param;
+    struct timeval tnow;
     pthread_t thread = pthread_self();
 
     DEBUG_PRINT((stdout, MAG "[ thread %u ] spawned\n" RESET , (int) thread));
@@ -223,7 +224,6 @@ static int run_iter(void * param)
             DEBUG_PRINT((stdout,WHT "\tchecksum of buffer to be sent: %0x\n" RESET, csum));
 #endif
 
-
             rc = write(conn->sock, conn->buf, config.xfer_unit);
             i++;
 
@@ -234,11 +234,15 @@ static int run_iter(void * param)
 
             DEBUG_PRINT((stdout, GRN "%d bytes written to socket\n" RESET, rc));
 
-            gettimeofday( &tcompleted, NULL);
-            elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+            gettimeofday( &tnow, NULL);
+            elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) -
                 (tposted.tv_sec * 1e6 + tposted.tv_usec);
+            //gettimeofday( &tcompleted, NULL);
+            //elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
+                //(tposted.tv_sec * 1e6 + tposted.tv_usec);
 
             if( final ){
+                gettimeofday(&tcompleted, NULL);
                 if( !config.iter ) config.iter = ++i;
                 break;
             }
