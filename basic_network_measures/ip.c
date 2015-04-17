@@ -19,6 +19,7 @@ struct pstat pstart_server;
 struct pstat pend_server;
 
 int cnt_threads;
+int cnt_iterations;
 pthread_mutex_t start_mutex;
 pthread_cond_t start_cond;
 cpu_set_t cpuset;
@@ -135,6 +136,7 @@ int main ( int argc, char *argv[] )
             goto main_exit;
         }
 
+    if (!config.iter) config.iter = cnt_iterations;
     gettimeofday( &tcompleted, NULL );
     get_usage( getpid(), &pend, CPUNO );
 
@@ -233,12 +235,13 @@ static int run_iter(void * param)
 
             if( final ){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] breaking and exiting\n" RESET , (int) thread));
-                if( !config.iter ) config.iter = ++i;
+
+                if ( !config.iter ) cnt_iterations += ++i;
                 break;
             }
 
             if( (config.length && elapsed > (config.length * 1e6)) || 
-                    ( config.iter && i == config.iter - 1) ){
+                    ( config.iter && (i == config.iter - 1)) ){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] final iteration \n" RESET , (int) thread));
                 final = 1;
                 memset(conn->buf, 1,1);
@@ -265,7 +268,7 @@ static int run_iter(void * param)
 
             if( (!config.iter && conn->buf[0]) || (++i) == config.iter){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] about to break\n" RESET, (int) thread));
-                config.iter = i;
+                cnt_iterations += i;
                 break;
             }
         }
@@ -285,6 +288,7 @@ static int resources_create(struct resources *res)
     u_int32_t portno = config.tcp_port;
     struct config_t *config_other = (struct config_t *) malloc(sizeof(struct config_t));
 
+    /* CONNECT RES SOCKET */
     if(config.server_name){
         res->sock = sock_connect(config.server_name, portno);
         if(res->sock < 0){
@@ -321,12 +325,12 @@ static int resources_create(struct resources *res)
     config.config_other = config_other;
     config.threads = MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc(sizeof(pthread_t) * config.threads);
+    cnt_iterations = 0;
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
 
 
     /* SET UP TCP CONNECTION AND BUFFER FOR EACH THREAD */
-
 
 #ifdef NUMA
     res->conn = (struct connection **) numa_alloc_local(sizeof(struct connection *) * 
