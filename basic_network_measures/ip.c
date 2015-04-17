@@ -232,12 +232,14 @@ static int run_iter(void * param)
                 (tposted.tv_sec * 1e6 + tposted.tv_usec);
 
             if( final ){
+                DEBUG_PRINT((stdout, MAG "[ thread %u ] breaking and exiting\n" RESET , (int) thread));
                 if( !config.iter ) config.iter = ++i;
                 break;
             }
 
             if( (config.length && elapsed > (config.length * 1e6)) || 
                     ( config.iter && i == config.iter - 1) ){
+                DEBUG_PRINT((stdout, MAG "[ thread %u ] final iteration \n" RESET , (int) thread));
                 final = 1;
                 memset(conn->buf, 1,1);
             }
@@ -254,7 +256,6 @@ static int run_iter(void * param)
                     return 1;
                 }
                 
-                //DEBUG_PRINT((stdout, YEL "\t %d bytes read from a call to read()\n", rc));
                 left_to_read -= rc;
                 bytes_read += rc;
                 read_to += rc;
@@ -270,9 +271,6 @@ static int run_iter(void * param)
             }
         }
     }
-
-    get_usage(getpid(), &pend, CPUNO);
-
     return 0;
 }
 
