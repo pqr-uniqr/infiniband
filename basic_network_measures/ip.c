@@ -250,12 +250,10 @@ static int run_iter(void * param)
 
             while( left_to_read ){
                 rc = read(conn->sock, read_to, left_to_read);
-    
                 if( rc < 0 ){
                     fprintf(stderr, "failed to read from socket in run_iter\n");
                     return 1;
                 }
-                
                 left_to_read -= rc;
                 bytes_read += rc;
                 read_to += rc;
@@ -266,6 +264,7 @@ static int run_iter(void * param)
             }
 
             if( (!config.iter && conn->buf[0]) || (++i) == config.iter){
+                DEBUG_PRINT((stdout, MAG "[ thread %u ] about to break\n" RESET));
                 config.iter = i;
                 break;
             }
