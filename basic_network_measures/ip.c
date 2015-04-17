@@ -261,7 +261,7 @@ static int run_iter(void * param)
             }
 
             if ( (int) conn->buf[0] ){
-                DEBUG_PRINT((stdout, "first byte set to 1 -- final iteration\n"));
+                DEBUG_PRINT((stdout, MAG "[ thread %u ] first byte set to 1 -- final iteration\n" RESET, (int) thread));
             }
 
             if( (!config.iter && conn->buf[0]) || (++i) == config.iter){
