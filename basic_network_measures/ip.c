@@ -211,11 +211,10 @@ static int run_iter(void * param)
         return 1;
     }
     cnt_threads++;
-    pthread_cond_wait( &start_cond, &start_mutex );
-    pthread_mutex_unlock( &start_mutex );
-
     get_usage(getpid(), &pstart, CPUNO);
     gettimeofday( &tposted, NULL );
+    pthread_cond_wait( &start_cond, &start_mutex );
+    pthread_mutex_unlock( &start_mutex );
 
     while(1){
         rc = 0;
@@ -235,7 +234,6 @@ static int run_iter(void * param)
 
             if( final ){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] breaking and exiting\n" RESET , (int) thread));
-
                 if ( !config.iter ) cnt_iterations += ++i;
                 break;
             }
