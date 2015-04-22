@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <float.h>
 #include <endian.h>
 #include <byteswap.h>
 #include <getopt.h>
@@ -49,6 +50,8 @@
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
 #define REPORT_FMT "%d\t%d\t%ld\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\n"
+
+//#define MULTITHREAD_FMT
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
@@ -127,12 +130,17 @@ struct resources
     struct ib_assets **assets;
 };
 
-
-
 struct proctime_t
 {
     double utime;
     double stime;
+};
+
+struct stats
+{
+    double max;
+    double min;
+    double average;
 };
 
 
@@ -161,6 +169,7 @@ static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
 
 /* UTIL */
+static void get_stats(double *data, int size, struct stats *stats);
 static void print_report();
 static void usage(const char *argv0);
 static void opcode_to_str(int code, char **str);

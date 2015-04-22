@@ -27,11 +27,11 @@ struct timeval tcompleted;
 long int latency;
 long int iterations;
 
-struct pstat pstart;
-struct pstat pend;
+struct pstat *pstart;
+struct pstat *pend;
 
-struct pstat pstart_server;
-struct pstat pend_server;
+struct pstat *pstart_server;
+struct pstat *pend_server;
 
 int cnt_threads;
 int max_cq_handle;
@@ -171,28 +171,25 @@ main ( int argc, char *argv[] )
 
     // FROM HERE ON: functions could contain malloc -----------------------------------
 
+    /* EXCHANGE CONFIGS AND CREATE IB ASSETS */
     if( -1 == resources_create(&res) ){
         fprintf(stderr , RED "resources_create\n" RESET);
         goto main_exit;
     }
     DEBUG_PRINT((stdout,GRN "resources_create() successful\n" RESET));
 
+    /* CONNECT QPs */
     if( -1 == connect_qp(&res) ){
         fprintf(stderr, RED "connect_qp\n" RESET);
         goto main_exit;
     }
     DEBUG_PRINT((stdout, GRN "connect_qp() successful\n" RESET));
 
-    /* server begins CPU measurement if not IBSR */
-    if( !config.server_name && config.opcode == -1){
-        get_usage( getpid(), &pstart, CPUNO );
-    }
-    
+   
+    /* SET UP FOR MULTITHREAING */
     pthread_mutex_init(&shared_mutex, NULL);
     pthread_cond_init(&start_cond, NULL);
-
     polling = malloc( sizeof(struct event_polling_t) * (max_cq_handle + 1) );
-
     for(i=0;i<(max_cq_handle+1);i++) {
         polling[i].semaphore = 0;
         pthread_cond_init(&polling[i].condition, NULL);
@@ -200,6 +197,7 @@ main ( int argc, char *argv[] )
     }
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
 
     // this is a bit convoluted
     // unless this is an IBSR experiment, only client will enter here
@@ -260,32 +258,35 @@ main ( int argc, char *argv[] )
         DEBUG_PRINT((stdout, GRN "threads joined--waiting for socket sync\n" RESET));
     }
 
+    /* SERVER BEGINS CPU MEASURE IF USING UNIDIRECTIONAL PROTOCOL (i.e. RDMA R/W)*/
+    if( !config.server_name && config.opcode != IBV_WR_SEND){
+        get_usage( getpid(), pstart, CPUNO );
+    }
+
+    /* SERVER AND CLIENT SYNCS UP HERE AFTER RUNNING EXPERIMENT */
     if( -1 == sock_sync_data(res.sock, 1, "R", &temp_char ) ){
         fprintf(stderr, RED "final sync failed\n" RESET);
         goto main_exit;
     }
 
-    /* server ends CPU measurement if not IBSR */
-    if( !config.server_name && config.opcode == -1 ){
-        get_usage( getpid(), &pend, CPUNO );
+    /* SERVER ENDS CPU MEASUREMENT IF USING UNIDIRECTIONAL PROTOCOL (I.E. RDMA R/W)*/
+    if( !config.server_name && config.opcode != IBV_WR_SEND ){
+        get_usage( getpid(), pend, CPUNO );
     }
 
-    /* exchange stat data*/
-    if( -1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pstart, 
-                (char *) &pstart_server)){
+    /* EXCHANGE PSTAT DATA */
+    if( -1 == sock_sync_data( res.sock, (sizeof(struct pstat) * config.threads), (char *) pstart, (char *) pstart_server)){
         fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
         goto main_exit;
     }
-
-    if(-1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pend, (char *) &pend_server)){
+    if(-1 == sock_sync_data( res.sock, sizeof(struct pstat) * config.threads, (char *) pend, (char *) pend_server)){
         fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
         goto main_exit;
     }
 
     DEBUG_PRINT((stdout, GRN "final socket sync finished--terminating\n" RESET));
 
-    // signifies that everything was run without errors
-    rc = 1;
+    rc = 1; // signifies that everything was run without errors
 main_exit:
     if( -1 == resources_destroy(&res) )
         fprintf(stderr, RED "resources_destroy\n" RESET);
@@ -307,32 +308,37 @@ main_exit:
     return EXIT_FAILURE;
 }
 
-
 /* THREAD FUNCTIONS */
-
     static int
 run_iter_client(void *param)
 {
     /* DECLARE AND INITIALIZE */
-
     struct ib_assets *conn = (struct ib_assets *) param;
     int final = 0,rc, scnt=0, ccnt=0, ne, i, signaled=1, cq_handle = conn->cq->handle;
+    int t_num = conn->t_num;
     long int tposted_us;
-
-    pthread_mutex_lock( &shared_mutex);
-    int use_event = config.use_event, opcode = config.opcode, xfer_unit = config.xfer_unit, 
-        iter = config.iter, length = config.length;
-    pthread_mutex_unlock( &shared_mutex);
-
     long int elapsed;
     uint16_t csum;
-    pthread_t thread = pthread_self();
     struct timeval tnow;
+    pthread_t thread = pthread_self();
     pthread_cond_t *my_cond; 
     pthread_mutex_t *my_mutex; 
 
+    /* THREAD-SAFE INITIALIZATIONS */
+    pthread_mutex_lock( &shared_mutex);
+    int use_event = config.use_event, opcode = config.opcode, xfer_unit = config.xfer_unit, 
+        iter = config.iter, length = config.length;
+    struct pstat *mypstart = &(pstart[t_num]);
+    struct pstat *mypend = &(pend[t_num]);
+    if( use_event ){ 
+        my_cond = &(polling[cq_handle].condition);
+        my_mutex = &(polling[cq_handle].mutex);
+    }
+    pthread_mutex_unlock( &shared_mutex);
+
     DEBUG_PRINT((stdout, "[thread %u] spawned, handle #%d \n", (unsigned int) thread, cq_handle));
 
+    /* SET UP WORK REQUEST AND SCATTER-GATHER ENTRY */
     struct ibv_send_wr sr;
     struct ibv_sge sge;
     memset(&sge, 0, sizeof(sge));
@@ -350,11 +356,6 @@ run_iter_client(void *param)
         sr.wr.rdma.remote_addr = conn->remote_props.addr;
         sr.wr.rdma.rkey = conn->remote_props.rkey;
     }
-
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(conn->t_num, &cpuset);
-
     struct ibv_wc *wc;
     struct ibv_send_wr *bad_wr=NULL;
 #ifdef NUMA
@@ -363,42 +364,39 @@ run_iter_client(void *param)
     wc = (struct ibv_wc *) malloc(sizeof(struct ibv_wc));
 #endif
 
-    /* WAIT TO SYNCHRONIZE */
-
-    pthread_mutex_lock( &shared_mutex);
-    if( use_event ){
-        my_cond = &(polling[cq_handle].condition);
-        my_mutex = &(polling[cq_handle].mutex);
-    }
+    /* PIN THREAD TO RESPECTIVE CPU */
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(t_num, &cpuset);
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
         return -1;
     }
-    cnt_threads++;
-    // by doing this, tposted will be set to the when the last thread entered waiting
-    gettimeofday( &tposted, NULL );
-    get_usage( getpid(), &pstart, conn->t_num);
 
-    pthread_cond_wait( &start_cond, &shared_mutex);
+    /* WAIT TO SYNCHRONIZE */
+    pthread_mutex_lock( &shared_mutex);
 
+    cnt_threads++; // tell main thread that this thread is ready
+    pthread_cond_wait( &start_cond, &shared_mutex); // wait until all threads are ready
+
+    /* INITIAL MEASUREMENT */
+    gettimeofday( &tposted, NULL ); // TODO should be called on tposted[t_num]
+    get_usage( getpid(), mypstart, t_num);
     tposted_us = tposted.tv_sec * 1e6 + tposted.tv_usec;
+
     pthread_mutex_unlock( &shared_mutex);
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (unsigned int) thread));
 
     while(1) {
         // send 50 new requests
-
         while(scnt - ccnt < CQ_MODERATION && (!iter || scnt < iter)){
             if( scnt % CQ_MODERATION == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
                 signaled = 0;
             }
-
             sr.wr_id = scnt;
-
             DEBUG_PRINT((stdout, "[wr_id %d, signaled? %d]\n", scnt, signaled));
-
 #ifdef DEBUG
             csum = checksum(conn->buf, xfer_unit);
             fprintf(stdout, WHT "\tchecksum: %0x\n" RESET, csum);
@@ -411,9 +409,7 @@ run_iter_client(void *param)
                 perror("post_send");
                 return -1;
             }
-
             ++scnt;
-
             if( (scnt % CQ_MODERATION == CQ_MODERATION - 1) ||
                     (iter && scnt == iter - 1) ){
                 sr.send_flags |= IBV_SEND_SIGNALED;
@@ -461,9 +457,13 @@ run_iter_client(void *param)
 
         if(final){
             pthread_mutex_lock( &shared_mutex );
+
+            // TODO per-thread analysis
             if( !iter ) config.iter += scnt;
             gettimeofday(&tcompleted, NULL);
-            get_usage( getpid(), &pend, conn->t_num);
+
+            get_usage( getpid(), mypend, t_num);
+
             pthread_mutex_unlock(&shared_mutex);
 
             DEBUG_PRINT((stdout, "[thread %u ]finishing\n", (unsigned int)thread));
@@ -498,30 +498,36 @@ run_iter_client(void *param)
     return 0;
 }
 
+
+// RUN BY SERVER ONLY IF OPERATION IS IBSR 
     static int
 run_iter_server(void *param)
 {
-    /* DECLARE COUNTERS, CAST PARAMTER */
+    /* DECLARE AND INITIALIZE */
     pthread_t thread = pthread_self();
     DEBUG_PRINT((stdout, "[thread %u] spawned\n", (int) thread));
     struct ib_assets *conn = (struct ib_assets *) param;
     int rcnt = 0, ccnt = 0, cq_handle = conn->cq->handle;
-    int ne, i, initial_recv_count;
-
-    pthread_mutex_lock(&shared_mutex);
-    int use_event = config.use_event, opcode = config.opcode, xfer_unit = config.xfer_unit,
-        iter = config.iter, length = config.length;
-    pthread_mutex_unlock(&shared_mutex);
-
+    int ne, i, initial_recv_count, t_num = conn->t_num;
     uint16_t csum;
     pthread_cond_t *my_cond; 
     pthread_mutex_t *my_mutex; 
+
+    /* THREAD-SAFE INITIALIZATIONS */
+    pthread_mutex_lock(&shared_mutex);
+
+    struct pstat *mypstart = &pstart[t_num];
+    struct pstat *mypend = &pend[t_num];
+    int use_event = config.use_event, opcode = config.opcode, 
+        xfer_unit = config.xfer_unit, iter = config.iter, length = config.length;
     if( use_event ){
         my_cond = &(polling[cq_handle].condition);
         my_mutex = &(polling[cq_handle].mutex);
     }
 
-    /* CONSTRUCT RECEIVE REQUEST */
+    pthread_mutex_unlock(&shared_mutex);
+
+    /* SET UP WORK REQUEST */
     struct ibv_sge sge; 
     memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) conn->buf;
@@ -533,11 +539,6 @@ run_iter_server(void *param)
     rr.num_sge = 1;
     rr.next = NULL;
     rr.wr_id = 0;
-
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset);
-
     struct ibv_wc *wc;
     struct ibv_recv_wr *bad_wr = NULL;
 #ifdef NUMA
@@ -546,10 +547,20 @@ run_iter_server(void *param)
     wc = (struct ibv_wc *) malloc(sizeof(struct ibv_wc));
 #endif
     
+
+    /* PIN THREAD TO RESPECTIVE CPU */
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(0, &cpuset);
+    if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
+        perror("pthread_setaffinity");
+        return -1;
+    }
+
     DEBUG_PRINT((stdout, "[thread %u] posting initial recv WR\n", (int) thread));
 
     //FIXME this might leave us with uncompleted RRs, but for now we're not concerned
-    initial_recv_count = iter? MIN(MAX_RECV_WR, iter):MAX_RECV_WR;
+    initial_recv_count = iter? MIN(MAX_RECV_WR, iter) : MAX_RECV_WR;
     DEBUG_PRINT((stdout, "number of initial RRs to be posted: %d\n", initial_recv_count));
     for(i = 0; i < initial_recv_count ; i++){
         rr.wr_id = rcnt;
@@ -561,21 +572,17 @@ run_iter_server(void *param)
         }
     }
 
+    /* SYNC-UP POINT FOR ALL WORKER THREADS */
     pthread_mutex_lock( &shared_mutex);
-    if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
-        perror("pthread_setaffinity");
-        return -1;
-    }
     cnt_threads++;
     pthread_cond_wait( &start_cond, &shared_mutex);
     gettimeofday( &tposted, NULL );
-    get_usage( getpid(), &pstart, CPUNO );
+    get_usage( getpid(), mypstart, t_num );
     pthread_mutex_unlock( &shared_mutex);
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
     while( (!iter) || (iter && ccnt < iter) ){
-
         if( use_event ){
             DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
             pthread_mutex_lock(my_mutex);
@@ -635,7 +642,7 @@ run_iter_server(void *param)
 
     pthread_mutex_lock( &shared_mutex );
     gettimeofday( &tcompleted, NULL );
-    get_usage( getpid(), &pend, CPUNO );
+    get_usage( getpid(), mypend, t_num );
     pthread_mutex_unlock( &shared_mutex );
 
 #ifdef NUMA
@@ -688,7 +695,6 @@ poll_and_notify(void *param)
         DEBUG_PRINT((stdout, "[thread %u] event acked\n", (unsigned int)thread));
     }
 }
-
 
 /* QUEUE PAIR STATE MODIFICATION */
 
@@ -912,6 +918,11 @@ resources_create (struct resources *res)
     config.threads =    MAX(config.threads, config_other->threads);
     config.use_event = config.use_event || config_other->use_event;
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
+    pstart =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    pend =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+
+    pstart_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    pend_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     config.config_other = config_other;
 
     if( config.server_name ){
@@ -956,7 +967,6 @@ resources_create (struct resources *res)
         return -1;
     }
 
-
     /* SET UP COMPLETION EVENT CHANNEL */
     if(config.use_event){
         res->channel = ibv_create_comp_channel(res->ib_ctx);
@@ -973,6 +983,7 @@ resources_create (struct resources *res)
     }
 
     /* ALLOCATE SPACE ALL ASSETS FOR EACH CONNECTION */
+
 #ifdef NUMA
     res->assets = (struct ib_assets **) numa_alloc_local( sizeof(struct ib_assets *) * config.threads);
 #else
@@ -1284,17 +1295,26 @@ opcode_to_str(int opcode, char **str)
     return;
 }
 
-
-
 /*  note on units: bytes/microseconds turns out to be the same as MB/sec
  *
  * */
     static void
 print_report()
 {
-    double xfer_total, elapsed, avg_bw, avg_lat,
-           ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
-    int power = log(config.xfer_unit) / log(2);
+    double xfer_total, elapsed, avg_bw, avg_lat;
+    double *ucpu, *scpu, *ucpu_server, *scpu_server;
+    int power = log(config.xfer_unit) / log(2), i;
+
+    struct stats ucpu_stats;
+    struct stats scpu_stats;
+
+    struct pstat start_usage;
+    struct pstat end_usage;
+
+    ucpu = malloc(sizeof(double) * config.threads);
+    scpu = malloc(sizeof(double) * config.threads);
+
+    /* COMPUTE BANDWIDTH AND LATENCY */
 
     if (config.use_event)
         xfer_total = config.xfer_unit * config.iter;
@@ -1306,17 +1326,63 @@ print_report()
     avg_bw = xfer_total / elapsed;
     avg_lat = elapsed / config.iter;
 
-    // to avoid NaN's
-    if( pend.cpu_total_time - pstart.cpu_total_time )
-        calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
-    if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
-        calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
+    /* COMPUTE CPU USAGE FOR EACH THREAD */
+
+    if(config.threads == 1){
+        /* ONE THREAD */
+
+        if(pend->cpu_total_time - pstart->cpu_total_time)
+            calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
+        if(pend_server->cpu_total_time - pstart_server->cpu_total_time)
+            calc_cpu_usage_pct( pend_server, pstart_server, ucpu, scpu );
+        printf(REPORT_FMT, config.threads, power, config.iter, 
+                avg_bw, avg_lat, ucpu[0], scpu[0], ucpu_server[0], scpu_server[0]);
+    } else {
+        /* MULTIPLE THREADS */
+
+        for(i=0; i < config.threads; i++) {
+            if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
+                calc_cpu_usage_pct(&(pstart[i]), &(pend[i]), &(ucpu[i]), &(scpu[i]));
+        }
+
+        get_stats(ucpu, config.threads, &ucpu_stats);
+        get_stats(scpu, config.threads, &scpu_stats);
+
+        printf("[ucpu] min: %f max: %f average: %f \n", 
+                ucpu_stats.min, ucpu_stats.max, ucpu_stats.average);
+        printf("[scpu] min: %f max: %f average: %f \n",
+                scpu_stats.min, scpu_stats.max, scpu_stats.average);
+
+        // threads, buffer size
+        // bw avg, bw maximum, bw minimum
+        // lat avg, lat maximum, lat minimum 
+        // scpu avg, scpu maximum, scpu minimum, 
+        // ucpu avg, ucpu maximum, ucpu minimum
+    }
 
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
-    printf(REPORT_FMT, config.threads, power, config.iter, 
-            avg_bw, avg_lat, ucpu, scpu, ucpu_server, scpu_server);
 }
 
+    static void
+get_stats(double *data, int size, struct stats *stats)
+{
+    double max = 0., min = DBL_MAX, average = 0.;
+    int i;
+
+    for(i=0; i < size; i++){
+        double val = data[i];
+        if( val > max )
+            max = val;
+        if( val < min )
+            min = val;
+        average += val;
+    }
+
+    stats->max = max;
+    stats->min = min;
+    stats->average = (average / (double) size);
+    return;
+}
 
     static void
 check_wc_status(enum ibv_wc_status status)
