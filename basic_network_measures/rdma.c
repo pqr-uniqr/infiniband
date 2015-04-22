@@ -22,10 +22,10 @@ struct config_t config =
     NULL,
 };
 
-struct timeval tposted; 
-struct timeval tcompleted;
-long int latency;
-long int iterations;
+struct timeval *tposted; 
+struct timeval *tcompleted;
+
+int *iterations;
 
 struct pstat *pstart;
 struct pstat *pend;
@@ -328,6 +328,9 @@ run_iter_client(void *param)
     pthread_mutex_lock( &shared_mutex);
     int use_event = config.use_event, opcode = config.opcode, xfer_unit = config.xfer_unit, 
         iter = config.iter, length = config.length;
+    struct timeval *mytposted =  &(tposted[t_num]);
+    struct timeval *mytcompleted =  &(tcompleted[t_num]);
+
     struct pstat *mypstart = &(pstart[t_num]);
     struct pstat *mypend = &(pend[t_num]);
     if( use_event ){ 
@@ -380,9 +383,9 @@ run_iter_client(void *param)
     pthread_cond_wait( &start_cond, &shared_mutex); // wait until all threads are ready
 
     /* INITIAL MEASUREMENT */
-    gettimeofday( &tposted, NULL ); // TODO should be called on tposted[t_num]
+    gettimeofday( mytposted, NULL ); // TODO should be called on tposted[t_num]
     get_usage( getpid(), mypstart, t_num);
-    tposted_us = tposted.tv_sec * 1e6 + tposted.tv_usec;
+    tposted_us = mytposted->tv_sec * 1e6 + mytposted->tv_usec;
 
     pthread_mutex_unlock( &shared_mutex);
 
@@ -458,12 +461,12 @@ run_iter_client(void *param)
         if(final){
             pthread_mutex_lock( &shared_mutex );
 
-            // TODO per-thread analysis
-            if( !iter ) config.iter += scnt;
-            gettimeofday(&tcompleted, NULL);
-
+            if( !iter ) {
+                iterations[t_num] = scnt;
+                config.iter += scnt;
+            }
+            gettimeofday(mytcompleted, NULL);
             get_usage( getpid(), mypend, t_num);
-
             pthread_mutex_unlock(&shared_mutex);
 
             DEBUG_PRINT((stdout, "[thread %u ]finishing\n", (unsigned int)thread));
@@ -515,6 +518,9 @@ run_iter_server(void *param)
 
     /* THREAD-SAFE INITIALIZATIONS */
     pthread_mutex_lock(&shared_mutex);
+
+    struct timeval *mytposted = &(tposted[t_num]);
+    struct timeval *mytcompleted = &(tcompleted[t_num]);
 
     struct pstat *mypstart = &pstart[t_num];
     struct pstat *mypend = &pend[t_num];
@@ -576,7 +582,7 @@ run_iter_server(void *param)
     pthread_mutex_lock( &shared_mutex);
     cnt_threads++;
     pthread_cond_wait( &start_cond, &shared_mutex);
-    gettimeofday( &tposted, NULL );
+    gettimeofday( mytposted, NULL );
     get_usage( getpid(), mypstart, t_num );
     pthread_mutex_unlock( &shared_mutex);
 
@@ -641,7 +647,7 @@ run_iter_server(void *param)
     }
 
     pthread_mutex_lock( &shared_mutex );
-    gettimeofday( &tcompleted, NULL );
+    gettimeofday( mytcompleted, NULL );
     get_usage( getpid(), mypend, t_num );
     pthread_mutex_unlock( &shared_mutex );
 
@@ -920,6 +926,11 @@ resources_create (struct resources *res)
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
     pstart =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pend =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+
+    iterations = (int *) malloc(sizeof(int) * config.threads);
+
+    tposted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
+    tcompleted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
 
     pstart_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pend_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
@@ -1301,7 +1312,7 @@ opcode_to_str(int opcode, char **str)
     static void
 print_report()
 {
-    double xfer_total, elapsed, avg_bw, avg_lat;
+    double *xfer_total, elapsed, avg_bw, avg_lat;
     double *ucpu, *scpu, *ucpu_server, *scpu_server;
     int power = log(config.xfer_unit) / log(2), i;
 
@@ -1313,23 +1324,23 @@ print_report()
 
     ucpu = malloc(sizeof(double) * config.threads);
     scpu = malloc(sizeof(double) * config.threads);
+    xfer_total = malloc(sizeof(double) * config.threads);
 
     /* COMPUTE BANDWIDTH AND LATENCY */
-
-    if (config.use_event)
-        xfer_total = config.xfer_unit * config.iter;
-    else
-        xfer_total = config.xfer_unit * config.iter * config.threads;
-
-    elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-        (tposted.tv_sec * 1e6 + tposted.tv_usec);
-    avg_bw = xfer_total / elapsed;
-    avg_lat = elapsed / config.iter;
 
     /* COMPUTE CPU USAGE FOR EACH THREAD */
 
     if(config.threads == 1){
         /* ONE THREAD */
+        if (config.use_event)
+            *xfer_total = config.xfer_unit * config.iter;
+        else
+            *xfer_total = config.xfer_unit * config.iter * config.threads;
+
+        elapsed = (tcompleted->tv_sec * 1e6 + tcompleted->tv_usec) -
+            (tposted->tv_sec * 1e6 + tposted->tv_usec);
+        avg_bw = *xfer_total / elapsed;
+        avg_lat = elapsed / config.iter;
 
         if(pend->cpu_total_time - pstart->cpu_total_time)
             calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
