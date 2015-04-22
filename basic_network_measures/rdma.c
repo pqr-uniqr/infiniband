@@ -1346,10 +1346,9 @@ print_report()
         }
 
         get_stats(ucpu, config.threads, &ucpu_stats);
-        get_stats(scpu, config.threads, &scpu_stats);
-
         printf("[ucpu] min: %f max: %f average: %f \n", 
                 ucpu_stats.min, ucpu_stats.max, ucpu_stats.average);
+        get_stats(scpu, config.threads, &scpu_stats);
         printf("[scpu] min: %f max: %f average: %f \n",
                 scpu_stats.min, scpu_stats.max, scpu_stats.average);
 
@@ -1378,6 +1377,7 @@ get_stats(double *data, int size, struct stats *stats)
             min = val;
         average += val;
     }
+    printf("\n");
 
     stats->max = max;
     stats->min = min;
