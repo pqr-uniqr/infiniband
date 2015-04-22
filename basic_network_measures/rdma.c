@@ -1326,9 +1326,8 @@ print_report()
     scpu = malloc(sizeof(double) * config.threads);
     xfer_total = malloc(sizeof(double) * config.threads);
 
-    /* COMPUTE BANDWIDTH AND LATENCY */
-
     /* COMPUTE CPU USAGE FOR EACH THREAD */
+    printf("print_report here\n");
 
     if(config.threads == 1){
         /* ONE THREAD */
@@ -1346,6 +1345,7 @@ print_report()
             calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
         if(pend_server->cpu_total_time - pstart_server->cpu_total_time)
             calc_cpu_usage_pct( pend_server, pstart_server, ucpu, scpu );
+
         printf(REPORT_FMT, config.threads, power, config.iter, 
                 avg_bw, avg_lat, ucpu[0], scpu[0], ucpu_server[0], scpu_server[0]);
     } else {
