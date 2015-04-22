@@ -460,10 +460,8 @@ run_iter_client(void *param)
 
         if(final){
             pthread_mutex_lock( &shared_mutex );
-
             if( !iter ) {
                 iterations[t_num] = scnt;
-                config.iter += scnt;
             }
             gettimeofday(mytcompleted, NULL);
             get_usage( getpid(), mypend, t_num);
@@ -1312,34 +1310,37 @@ opcode_to_str(int opcode, char **str)
     static void
 print_report()
 {
-    double *xfer_total, elapsed, avg_bw, avg_lat;
+    double xfer_total, elapsed, *avg_bw, *avg_lat;
     double *ucpu, *scpu, *ucpu_server, *scpu_server;
     int power = log(config.xfer_unit) / log(2), i;
 
     struct stats ucpu_stats;
     struct stats scpu_stats;
+    struct stats bw_stats;
+    struct stats lat_stats;
 
     struct pstat start_usage;
     struct pstat end_usage;
 
     ucpu = malloc(sizeof(double) * config.threads);
     scpu = malloc(sizeof(double) * config.threads);
+    avg_bw = malloc(sizeof(double) * config.threads);
+    avg_lat = malloc(sizeof(double) * config.threads);
     ucpu_server = malloc(sizeof(double) * config.threads);
     scpu_server = malloc(sizeof(double) * config.threads);
-
-    xfer_total = malloc(sizeof(double) * config.threads);
 
     /* COMPUTE CPU USAGE FOR EACH THREAD */
     if(config.threads == 1){
         /* ONE THREAD */
         if (config.use_event)
-            *xfer_total = config.xfer_unit * config.iter;
+            xfer_total = config.xfer_unit * config.iter;
         else
-            *xfer_total = config.xfer_unit * config.iter * config.threads;
+            xfer_total = config.xfer_unit * config.iter * config.threads;
+
         elapsed = (tcompleted->tv_sec * 1e6 + tcompleted->tv_usec) -
             (tposted->tv_sec * 1e6 + tposted->tv_usec);
-        avg_bw = *xfer_total / elapsed;
-        avg_lat = elapsed / config.iter;
+        avg_bw[0] = xfer_total / elapsed;
+        avg_lat[0] = elapsed / config.iter;
 
         if(pend->cpu_total_time - pstart->cpu_total_time)
             calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
@@ -1354,7 +1355,24 @@ print_report()
         for(i=0; i < config.threads; i++) {
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
+
+            if( !config.iter )
+                xfer_total = config.xfer_unit * iterations[i];
+            else 
+                xfer_total = config.xfer_unit * config.iter;
+
+            elapsed = (tcompleted[i].tv_sec * 1e6 + tcompleted[i].tv_usec) -
+                (tposted[i].tv_sec * 1e6 + tposted[i].tv_usec);
+            avg_bw[i] = xfer_total / elapsed;
+            avg_lat[i] = elapsed / iterations[i];
         }
+
+        get_stats(avg_bw, config.threads, &bw_stats);
+        printf("[bw] min: %f max: %f average: %f median: %f\n", 
+                bw_stats.min, bw_stats.max, bw_stats.average, bw_stats.median);
+        get_stats(avg_lat, config.threads, &lat_stats);
+        printf("[lat] min: %f max: %f average: %f median: %f\n", 
+                lat_stats.min, lat_stats.max, lat_stats.average, lat_stats.median);
 
         get_stats(ucpu, config.threads, &ucpu_stats);
         printf("[ucpu] min: %f max: %f average: %f median: %f\n", 
