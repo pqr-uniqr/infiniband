@@ -1324,7 +1324,6 @@ print_report()
 
     ucpu = malloc(sizeof(double) * config.threads);
     scpu = malloc(sizeof(double) * config.threads);
-
     ucpu_server = malloc(sizeof(double) * config.threads);
     scpu_server = malloc(sizeof(double) * config.threads);
 
@@ -1345,7 +1344,7 @@ print_report()
         if(pend->cpu_total_time - pstart->cpu_total_time)
             calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
         if(pend_server->cpu_total_time - pstart_server->cpu_total_time)
-            calc_cpu_usage_pct( pend_server, pstart_server, ucpu, scpu );
+            calc_cpu_usage_pct( pend_server, pstart_server, ucpu_server, scpu_server);
 
         printf(REPORT_FMT, config.threads, power, config.iter, 
                 avg_bw, avg_lat, ucpu[0], scpu[0], ucpu_server[0], scpu_server[0]);
