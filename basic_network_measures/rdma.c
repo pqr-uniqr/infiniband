@@ -1346,11 +1346,11 @@ print_report()
         }
 
         get_stats(ucpu, config.threads, &ucpu_stats);
-        printf("[ucpu] min: %f max: %f average: %f \n", 
-                ucpu_stats.min, ucpu_stats.max, ucpu_stats.average);
+        printf("[ucpu] min: %f max: %f average: %f median: %f\n", 
+                ucpu_stats.min, ucpu_stats.max, ucpu_stats.average, ucpu_stats.median);
         get_stats(scpu, config.threads, &scpu_stats);
-        printf("[scpu] min: %f max: %f average: %f \n",
-                scpu_stats.min, scpu_stats.max, scpu_stats.average);
+        printf("[scpu] min: %f max: %f average: %f median: %f\n",
+                scpu_stats.min, scpu_stats.max, scpu_stats.average, scpu_stats.median);
 
         // threads, buffer size
         // bw avg, bw maximum, bw minimum
@@ -1362,11 +1362,26 @@ print_report()
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
 }
 
+
+    static int
+compare_doubles(const void *a, const void *b){
+    double diff = *(double *) a - *(double *) b;
+    if (diff > 0.) return 1;
+    if (diff < 0.) return -1;
+}
+
     static void
 get_stats(double *data, int size, struct stats *stats)
 {
-    double max = 0., min = DBL_MAX, average = 0.;
+    double max = 0., min = DBL_MAX, average = 0., median;
     int i;
+
+    qsort(data, size, sizeof(double), compare_doubles);
+    if( size % 2 ) {
+        median = data[(int) floor(size/2)];
+    } else {
+        median = (data[(size/2)] + data[(size/2)-1]) / 2;
+    }
 
     for(i=0; i < size; i++){
         double val = data[i];
@@ -1382,6 +1397,7 @@ get_stats(double *data, int size, struct stats *stats)
     stats->max = max;
     stats->min = min;
     stats->average = (average / (double) size);
+    stats->median = median;
     return;
 }
 

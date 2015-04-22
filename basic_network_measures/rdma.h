@@ -141,6 +141,7 @@ struct stats
     double max;
     double min;
     double average;
+    double median;
 };
 
 
@@ -169,6 +170,7 @@ static int sock_connect(const char *servername, int port);
 int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data);
 
 /* UTIL */
+static int compare_doubles(const void *a, const void *b);
 static void get_stats(double *data, int size, struct stats *stats);
 static void print_report();
 static void usage(const char *argv0);
