@@ -1324,18 +1324,19 @@ print_report()
 
     ucpu = malloc(sizeof(double) * config.threads);
     scpu = malloc(sizeof(double) * config.threads);
+
+    ucpu_server = malloc(sizeof(double) * config.threads);
+    scpu_server = malloc(sizeof(double) * config.threads);
+
     xfer_total = malloc(sizeof(double) * config.threads);
 
     /* COMPUTE CPU USAGE FOR EACH THREAD */
-    printf("print_report here\n");
-
     if(config.threads == 1){
         /* ONE THREAD */
         if (config.use_event)
             *xfer_total = config.xfer_unit * config.iter;
         else
             *xfer_total = config.xfer_unit * config.iter * config.threads;
-
         elapsed = (tcompleted->tv_sec * 1e6 + tcompleted->tv_usec) -
             (tposted->tv_sec * 1e6 + tposted->tv_usec);
         avg_bw = *xfer_total / elapsed;
