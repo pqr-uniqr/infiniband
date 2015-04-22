@@ -1366,7 +1366,7 @@ print_report()
     static void
 get_stats(double *data, int size, struct stats *stats)
 {
-    double max = 0., min = DBL_MAX, average = 0.;
+    double max = DBL_MAX, min = 0., average = 0.;
     int i;
 
     for(i=0; i < size; i++){
