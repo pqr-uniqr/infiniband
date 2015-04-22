@@ -1342,7 +1342,7 @@ print_report()
 
         for(i=0; i < config.threads; i++) {
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
-                calc_cpu_usage_pct(&(pstart[i]), &(pend[i]), &(ucpu[i]), &(scpu[i]));
+                calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
         }
 
         get_stats(ucpu, config.threads, &ucpu_stats);
