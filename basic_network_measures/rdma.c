@@ -1348,7 +1348,7 @@ print_report()
             calc_cpu_usage_pct( pend_server, pstart_server, ucpu_server, scpu_server);
 
         printf(REPORT_FMT, config.threads, power, config.iter, 
-                avg_bw, avg_lat, ucpu[0], scpu[0], ucpu_server[0], scpu_server[0]);
+                avg_bw[0], avg_lat[0], ucpu[0], scpu[0], ucpu_server[0], scpu_server[0]);
     } else {
         /* MULTIPLE THREADS */
 
