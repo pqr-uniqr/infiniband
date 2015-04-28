@@ -1391,13 +1391,13 @@ print_report()
         char *restrict line5 = malloc(default_size);
 
         sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
-        sprintf(line2, MTHREAD_RPT_PT1,
+        sprintf(line2, MTHREAD_RPT_PT2,
                 bw_stats.average, bw_stats.max, bw_stats.min, bw_stats.median);
-        sprintf(line3, MTHREAD_RPT_PT1,
+        sprintf(line3, MTHREAD_RPT_PT2,
                 lat_stats.average, lat_stats.max, lat_stats.min, lat_stats.median);
-        sprintf(line4, MTHREAD_RPT_PT1,
+        sprintf(line4, MTHREAD_RPT_PT2,
                 ucpu_stats.average, ucpu_stats.max, ucpu_stats.min, ucpu_stats.median);
-        sprintf(line5, MTHREAD_RPT_PT1,
+        sprintf(line5, MTHREAD_RPT_PT2,
                 scpu_stats.average, scpu_stats.max, scpu_stats.min, scpu_stats.median);
 
         printf(MTHREAD_RPT_FMT, line1, line2, line3, line4, line5);
