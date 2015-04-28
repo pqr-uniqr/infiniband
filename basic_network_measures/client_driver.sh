@@ -241,7 +241,6 @@ if [ "$EXEC" = 'rdma' ] || [ "$EXEC" = 'rdma_dbg' ]; then
         FILEPATH="$DIR/$FILENAME"
     fi
 
-
     touch "$FILEPATH"
 
     echo -e $FILEHEADER | tee -a $FILEPATH
@@ -311,4 +310,3 @@ fi
 make clean
 
 exit 0
-

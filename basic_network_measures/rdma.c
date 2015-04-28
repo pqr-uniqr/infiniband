@@ -461,6 +461,7 @@ run_iter_client(void *param)
         if(final){
             pthread_mutex_lock( &shared_mutex );
             if( !iter ) {
+                config.iter += scnt;
                 iterations[t_num] = scnt;
             }
             gettimeofday(mytcompleted, NULL);
@@ -1312,6 +1313,7 @@ print_report()
 {
     double xfer_total, elapsed, *avg_bw, *avg_lat;
     double *ucpu, *scpu, *ucpu_server, *scpu_server;
+    int total_iterations;
     int power = log(config.xfer_unit) / log(2), i;
 
     struct stats ucpu_stats;
@@ -1332,6 +1334,7 @@ print_report()
     /* COMPUTE CPU USAGE FOR EACH THREAD */
     if(config.threads == 1){
         /* ONE THREAD */
+
         if (config.use_event)
             xfer_total = config.xfer_unit * config.iter;
         else
@@ -1368,25 +1371,40 @@ print_report()
         }
 
         get_stats(avg_bw, config.threads, &bw_stats);
+        get_stats(avg_lat, config.threads, &lat_stats);
+        get_stats(ucpu, config.threads, &ucpu_stats);
+        get_stats(scpu, config.threads, &scpu_stats);
+
+        /*
         printf("[bw] min: %f max: %f average: %f median: %f\n", 
                 bw_stats.min, bw_stats.max, bw_stats.average, bw_stats.median);
-        get_stats(avg_lat, config.threads, &lat_stats);
         printf("[lat] min: %f max: %f average: %f median: %f\n", 
                 lat_stats.min, lat_stats.max, lat_stats.average, lat_stats.median);
-
-        get_stats(ucpu, config.threads, &ucpu_stats);
         printf("[ucpu] min: %f max: %f average: %f median: %f\n", 
                 ucpu_stats.min, ucpu_stats.max, ucpu_stats.average, ucpu_stats.median);
-        get_stats(scpu, config.threads, &scpu_stats);
         printf("[scpu] min: %f max: %f average: %f median: %f\n",
                 scpu_stats.min, scpu_stats.max, scpu_stats.average, scpu_stats.median);
 
-        // threads, buffer size
+        printf(MTHREAD_FMT, config.threads, config,xfer_size, config.iterations
+                bw_stats.average, bw_stats.max, bw_stats.min, bw_stats.median,
+                lat_stats.average, lat_stats.max, lat_stats.min, lat_stats.median,
+                ucpu_stats.average, ucpu_stats.max, ucpu_stats.min, ucpu_stats.median,
+                scpu_stats.average, scpu_stats.max, scpu_stats.min, scpu_stats.median);
+                */
+
+        // threads, buffer size, iterations
         // bw avg, bw maximum, bw minimum
         // lat avg, lat maximum, lat minimum 
         // scpu avg, scpu maximum, scpu minimum, 
         // ucpu avg, ucpu maximum, ucpu minimum
     }
+
+    free(ucpu);
+    free(scpu);
+    free(avg_bw);
+    free(avg_lat);
+    free(ucpu_server);
+    free(scpu_server);
 
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
 }

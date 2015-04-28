@@ -51,7 +51,8 @@
 
 #define REPORT_FMT "%d\t%d\t%ld\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\n"
 
-//#define MULTITHREAD_FMT
+#define MTHREAD_FMT ""
+
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
