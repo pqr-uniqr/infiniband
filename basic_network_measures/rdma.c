@@ -392,8 +392,8 @@ run_iter_client(void *param)
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (unsigned int) thread));
 
     while(1) {
-        // send 50 new requests
-        while(scnt - ccnt < CQ_MODERATION && (!iter || scnt < iter)){
+        
+        while( ( scnt -ccnt ) < CQ_MODERATION && (length || scnt < iter) ){
             if( scnt % CQ_MODERATION == 0){
                 sr.send_flags &= ~IBV_SEND_SIGNALED;
                 signaled = 0;
@@ -414,7 +414,7 @@ run_iter_client(void *param)
             }
             ++scnt;
             if( (scnt % CQ_MODERATION == CQ_MODERATION - 1) ||
-                    (iter && scnt == iter - 1) ){
+                    (!length && scnt == iter - 1) ){
                 sr.send_flags |= IBV_SEND_SIGNALED;
                 signaled = 1;
             }
@@ -460,7 +460,8 @@ run_iter_client(void *param)
 
         if(final){
             pthread_mutex_lock( &shared_mutex );
-            if( !iter ) {
+            if( length ) { // if experiment length is specified, config.iter will be the total number
+                            // of iterations (otherwise, it's the per-thread iteration)
                 config.iter += scnt;
                 iterations[t_num] = scnt;
             }
@@ -481,8 +482,8 @@ run_iter_client(void *param)
         elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) - tposted_us;
 
         // completion accounted for every request, experiment either long enough or exhausted iter
-        if( scnt == ccnt && ( !iter && (elapsed > (length * 1e6)) || 
-                  ( iter && scnt >= iter - CQ_MODERATION && 
+        if( scnt == ccnt && ( length && (elapsed > (length * 1e6)) || 
+                  ( !length && scnt >= iter - CQ_MODERATION && 
                     ccnt >= iter - CQ_MODERATION) ) ){
             DEBUG_PRINT((stdout, "final batch\n"));
             final = 1;
@@ -587,7 +588,7 @@ run_iter_server(void *param)
 
     DEBUG_PRINT((stdout, "[thread %u] starting\n", (int) thread));
 
-    while( (!iter) || (iter && ccnt < iter) ){
+    while( length || (iter && ccnt < iter) ){
         if( use_event ){
             DEBUG_PRINT((stdout, "[thread %u] about to wait on my condition\n",(unsigned int)thread));
             pthread_mutex_lock(my_mutex);
@@ -616,7 +617,7 @@ run_iter_server(void *param)
                         DEBUG_PRINT((stdout, WHT "\tchecksum of buffer received: %0x\n" RESET, csum));
 #endif
 
-                        if( !iter || (iter && rcnt < iter) ){
+                        if( length || (!length && rcnt < iter) ){
                             rr.wr_id = rcnt;
                             if( errno = ibv_post_recv(conn->qp, &rr, &bad_wr) ){
                                 perror("ibv_post_recv");
@@ -637,7 +638,7 @@ run_iter_server(void *param)
 
         if( conn->buf[0] ){
             DEBUG_PRINT((stdout, "final iteration recognized #%d\n",rcnt));
-            if(!iter) iter = rcnt;
+            if(length) iter += rcnt;
             break;
         }
 
@@ -1334,16 +1335,12 @@ print_report()
     /* COMPUTE CPU USAGE FOR EACH THREAD */
     if(config.threads == 1){
         /* ONE THREAD */
-
-        if (config.use_event)
-            xfer_total = config.xfer_unit * config.iter;
-        else
-            xfer_total = config.xfer_unit * config.iter * config.threads;
+        xfer_total = config.xfer_unit * config.iter;
 
         elapsed = (tcompleted->tv_sec * 1e6 + tcompleted->tv_usec) -
             (tposted->tv_sec * 1e6 + tposted->tv_usec);
-        avg_bw[0] = xfer_total / elapsed;
-        avg_lat[0] = elapsed / config.iter;
+        avg_bw[0] = (double) xfer_total / elapsed;
+        avg_lat[0] = elapsed / (double) config.iter;
 
         if(pend->cpu_total_time - pstart->cpu_total_time)
             calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
@@ -1359,9 +1356,9 @@ print_report()
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
 
-            if( !config.iter )
+            if (length)
                 xfer_total = config.xfer_unit * iterations[i];
-            else 
+            else
                 xfer_total = config.xfer_unit * config.iter;
 
             elapsed = (tcompleted[i].tv_sec * 1e6 + tcompleted[i].tv_usec) -
