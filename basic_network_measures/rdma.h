@@ -53,11 +53,11 @@
 
 
 // part 1: threads, xfer_size, iter (setup)
-#define MTHREAD_RPT_PT1 "%d\t%d\t%ld"
+#define MTHREAD_RPT_PT1 "%d  %d  %ld"
 // part 2: bw/lat/cpu average, max, min, median (results)
-#define MTHREAD_RPT_PT2 "[%7.2f\t%7.2f\t%7.2f\t%7.2f]"
+#define MTHREAD_RPT_PT2 "[%7.2f  %7.2f  %7.2f  %7.2f]"
 
-#define MTHREAD_RPT_FMT "%s\t%s\t%s\t%s\t%s\n"
+#define MTHREAD_RPT_FMT "%s  %s  %s  %s  %s\n"
 
 
 #define ALLOCATE(var,type,size)                                  \
