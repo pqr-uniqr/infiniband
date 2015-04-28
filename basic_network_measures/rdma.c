@@ -325,14 +325,21 @@ run_iter_client(void *param)
     pthread_mutex_t *my_mutex; 
 
     /* THREAD-SAFE INITIALIZATIONS */
+
     pthread_mutex_lock( &shared_mutex);
+    // config
     int use_event = config.use_event, opcode = config.opcode, xfer_unit = config.xfer_unit, 
         iter = config.iter, length = config.length;
+
+    // time measurement stuff
     struct timeval *mytposted =  &(tposted[t_num]);
     struct timeval *mytcompleted =  &(tcompleted[t_num]);
 
+    // usage measurement stuff
     struct pstat *mypstart = &(pstart[t_num]);
     struct pstat *mypend = &(pend[t_num]);
+
+    // means to talk to the polling server
     if( use_event ){ 
         my_cond = &(polling[cq_handle].condition);
         my_mutex = &(polling[cq_handle].mutex);
@@ -342,6 +349,7 @@ run_iter_client(void *param)
     DEBUG_PRINT((stdout, "[thread %u] spawned, handle #%d \n", (unsigned int) thread, cq_handle));
 
     /* SET UP WORK REQUEST AND SCATTER-GATHER ENTRY */
+
     struct ibv_send_wr sr;
     struct ibv_sge sge;
     memset(&sge, 0, sizeof(sge));
@@ -377,6 +385,7 @@ run_iter_client(void *param)
     }
 
     /* WAIT TO SYNCHRONIZE */
+
     pthread_mutex_lock( &shared_mutex);
 
     cnt_threads++; // tell main thread that this thread is ready

@@ -20,8 +20,8 @@ struct pstat pend_server;
 
 int cnt_threads;
 int cnt_iterations;
-pthread_mutex_t start_mutex;
-pthread_cond_t start_cond;
+pthread_mutex_t shared_mutex;
+pthread_cond_t shared_cond;
 cpu_set_t cpuset;
 pthread_t *threads;
 
@@ -105,8 +105,8 @@ int main ( int argc, char *argv[] )
     }
 
     /* START WORKER THREADS */
-    pthread_mutex_init(&start_mutex, NULL);
-    pthread_cond_init(&start_cond, NULL);
+    pthread_mutex_init(&shared_mutex, NULL);
+    pthread_cond_init(&shared_cond, NULL);
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
@@ -122,14 +122,14 @@ int main ( int argc, char *argv[] )
 
     /* MAKE SURE ALL THREAD IS SET UP BEFORE MOVING ON */
     do{
-        pthread_mutex_lock( &start_mutex );
+        pthread_mutex_lock( &shared_mutex );
         i = (cnt_threads < config.threads);
-        pthread_mutex_unlock( &start_mutex );
+        pthread_mutex_unlock( &shared_mutex );
     } while (i);
     DEBUG_PRINT((stdout, GRN "all threads started--signalling start\n" RESET));
 
     /* JOIN POINT */
-    pthread_cond_broadcast(&start_cond);
+    pthread_cond_broadcast(&shared_cond);
     for(i=0; i < config.threads; i++)
         if(errno = pthread_join(threads[i], NULL)){
             perror("pthread_join");
@@ -182,8 +182,8 @@ main_exit:
 #endif
 
     pthread_attr_destroy(&attr);
-    pthread_mutex_destroy(&start_mutex);
-    pthread_cond_destroy(&start_cond);
+    pthread_mutex_destroy(&shared_mutex);
+    pthread_cond_destroy(&shared_cond);
 
     if (config.config_other) free((char *) config.config_other);
     if (threads) free((char *) threads);
@@ -193,7 +193,8 @@ main_exit:
 
 static int run_iter(void * param)
 {
-    int i = 0, rc, bytes_read, left_to_read, final=0;
+    /* DECLARE AND INITIALIZE */
+    int scnt=0, rc, bytes_read, left_to_read, final=0;
     long int elapsed;
     uint16_t csum;
     char *read_to;
@@ -201,29 +202,43 @@ static int run_iter(void * param)
     struct timeval tnow;
     pthread_t thread = pthread_self();
 
-    DEBUG_PRINT((stdout, MAG "[ thread %u ] spawned\n" RESET , (int) thread));
 
-    /* WAIT TO SYNCHRONIZE */
+    /* THREAD-SAFE INITIALIZATIONS */
 
-    pthread_mutex_lock( &start_mutex );
+    pthread_mutex_lock(&shared_mutex);
+    // config
+    int xfer_unit = config.xfer_unit, iter = config.iter, length = config.length, server_name = (config.servername? 1:0);
+    pthread_mutex_unlock(&shared_mutex);
+
+
+    /* PIN THREAD TO RESPECTIVE CPU */
+
     if( errno = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) ){
         perror("pthread_setaffinity");
         return 1;
     }
+
+    DEBUG_PRINT((stdout, MAG "[ thread %u ] spawned\n" RESET , (int) thread));
+
+    /* WAIT TO SYNCHRONIZE */
+
+    pthread_mutex_lock( &shared_mutex );
+    // wait
     cnt_threads++;
+    pthread_cond_wait( &shared_cond, &shared_mutex );
+    // initial measurements
     get_usage(getpid(), &pstart, CPUNO);
     gettimeofday( &tposted, NULL );
-    pthread_cond_wait( &start_cond, &start_mutex );
-    pthread_mutex_unlock( &start_mutex );
+    pthread_mutex_unlock( &shared_mutex );
 
     while(1){
         rc = 0;
 
-        if( config.server_name ){
-            rc = write(conn->sock, conn->buf, config.xfer_unit);
-            i++;
+        if( server_name ){
+            rc = write(conn->sock, conn->buf, xfer_unit);
+            scnt++;
 
-            if( rc < config.xfer_unit ){
+            if( rc < xfer_unit ){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
                 return 1;
             }
@@ -234,19 +249,19 @@ static int run_iter(void * param)
 
             if( final ){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] breaking and exiting\n" RESET , (int) thread));
-                if ( !config.iter ) cnt_iterations += ++i;
+                if ( length ) cnt_iterations += scnt;
                 break;
             }
 
-            if( (config.length && elapsed > (config.length * 1e6)) || 
-                    ( config.iter && (i == config.iter - 1)) ){
+            if( (length && elapsed > (length * 1e6)) || 
+                    ( !length && (scnt == iter - 1)) ){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] final iteration \n" RESET , (int) thread));
                 final = 1;
                 memset(conn->buf, 1,1);
             }
         } else {
             read_to = conn->buf;
-            left_to_read = config.xfer_unit;
+            left_to_read = xfer_unit;
             bytes_read = 0;
 
             while( left_to_read ){
@@ -264,9 +279,9 @@ static int run_iter(void * param)
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] first byte set to 1 -- final iteration\n" RESET, (int) thread));
             }
 
-            if( (!config.iter && conn->buf[0]) || (++i) == config.iter){
+            if( (length && conn->buf[0]) || (++scnt) == iter){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] about to break\n" RESET, (int) thread));
-                cnt_iterations += i;
+                cnt_iterations += scnt;
                 break;
             }
         }
