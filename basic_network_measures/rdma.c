@@ -1356,7 +1356,7 @@ print_report()
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
 
-            if (length)
+            if (config.length)
                 xfer_total = config.xfer_unit * iterations[i];
             else
                 xfer_total = config.xfer_unit * config.iter;
