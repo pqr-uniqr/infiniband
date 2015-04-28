@@ -1381,19 +1381,27 @@ print_report()
                 ucpu_stats.min, ucpu_stats.max, ucpu_stats.average, ucpu_stats.median);
         printf("[scpu] min: %f max: %f average: %f median: %f\n",
                 scpu_stats.min, scpu_stats.max, scpu_stats.average, scpu_stats.median);
+        */
 
-        printf(MTHREAD_FMT, config.threads, config,xfer_size, config.iterations
-                bw_stats.average, bw_stats.max, bw_stats.min, bw_stats.median,
-                lat_stats.average, lat_stats.max, lat_stats.min, lat_stats.median,
-                ucpu_stats.average, ucpu_stats.max, ucpu_stats.min, ucpu_stats.median,
+        int default_size = 100;
+        char *restrict line1 = malloc(default_size);
+        char *restrict line2 = malloc(default_size);
+        char *restrict line3 = malloc(default_size);
+        char *restrict line4 = malloc(default_size);
+        char *restrict line5 = malloc(default_size);
+
+        sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
+        sprintf(line2, MTHREAD_RPT_PT1,
+                bw_stats.average, bw_stats.max, bw_stats.min, bw_stats.median);
+        sprintf(line3, MTHREAD_RPT_PT1,
+                lat_stats.average, lat_stats.max, lat_stats.min, lat_stats.median);
+        sprintf(line4, MTHREAD_RPT_PT1,
+                ucpu_stats.average, ucpu_stats.max, ucpu_stats.min, ucpu_stats.median);
+        sprintf(line5, MTHREAD_RPT_PT1,
                 scpu_stats.average, scpu_stats.max, scpu_stats.min, scpu_stats.median);
-                */
 
-        // threads, buffer size, iterations
-        // bw avg, bw maximum, bw minimum
-        // lat avg, lat maximum, lat minimum 
-        // scpu avg, scpu maximum, scpu minimum, 
-        // ucpu avg, ucpu maximum, ucpu minimum
+        printf(MTHREAD_RPT_FMT, line1, line2, line3, line4, line5);
+
     }
 
     free(ucpu);
