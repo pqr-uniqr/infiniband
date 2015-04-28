@@ -1391,6 +1391,7 @@ print_report()
         char *restrict line5 = malloc(default_size);
 
         sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
+
         sprintf(line2, MTHREAD_RPT_PT2,
                 bw_stats.average, bw_stats.max, bw_stats.min, bw_stats.median);
         sprintf(line3, MTHREAD_RPT_PT2,
@@ -1437,14 +1438,12 @@ get_stats(double *data, int size, struct stats *stats)
 
     for(i=0; i < size; i++){
         double val = data[i];
-        printf("%d: %f, ", i, val);
         if( val > max )
             max = val;
         if( val < min )
             min = val;
         average += val;
     }
-    printf("\n");
 
     stats->max = max;
     stats->min = min;
