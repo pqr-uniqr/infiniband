@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdint.h>
 #include <inttypes.h>
 #include <endian.h>
 #include <byteswap.h>
@@ -21,6 +20,7 @@
 #include <netdb.h>
 #include <math.h>
 #include <errno.h>
+#include <float.h>
 
 #ifdef NUMA
     #include <numa.h>
@@ -50,6 +50,13 @@
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
 #define REPORT_FMT "%d\t%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n"
+
+// part 1: threads, xfer_size, iter (setup)
+#define MTHREAD_RPT_PT1 "%d  %d  %ld"
+// part 2: average for bw, lat , ucpu, scpu
+#define MTHREAD_RPT_PT2 "%.2f  %.2f  %.2f  %.2f"
+
+#define MTHREAD_RPT_FMT "%s  %s\n"
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
@@ -96,3 +103,5 @@ static uint16_t checksum(void *vdata, size_t length);
 static void print_report(void);
 static void print_config(void);
 
+static void get_stats(double *data, int size, struct stats *stats);
+static int compare_doubles(const void *a, const void *b);

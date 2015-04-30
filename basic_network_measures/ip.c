@@ -553,6 +553,13 @@ static void print_report( void )
     double *bw, *lat, *ucpu, *scpu;
     double *ucpu_server, *scpu_server;
 
+    struct stats ucpu_stats;
+    struct stats scpu_stats;
+    struct stats bw_stats;
+    struct stats lat_stats;
+
+    int i;
+
     bw = malloc(sizeof(double) * config.threads);
     lat = malloc(sizeof(double) * config.threads);
     ucpu = malloc(sizeof(double) * config.threads);
@@ -578,7 +585,47 @@ static void print_report( void )
 
         printf(REPORT_FMT, config.threads, power, config.iter, 
                 bw[0], lat[0], 0.,0.,0.,0.);
+    } else {
+        for(i=0; i < config.threads; i++) {
+            /*  
+            if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
+                calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
+            */
+
+            if (config.length)
+                xfer_total = config.xfer_unit * iterations[i];
+            else
+                xfer_total = config.xfer_unit * config.iter;
+
+            elapsed = (tcompleted[i].tv_sec * 1e6 + tcompleted[i].tv_usec) -
+                (tposted[i].tv_sec * 1e6 + tposted[i].tv_usec);
+            bw[i] = xfer_total / elapsed;
+            lat[i] = elapsed / iterations[i];
+        }
+
+        get_stats(bw, config.threads, &bw_stats);
+        get_stats(lat, config.threads, &lat_stats);
+
+        int default_size = 100;
+        char *restrict line1 = malloc(default_size);
+        char *restrict line2 = malloc(default_size);
+
+        sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
+        sprintf(line2, MTHREAD_RPT_PT2, bw_stats.average, lat_stats.average,
+                ucpu_stats.average, scpu_stats.average);
+
+        printf(MTHREAD_RPT_FMT, line1, line2);
+
+        free(line1);
+        free(line2);
     }
+
+    free(ucpu);
+    free(scpu);
+    free(bw);
+    free(lat);
+    free(ucpu_server);
+    free(scpu_server);
 
 
     /* 
@@ -636,3 +683,38 @@ static uint16_t checksum(void *vdata, size_t length)
     return htons(~acc);
 }
 
+static void get_stats(double *data, int size, struct stats *stats)
+{
+    double max = 0., min = DBL_MAX, average = 0., median;
+    int i;
+
+    qsort(data, size, sizeof(double), compare_doubles);
+    if( size % 2 ) {
+        median = data[(int) floor(size/2)];
+    } else {
+        median = (data[(size/2)] + data[(size/2)-1]) / 2;
+    }
+
+    for(i=0; i < size; i++){
+        double val = data[i];
+        if( val > max )
+            max = val;
+        if( val < min )
+            min = val;
+        average += val;
+    }
+
+    stats->max = max;
+    stats->min = min;
+    stats->average = (average / (double) size);
+    stats->median = median;
+    return;
+}
+
+
+    static int
+compare_doubles(const void *a, const void *b){
+    double diff = *(double *) a - *(double *) b;
+    if (diff > 0.) return 1;
+    if (diff < 0.) return -1;
+}
