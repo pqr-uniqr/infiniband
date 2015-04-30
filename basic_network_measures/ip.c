@@ -577,7 +577,7 @@ static void print_report( void )
         */
 
         printf(REPORT_FMT, config.threads, power, config.iter, 
-                bw[0], lat[0], 0,0,0,0);
+                bw[0], lat[0], 0.,0.,0.,0.);
     }
 
 

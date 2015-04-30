@@ -49,7 +49,7 @@
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
-#define REPORT_FMT "%d\t%d\t%d\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\t%7.2f\n"
+#define REPORT_FMT "%d\t%d\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n"
 
 #define ALLOCATE(var,type,size)                                  \
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
