@@ -1398,10 +1398,11 @@ print_report()
 
         sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
         sprintf(line2, MTHREAD_RPT_PT2, bw_stats.average, lat_stats.average,
-                ucpu_stas.average, scpu_stats.average);
+                ucpu_stats.average, scpu_stats.average);
 
         printf(MTHREAD_RPT_FMT, line1, line2);
-
+        free(line1);
+        free(line2);
     }
 
     free(ucpu);
@@ -1410,9 +1411,6 @@ print_report()
     free(avg_lat);
     free(ucpu_server);
     free(scpu_server);
-
-    free(line1);
-    free(line2);
 
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
 }
