@@ -562,7 +562,7 @@ static void print_report( void )
 
     int power = log(config.xfer_unit) / log(2);
 
-    if (config.iter == 1) {
+    if (config.threads == 1) {
         xfer_total = config.xfer_unit * config.iter;
         elapsed = (tcompleted->tv_sec * 1e6 + tcompleted->tv_usec) -
             (tposted->tv_sec * 1e6 + tposted->tv_usec);
