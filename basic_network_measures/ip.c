@@ -207,7 +207,7 @@ static int run_iter(void * param)
 
     pthread_mutex_lock(&shared_mutex);
     // config
-    int xfer_unit = config.xfer_unit, iter = config.iter, length = config.length, server_name = (config.servername? 1:0);
+    int xfer_unit = config.xfer_unit, iter = config.iter, length = config.length, server_name = (config.server_name? 1:0);
     pthread_mutex_unlock(&shared_mutex);
 
 
