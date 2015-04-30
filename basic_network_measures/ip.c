@@ -549,7 +549,6 @@ static void print_report( void )
     avg_lat = elapsed / config.iter;
 
     // to avoid NaN's
-    fprintf(stdout, RED "\tpend - pstart: %lu\n"  RESET, pend.cpu_total_time - pstart.cpu_total_time);
     if( pend.cpu_total_time - pstart.cpu_total_time )
         calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
     if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
