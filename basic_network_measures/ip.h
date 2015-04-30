@@ -67,6 +67,7 @@ struct config_t {
 };
 
 struct connection{
+    int t_num;
     int sock;
     char *buf;
 };
@@ -75,6 +76,15 @@ struct resources {
     int sock;
     struct connection **conn;
 };
+
+struct stats
+{
+    double max;
+    double min;
+    double average;
+    double median;
+};
+
 
 
 static int run_iter(void *param);

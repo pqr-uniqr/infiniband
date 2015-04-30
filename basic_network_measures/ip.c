@@ -10,8 +10,10 @@ struct config_t config = {
     NULL,
 };
 
-struct timeval tposted;
-struct timeval tcompleted;
+struct timeval *tposted;
+struct timeval *tcompleted;
+
+int *iterations;
 
 struct pstat pstart;
 struct pstat pend;
@@ -19,7 +21,6 @@ struct pstat pstart_server;
 struct pstat pend_server;
 
 int cnt_threads;
-int cnt_iterations;
 pthread_mutex_t shared_mutex;
 pthread_cond_t shared_cond;
 cpu_set_t cpuset;
@@ -111,6 +112,7 @@ int main ( int argc, char *argv[] )
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     for( i=0; i < config.threads; i++ ){
+        res.conn[i]->t_num = i;
         if( errno = pthread_create(&threads[i], &attr, 
                     (void *(*)(void*))&run_iter, (void *) res.conn[i]) ){
             perror("pthread_create");
@@ -135,9 +137,6 @@ int main ( int argc, char *argv[] )
             perror("pthread_join");
             goto main_exit;
         }
-
-    if (!config.iter) config.iter = cnt_iterations;
-    gettimeofday( &tcompleted, NULL );
     get_usage( getpid(), &pend, CPUNO );
 
     DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
@@ -199,6 +198,7 @@ static int run_iter(void * param)
     uint16_t csum;
     char *read_to;
     struct connection *conn = (struct connection *) param;
+    int t_num = conn->t_num;
     struct timeval tnow;
     pthread_t thread = pthread_self();
 
@@ -208,8 +208,9 @@ static int run_iter(void * param)
     pthread_mutex_lock(&shared_mutex);
     // config
     int xfer_unit = config.xfer_unit, iter = config.iter, length = config.length, server_name = (config.server_name? 1:0);
+    struct timeval *mytposted = &tposted[t_num];
+    struct timeval *mytcompleted =  &tcompleted[t_num];
     pthread_mutex_unlock(&shared_mutex);
-
 
     /* PIN THREAD TO RESPECTIVE CPU */
 
@@ -228,7 +229,7 @@ static int run_iter(void * param)
     pthread_cond_wait( &shared_cond, &shared_mutex );
     // initial measurements
     get_usage(getpid(), &pstart, CPUNO);
-    gettimeofday( &tposted, NULL );
+    gettimeofday( mytposted, NULL );
     pthread_mutex_unlock( &shared_mutex );
 
     while(1){
@@ -245,11 +246,17 @@ static int run_iter(void * param)
 
             gettimeofday( &tnow, NULL);
             elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) -
-                (tposted.tv_sec * 1e6 + tposted.tv_usec);
+                (mytposted->tv_sec * 1e6 + mytposted->tv_usec);
 
             if( final ){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] breaking and exiting\n" RESET , (int) thread));
-                if ( length ) cnt_iterations += scnt;
+                pthread_mutex_lock(&shared_mutex);
+                if (length) {
+                    iterations[t_num] = scnt;
+                    config.iter += scnt;
+                }
+                gettimeofday( mytcompleted, NULL);
+                pthread_mutex_unlock(&shared_mutex);
                 break;
             }
 
@@ -281,7 +288,6 @@ static int run_iter(void * param)
 
             if( (length && conn->buf[0]) || (++scnt) == iter){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] about to break\n" RESET, (int) thread));
-                cnt_iterations += scnt;
                 break;
             }
         }
@@ -338,7 +344,11 @@ static int resources_create(struct resources *res)
     config.config_other = config_other;
     config.threads = MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc(sizeof(pthread_t) * config.threads);
-    cnt_iterations = 0;
+
+    tposted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
+    tcompleted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
+    iterations = (int *) malloc(sizeof(int) * config.threads);
+
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
 
@@ -539,6 +549,39 @@ static void print_config( void )
 
 static void print_report( void )
 {
+    double xfer_total, elapsed;
+    double *bw, *lat, *ucpu, *scpu;
+    double *ucpu_server, *scpu_server;
+
+    bw = malloc(sizeof(double) * config.threads);
+    lat = malloc(sizeof(double) * config.threads);
+    ucpu = malloc(sizeof(double) * config.threads);
+    scpu = malloc(sizeof(double) * config.threads);
+    ucpu_server = malloc(sizeof(double) * config.threads);
+    scpu_server = malloc(sizeof(double) * config.threads);
+
+    int power = log(config.xfer_unit) / log(2);
+
+    if (config.iter == 1) {
+        xfer_total = config.xfer_unit * config.iter;
+        elapsed = (tcompleted->tv_sec * 1e6 + tcompleted->tv_usec) -
+            (tposted->tv_sec * 1e6 + tposted->tv_usec);
+        bw[0] = xfer_total / elapsed;
+        lat[0] = elapsed / config.iter;
+
+        /*  
+        if(pend->cpu_total_time - pstart->cpu_total_time)
+            calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
+        if(pend_server->cpu_total_time - pstart_server->cpu_total_time)
+            calc_cpu_usage_pct( pend_server, pstart_server, ucpu_server, scpu_server);
+        */
+
+        printf(REPORT_FMT, config.threads, power, config.iter, 
+                bw[0], lat[0], 0,0,0,0);
+    }
+
+
+    /* 
     double xfer_total, elapsed, avg_bw, avg_lat,
            ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
     int power = log(config.xfer_unit) / log(2);
@@ -557,6 +600,7 @@ static void print_report( void )
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
     printf(REPORT_FMT, config.threads, power, config.iter, 
             avg_bw, avg_lat, ucpu, scpu, ucpu_server, scpu_server);
+    */
 }
 
 static uint16_t checksum(void *vdata, size_t length)
