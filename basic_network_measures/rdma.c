@@ -1395,22 +1395,12 @@ print_report()
         int default_size = 100;
         char *restrict line1 = malloc(default_size);
         char *restrict line2 = malloc(default_size);
-        char *restrict line3 = malloc(default_size);
-        char *restrict line4 = malloc(default_size);
-        char *restrict line5 = malloc(default_size);
 
         sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
+        sprintf(line2, MTHREAD_RPT_PT2, bw_stats.average, lat_stats.average,
+                ucpu_stas.average, scpu_stats.average);
 
-        sprintf(line2, MTHREAD_RPT_PT2,
-                bw_stats.average, bw_stats.max, bw_stats.min, bw_stats.median);
-        sprintf(line3, MTHREAD_RPT_PT2,
-                lat_stats.average, lat_stats.max, lat_stats.min, lat_stats.median);
-        sprintf(line4, MTHREAD_RPT_PT2,
-                ucpu_stats.average, ucpu_stats.max, ucpu_stats.min, ucpu_stats.median);
-        sprintf(line5, MTHREAD_RPT_PT2,
-                scpu_stats.average, scpu_stats.max, scpu_stats.min, scpu_stats.median);
-
-        printf(MTHREAD_RPT_FMT, line1, line2, line3, line4, line5);
+        printf(MTHREAD_RPT_FMT, line1, line2);
 
     }
 
@@ -1420,6 +1410,9 @@ print_report()
     free(avg_lat);
     free(ucpu_server);
     free(scpu_server);
+
+    free(line1);
+    free(line2);
 
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
 }
