@@ -599,10 +599,8 @@ static void print_report( void )
                 bw[0], lat[0], ucpu[0], scpu[0], 0., 0.);
     } else {
         for(i=0; i < config.threads; i++) {
-            /*  
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
-            */
 
             if (config.length)
                 xfer_total = config.xfer_unit * iterations[i];
@@ -617,6 +615,8 @@ static void print_report( void )
 
         get_stats(bw, config.threads, &bw_stats);
         get_stats(lat, config.threads, &lat_stats);
+        get_stats(ucpu, config.threads, &ucpu_stats);
+        get_stats(scpu, config.threads, &scpu_stats);
 
         int default_size = 100;
         char *restrict line1 = malloc(default_size);
