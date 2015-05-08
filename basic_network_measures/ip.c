@@ -15,8 +15,9 @@ struct timeval *tcompleted;
 
 int *iterations;
 
-struct pstat pstart;
-struct pstat pend;
+struct pstat *pstart;
+struct pstat *pend;
+
 struct pstat pstart_server;
 struct pstat pend_server;
 
@@ -137,7 +138,6 @@ int main ( int argc, char *argv[] )
             perror("pthread_join");
             goto main_exit;
         }
-    get_usage( getpid(), &pend, CPUNO );
 
     DEBUG_PRINT((stdout, GRN "threads joined\n" RESET));
     DEBUG_PRINT((stdout, YEL "run_iter finished, headed to final socket sync\n" RESET));
@@ -208,6 +208,10 @@ static int run_iter(void * param)
     pthread_mutex_lock(&shared_mutex);
     // config
     int xfer_unit = config.xfer_unit, iter = config.iter, length = config.length, server_name = (config.server_name? 1:0);
+
+    struct pstat *mypstart = &(pstart[t_num]);
+    struct pstat *mypend = &(pend[t_num]);
+
     struct timeval *mytposted = &tposted[t_num];
     struct timeval *mytcompleted =  &tcompleted[t_num];
     pthread_mutex_unlock(&shared_mutex);
@@ -228,7 +232,7 @@ static int run_iter(void * param)
     cnt_threads++;
     pthread_cond_wait( &shared_cond, &shared_mutex );
     // initial measurements
-    get_usage(getpid(), &pstart, CPUNO);
+    get_usage(getpid(), mypstart, t_num);
     gettimeofday( mytposted, NULL );
     pthread_mutex_unlock( &shared_mutex );
 
@@ -256,6 +260,7 @@ static int run_iter(void * param)
                     config.iter += scnt;
                 }
                 gettimeofday( mytcompleted, NULL);
+                get_usage(getpid(), mypend, t_num);
                 pthread_mutex_unlock(&shared_mutex);
                 break;
             }
@@ -288,6 +293,9 @@ static int run_iter(void * param)
 
             if( (length && conn->buf[0]) || (++scnt) == iter){
                 DEBUG_PRINT((stdout, MAG "[ thread %u ] about to break\n" RESET, (int) thread));
+                pthread_mutex_lock(&shared_mutex);
+                get_usage(getpid(), mypend, t_num);
+                pthread_mutex_unlock(&shared_mutex);
                 break;
             }
         }
@@ -347,6 +355,10 @@ static int resources_create(struct resources *res)
 
     tposted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
     tcompleted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
+
+    pstart = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    pend = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+
     iterations = (int *) malloc(sizeof(int) * config.threads);
 
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
@@ -576,15 +588,15 @@ static void print_report( void )
         bw[0] = xfer_total / elapsed;
         lat[0] = elapsed / config.iter;
 
-        /*  
         if(pend->cpu_total_time - pstart->cpu_total_time)
             calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
+        /*  
         if(pend_server->cpu_total_time - pstart_server->cpu_total_time)
             calc_cpu_usage_pct( pend_server, pstart_server, ucpu_server, scpu_server);
         */
 
         printf(REPORT_FMT, config.threads, power, config.iter, 
-                bw[0], lat[0], 0.,0.,0.,0.);
+                bw[0], lat[0], ucpu[0], scpu[0], 0., 0.);
     } else {
         for(i=0; i < config.threads; i++) {
             /*  
