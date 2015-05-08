@@ -18,8 +18,8 @@ int *iterations;
 struct pstat *pstart;
 struct pstat *pend;
 
-struct pstat pstart_server;
-struct pstat pend_server;
+struct pstat *pstart_server;
+struct pstat *pend_server;
 
 int cnt_threads;
 pthread_mutex_t shared_mutex;
@@ -148,13 +148,12 @@ int main ( int argc, char *argv[] )
     }
 
     /* exchange stat data*/
-    if( -1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pstart, 
-                (char *) &pstart_server)){
+    if( -1 == sock_sync_data( res.sock, sizeof(struct pstat) * config.threads, (char *) pstart, (char *) pstart_server)){
         fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
         goto main_exit;
     }
 
-    if(-1 == sock_sync_data( res.sock, sizeof(struct pstat), (char *) &pend, (char *) &pend_server)){
+    if(-1 == sock_sync_data( res.sock, sizeof(struct pstat) * config.threads, (char *) pend, (char *) pend_server)){
         fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
         goto main_exit;
     }
@@ -183,6 +182,14 @@ main_exit:
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&shared_mutex);
     pthread_cond_destroy(&shared_cond);
+
+    free(pstart);
+    free(pend);
+
+    free(iterations);
+
+    free(tcompleted);
+    free(tposted);
 
     if (config.config_other) free((char *) config.config_other);
     if (threads) free((char *) threads);
@@ -358,6 +365,8 @@ static int resources_create(struct resources *res)
 
     pstart = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pend = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    pstart_server = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    pend_server = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
 
     iterations = (int *) malloc(sizeof(int) * config.threads);
 
@@ -567,6 +576,8 @@ static void print_report( void )
 
     struct stats ucpu_stats;
     struct stats scpu_stats;
+    struct stats ucpu_stats_server;
+    struct stats scpu_stats_server;
     struct stats bw_stats;
     struct stats lat_stats;
 
@@ -590,17 +601,17 @@ static void print_report( void )
 
         if(pend->cpu_total_time - pstart->cpu_total_time)
             calc_cpu_usage_pct( pend, pstart, ucpu, scpu );
-        /*  
         if(pend_server->cpu_total_time - pstart_server->cpu_total_time)
             calc_cpu_usage_pct( pend_server, pstart_server, ucpu_server, scpu_server);
-        */
 
         printf(REPORT_FMT, config.threads, power, config.iter, 
-                bw[0], lat[0], ucpu[0], scpu[0], 0., 0.);
+                bw[0], lat[0], ucpu[0], scpu[0], ucpu_server[0], scpu_server[0]);
     } else {
         for(i=0; i < config.threads; i++) {
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
+            if ( pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time )
+                calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
 
             if (config.length)
                 xfer_total = config.xfer_unit * iterations[i];
@@ -615,8 +626,12 @@ static void print_report( void )
 
         get_stats(bw, config.threads, &bw_stats);
         get_stats(lat, config.threads, &lat_stats);
+
         get_stats(ucpu, config.threads, &ucpu_stats);
         get_stats(scpu, config.threads, &scpu_stats);
+
+        get_stats(ucpu_server, config.threads, &ucpu_stats_server);
+        get_stats(scpu_server, config.threads, &scpu_stats_server);
 
         int default_size = 100;
         char *restrict line1 = malloc(default_size);
@@ -624,7 +639,7 @@ static void print_report( void )
 
         sprintf(line1, MTHREAD_RPT_PT1, config.threads, power, config.iter);
         sprintf(line2, MTHREAD_RPT_PT2, bw_stats.average, lat_stats.average,
-                ucpu_stats.average, scpu_stats.average);
+                ucpu_stats.average, scpu_stats.average, ucpu_stats_server.average, scpu_stats_server.average);
 
         printf(MTHREAD_RPT_FMT, line1, line2);
 
@@ -638,28 +653,6 @@ static void print_report( void )
     free(lat);
     free(ucpu_server);
     free(scpu_server);
-
-
-    /* 
-    double xfer_total, elapsed, avg_bw, avg_lat,
-           ucpu=0.,scpu=0.,ucpu_server=0.,scpu_server=0.;
-    int power = log(config.xfer_unit) / log(2);
-    xfer_total = config.xfer_unit * config.iter;
-    elapsed = (tcompleted.tv_sec * 1e6 + tcompleted.tv_usec) -
-        (tposted.tv_sec * 1e6 + tposted.tv_usec);
-    avg_bw = xfer_total / elapsed;
-    avg_lat = elapsed / config.iter;
-
-    // to avoid NaN's
-    if( pend.cpu_total_time - pstart.cpu_total_time )
-        calc_cpu_usage_pct(&pend, &pstart, &ucpu, &scpu);
-    if( pend_server.cpu_total_time - pstart_server.cpu_total_time )
-        calc_cpu_usage_pct(&pend_server, &pstart_server, &ucpu_server, &scpu_server);
-
-    // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
-    printf(REPORT_FMT, config.threads, power, config.iter, 
-            avg_bw, avg_lat, ucpu, scpu, ucpu_server, scpu_server);
-    */
 }
 
 static uint16_t checksum(void *vdata, size_t length)
