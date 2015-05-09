@@ -1410,7 +1410,7 @@ print_report()
         char *restrict line1 = malloc(default_size);
         char *restrict line2 = malloc(default_size);
 
-        sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
+        sprintf(line1, MTHREAD_RPT_PT1, config.threads, power, config.iter);
         sprintf(line2, MTHREAD_RPT_PT2, bw_stats.average, lat_stats.average,
                 ucpu_stats.average, scpu_stats.average, ucpu_stats_server.average, scpu_stats_server.average);
 
