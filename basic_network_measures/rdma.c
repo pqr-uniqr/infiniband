@@ -1328,6 +1328,8 @@ print_report()
 
     struct stats ucpu_stats;
     struct stats scpu_stats;
+    struct stats ucpu_stats_server;
+    struct stats scpu_stats_server;
     struct stats bw_stats;
     struct stats lat_stats;
 
@@ -1365,6 +1367,9 @@ print_report()
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
 
+            if ( (i == 0 || config.opcode == IBV_WR_SEND) && (pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time) )
+                calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
+
             if (config.length)
                 xfer_total = config.xfer_unit * iterations[i];
             else
@@ -1380,6 +1385,15 @@ print_report()
         get_stats(avg_lat, config.threads, &lat_stats);
         get_stats(ucpu, config.threads, &ucpu_stats);
         get_stats(scpu, config.threads, &scpu_stats);
+
+        // FIXME def not best way to do this
+        if (config.opcode == IBV_WR_SEND) {
+            get_stats(ucpu_server, config.threads, &ucpu_stats_server);
+            get_stats(scpu_server, config.threads, &scpu_stats_server);
+        } else {
+            get_stats(ucpu_server, 1, &ucpu_stats_server);
+            get_stats(scpu_server, 1, &scpu_stats_server);
+        }
 
         /*
         printf("[bw] min: %f max: %f average: %f median: %f\n", 
@@ -1398,7 +1412,7 @@ print_report()
 
         sprintf(line1, MTHREAD_RPT_PT1, config.threads, config.xfer_unit, config.iter);
         sprintf(line2, MTHREAD_RPT_PT2, bw_stats.average, lat_stats.average,
-                ucpu_stats.average, scpu_stats.average);
+                ucpu_stats.average, scpu_stats.average, ucpu_stats_server.average, scpu_stats_server.average);
 
         printf(MTHREAD_RPT_FMT, line1, line2);
         free(line1);
