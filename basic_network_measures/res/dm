@@ -66,6 +66,14 @@ def list_checked(unchecked=False):
                 continue
             tracked_files.append(fn)
 
+    # PRINT UNCHECKED FILES
+    print "[ ALL UNMARKED FILES ]"
+    if not len(unchecked_files):
+        print bc.OKGREEN + "NONE" + bc.ENDC
+    else:
+        for f in unchecked_files:
+            print f
+    print ""
 
     # PRINT CHECKED FILES
     print "[ ALL MARKED FILES ]"
@@ -76,21 +84,12 @@ def list_checked(unchecked=False):
             print f
     print ""
 
-    # PRINT UNCHECKED FILES
-    print "[ ALL UNMARKED FILES ]"
-    if not len(unchecked_files):
-        print bc.OKGREEN + "NONE" + bc.ENDC
-    else:
-        for f in unchecked_files:
-            print f
-    print ""
-
     # PRINT ERRORS WITH CHECKED FILES
     print "[ ERRORS ]"
     for fn in checked_files:
         ex_type = get_exp_type(fn)
         
-        # DATA FILES SHOULD BE PREFIXED BY THEIR EXPERIMENT TYPE
+        # DATA FILE NAME SHOULD BE PREFIXED BY ITS EXPERIMENT TYPE
         if ex_type not in experiment_types:
             print bc.FAIL + fn + bc.WARNING + ': filename does not follow naming convention' + bc.ENDC
             wrongnames.append(fn)
@@ -218,10 +217,10 @@ def plotdata(datafile_name, outfile_name):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-l', '--list', action='store_true')
-    group.add_argument('-a', '--add', action='store_true')
-    group.add_argument('-c', '--clean', action='store_true')
-    group.add_argument('-s', '--smash', action='store_true')
+    group.add_argument('-l', '--list', action='store_true', help='list state of files being tracked')
+    group.add_argument('-a', '--add', action='store_true', help='add marked files to git repo')
+    group.add_argument('-c', '--clean', action='store_true', help='clean files that are not marked')
+    group.add_argument('-s', '--smash', action='store_true', help='destroy files that either have a conflict')
     group.add_argument('-r', '--reset', action='store_true')
     group.add_argument('-p', '--plot', action='store_true')
     args = parser.parse_args()
