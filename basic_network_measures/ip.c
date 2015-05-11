@@ -181,6 +181,8 @@ main_exit:
     free(res.conn);
 #endif
 
+    pcm_cleanup();
+
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&shared_mutex);
     pthread_cond_destroy(&shared_cond);
@@ -249,9 +251,9 @@ static int run_iter(void * param)
         rc = 0;
 
         if( server_name ){
-            pcm_lap(1);
+            if(config.threads == 1) pcm_lap(1);
             rc = write(conn->sock, conn->buf, xfer_unit);
-            pcm_lap(0);
+            if(config.threads == 1) pcm_lap(0);
             scnt++;
 
             if( rc < xfer_unit ){
@@ -259,7 +261,7 @@ static int run_iter(void * param)
                 return 1;
             }
             
-            pcm_cycles += pcm_measure();
+            if(confif.threads == 1) pcm_cycles += pcm_measure();
             gettimeofday( &tnow, NULL);
             elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) -
                 (mytposted->tv_sec * 1e6 + mytposted->tv_usec);
