@@ -279,7 +279,7 @@ main ( int argc, char *argv[] )
         fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
         goto main_exit;
     }
-    if(-1 == sock_sync_data( res.sock, sizeof(struct pstat) * config.threads, (char *) pend, (char *) pend_server)){
+    if(-1 == sock_sync_data( res.sock, (sizeof(struct pstat) * config.threads), (char *) pend, (char *) pend_server)){
         fprintf(stderr, RED "failed to exchange cpu stats\n" RESET);
         goto main_exit;
     }
@@ -509,7 +509,6 @@ run_iter_client(void *param)
     DEBUG_PRINT((stdout, "finishing run_iter\n"));
     return 0;
 }
-
 
 // RUN BY SERVER ONLY IF OPERATION IS IBSR 
     static int
@@ -933,16 +932,22 @@ resources_create (struct resources *res)
     config.threads =    MAX(config.threads, config_other->threads);
     config.use_event = config.use_event || config_other->use_event;
     threads = (pthread_t *) malloc( sizeof(pthread_t) * config.threads );
-    pstart =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
-    pend =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
 
     iterations = (int *) malloc(sizeof(int) * config.threads);
 
     tposted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
     tcompleted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
 
+    pstart =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    pend =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    memset(pstart, config.threads, sizeof(struct pstat));
+    memset(pend, config.threads, sizeof(struct pstat));
+
     pstart_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pend_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    memset(pstart, config.threads, sizeof(struct pstat));
+    memset(pend, config.threads, sizeof(struct pstat));
+
     config.config_other = config_other;
 
     if( config.server_name ){
@@ -1364,21 +1369,29 @@ print_report()
         /* MULTIPLE THREADS */
 
         for(i=0; i < config.threads; i++) {
-            if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
-                calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
 
-            if ( (i == 0 || config.opcode == IBV_WR_SEND) && (pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time) )
-                calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
+            if ( !config.server_name ) {
+                // client
+                if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
+                    calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
 
-            if (config.length)
-                xfer_total = config.xfer_unit * iterations[i];
-            else
-                xfer_total = config.xfer_unit * config.iter;
+                if ( pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time )
+                    calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
 
-            elapsed = (tcompleted[i].tv_sec * 1e6 + tcompleted[i].tv_usec) -
-                (tposted[i].tv_sec * 1e6 + tposted[i].tv_usec);
-            avg_bw[i] = xfer_total / elapsed;
-            avg_lat[i] = elapsed / iterations[i];
+                if (config.length)
+                    xfer_total = config.xfer_unit * iterations[i];
+                else
+                    xfer_total = config.xfer_unit * config.iter;
+
+                elapsed = (tcompleted[i].tv_sec * 1e6 + tcompleted[i].tv_usec) -
+                    (tposted[i].tv_sec * 1e6 + tposted[i].tv_usec);
+                avg_bw[i] = xfer_total / elapsed;
+                avg_lat[i] = elapsed / iterations[i];
+            } else {
+                // server
+                if ( (i == 0 || config.opcode == IBV_WR_SEND) && pend[i].cpu_total_time - pstart[i].cpu_total_time)
+                    calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
+            }
         }
 
         get_stats(avg_bw, config.threads, &bw_stats);
@@ -1428,7 +1441,6 @@ print_report()
 
     // format: threads, transfer unit, iterations, avg_bw, avg_lat, ucpu,scpu,ucpuS,scpuS
 }
-
 
     static int
 compare_doubles(const void *a, const void *b){
