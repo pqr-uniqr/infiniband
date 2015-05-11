@@ -301,7 +301,7 @@ main_exit:
 
     /* REPORT ON EXPERIMENT TO STDOUT */
 
-    if(rc){
+    if(rc && config.server_name){
         print_report();
         return EXIT_SUCCESS;
     }
@@ -1369,29 +1369,21 @@ print_report()
         /* MULTIPLE THREADS */
 
         for(i=0; i < config.threads; i++) {
+            if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
+                calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
 
-            if ( !config.server_name ) {
-                // client
-                if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
-                    calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
+            if ( pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time )
+                calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
 
-                if ( pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time )
-                    calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
+            if (config.length)
+                xfer_total = config.xfer_unit * iterations[i];
+            else
+                xfer_total = config.xfer_unit * config.iter;
 
-                if (config.length)
-                    xfer_total = config.xfer_unit * iterations[i];
-                else
-                    xfer_total = config.xfer_unit * config.iter;
-
-                elapsed = (tcompleted[i].tv_sec * 1e6 + tcompleted[i].tv_usec) -
-                    (tposted[i].tv_sec * 1e6 + tposted[i].tv_usec);
-                avg_bw[i] = xfer_total / elapsed;
-                avg_lat[i] = elapsed / iterations[i];
-            } else {
-                // server
-                if ( (i == 0 || config.opcode == IBV_WR_SEND) && pend[i].cpu_total_time - pstart[i].cpu_total_time)
-                    calc_cpu_usage_pct(&(pend[i]), &(pstart[i]), &(ucpu[i]), &(scpu[i]));
-            }
+            elapsed = (tcompleted[i].tv_sec * 1e6 + tcompleted[i].tv_usec) -
+                (tposted[i].tv_sec * 1e6 + tposted[i].tv_usec);
+            avg_bw[i] = xfer_total / elapsed;
+            avg_lat[i] = elapsed / iterations[i];
         }
 
         get_stats(avg_bw, config.threads, &bw_stats);
@@ -1408,18 +1400,7 @@ print_report()
             get_stats(scpu_server, 1, &scpu_stats_server);
         }
 
-        /*
-        printf("[bw] min: %f max: %f average: %f median: %f\n", 
-                bw_stats.min, bw_stats.max, bw_stats.average, bw_stats.median);
-        printf("[lat] min: %f max: %f average: %f median: %f\n", 
-                lat_stats.min, lat_stats.max, lat_stats.average, lat_stats.median);
-        printf("[ucpu] min: %f max: %f average: %f median: %f\n", 
-                ucpu_stats.min, ucpu_stats.max, ucpu_stats.average, ucpu_stats.median);
-        printf("[scpu] min: %f max: %f average: %f median: %f\n",
-                scpu_stats.min, scpu_stats.max, scpu_stats.average, scpu_stats.median);
-        */
-
-        int default_size = 100;
+        int default_size = 200;
         char *restrict line1 = malloc(default_size);
         char *restrict line2 = malloc(default_size);
 
