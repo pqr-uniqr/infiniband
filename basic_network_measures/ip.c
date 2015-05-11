@@ -261,7 +261,7 @@ static int run_iter(void * param)
                 return 1;
             }
             
-            if(confif.threads == 1) pcm_cycles += pcm_measure();
+            if(config.threads == 1) pcm_cycles += pcm_measure();
             gettimeofday( &tnow, NULL);
             elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) -
                 (mytposted->tv_sec * 1e6 + mytposted->tv_usec);
