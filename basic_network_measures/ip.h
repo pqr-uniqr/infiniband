@@ -52,7 +52,7 @@
 #define REPORT_FMT "%d  %d  %d  %.2f  %.2f  %.2f  %.2f  %.2f  %.2f\n"
 
 // part 1: threads, xfer_size, iter (setup)
-#define MTHREAD_RPT_PT1 "%d  %d  %ld"
+#define MTHREAD_RPT_PT1 "%d  %d  %d"
 // part 2: average for bw, lat , ucpu, scpu
 #define MTHREAD_RPT_PT2 "%.2f  %.2f  %.2f  %.2f  %.2f  %.2f"
 
