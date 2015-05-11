@@ -50,7 +50,7 @@
 #define MAX(X,Y) ((X) < (Y) ? (Y) : (X) )
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y) )
 
-#define REPORT_FMT "%d  %d  %d  %.2f  %.2f  %.2f  %.2f  %.2f  %.2f\n"
+#define REPORT_FMT "%d  %d  %d  %.2f  %.2f  %.2f  %.2f  %.2f  %.2f %.0f\n"
 
 // part 1: threads, xfer_size, iter (setup)
 #define MTHREAD_RPT_PT1 "%d  %d  %d"

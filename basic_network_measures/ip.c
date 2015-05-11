@@ -21,6 +21,8 @@ struct pstat *pend;
 struct pstat *pstart_server;
 struct pstat *pend_server;
 
+double pcm_cycles = 0;
+
 int cnt_threads;
 pthread_mutex_t shared_mutex;
 pthread_cond_t shared_cond;
@@ -247,14 +249,17 @@ static int run_iter(void * param)
         rc = 0;
 
         if( server_name ){
+            pcm_lap(1);
             rc = write(conn->sock, conn->buf, xfer_unit);
+            pcm_lap(0);
             scnt++;
 
             if( rc < xfer_unit ){
                 fprintf(stderr, "Failed writing data to socket in run_iter\n");
                 return 1;
             }
-
+            
+            pcm_cycles += pcm_measure();
             gettimeofday( &tnow, NULL);
             elapsed = (tnow.tv_sec * 1e6 + tnow.tv_usec) -
                 (mytposted->tv_sec * 1e6 + mytposted->tv_usec);
@@ -379,7 +384,8 @@ static int resources_create(struct resources *res)
     memset(pend_server, config.threads, sizeof(struct pstat));
 
     /* SET UP PCM */
-    pcm_setup_generic();
+    if (config.server_name)
+        pcm_setup_generic();
 
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
@@ -615,7 +621,7 @@ static void print_report( void )
             calc_cpu_usage_pct( pend_server, pstart_server, ucpu_server, scpu_server);
 
         printf(REPORT_FMT, config.threads, power, config.iter, 
-                bw[0], lat[0], ucpu[0], scpu[0], ucpu_server[0], scpu_server[0]);
+                bw[0], lat[0], ucpu[0], scpu[0], ucpu_server[0], scpu_server[0], pcm_cycles);
     } else {
         for(i=0; i < config.threads; i++) {
             if ( pend[i].cpu_total_time - pstart[i].cpu_total_time )
