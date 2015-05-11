@@ -612,6 +612,9 @@ static void print_report( void )
             if ( pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
 
+            printf("ucpu, scpu %d: %f %f\n", i, ucpu[i], scpu[i]);
+            printf("ucpu, scpu server %d: %f %f\n", i, ucpu_server[i], scpu_server[i]);
+
             if (config.length)
                 xfer_total = config.xfer_unit * iterations[i];
             else
@@ -695,11 +698,6 @@ static void get_stats(double *data, int size, struct stats *stats)
 {
     double max = 0., min = DBL_MAX, average = 0., median;
     int i;
-
-    for(i=0;i < size; i++) {
-        double val = data[i];
-        printf("%f\n", val);
-    }
 
     qsort(data, size, sizeof(double), compare_doubles);
     if( size % 2 ) {
