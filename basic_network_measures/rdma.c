@@ -945,8 +945,8 @@ resources_create (struct resources *res)
 
     pstart_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pend_server =  (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
-    memset(pstart, config.threads, sizeof(struct pstat));
-    memset(pend, config.threads, sizeof(struct pstat));
+    memset(pstart_server, config.threads, sizeof(struct pstat));
+    memset(pend_server, config.threads, sizeof(struct pstat));
 
     config.config_other = config_other;
 

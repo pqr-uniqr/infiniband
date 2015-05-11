@@ -367,6 +367,10 @@ static int resources_create(struct resources *res)
     pend = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pstart_server = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pend_server = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+    memset(pstart, config.threads, sizeof(struct pstat));
+    memset(pend, config.threads, sizeof(struct pstat));
+    memset(pstart_server, config.threads, sizeof(struct pstat));
+    memset(pend_server, config.threads, sizeof(struct pstat));
 
     iterations = (int *) malloc(sizeof(int) * config.threads);
 
