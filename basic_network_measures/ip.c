@@ -612,9 +612,9 @@ static void print_report( void )
             if ( pend_server[i].cpu_total_time - pstart_server[i].cpu_total_time )
                 calc_cpu_usage_pct(&(pend_server[i]), &(pstart_server[i]), &(ucpu_server[i]), &(scpu_server[i]));
 
-            printf("ucpu, scpu %d: %x %x\n", i, ucpu[i], scpu[i]);
+            printf("ucpu, scpu %d: %llx %llx\n", i, ucpu[i], scpu[i]);
             printf("ucpu, scpu %d: %f %f\n", i, ucpu[i], scpu[i]);
-            printf("ucpu, scpu server %d: %x %x\n", i, ucpu_server[i], scpu_server[i]);
+            printf("ucpu, scpu server %d: %llx %llx\n", i, ucpu_server[i], scpu_server[i]);
             printf("ucpu, scpu server %d: %f %f\n", i, ucpu_server[i], scpu_server[i]);
 
             if (config.length)
