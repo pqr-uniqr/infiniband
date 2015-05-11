@@ -512,7 +512,6 @@ static int sock_connect(const char *servername, int port)
             }
         }
     }
-
 sock_connect_exit:
     if (listenfd)
         close (listenfd);
@@ -627,10 +626,14 @@ static void print_report( void )
         get_stats(bw, config.threads, &bw_stats);
         get_stats(lat, config.threads, &lat_stats);
 
+        printf("ucpu stats:\n");
         get_stats(ucpu, config.threads, &ucpu_stats);
+        printf("scpu stats:\n");
         get_stats(scpu, config.threads, &scpu_stats);
 
+        printf("ucpu server stats:\n");
         get_stats(ucpu_server, config.threads, &ucpu_stats_server);
+        printf("scpu server stats:\n");
         get_stats(scpu_server, config.threads, &scpu_stats_server);
 
         int default_size = 100;
@@ -702,6 +705,7 @@ static void get_stats(double *data, int size, struct stats *stats)
 
     for(i=0; i < size; i++){
         double val = data[i];
+        printf("%f\n", val);
         if( val > max )
             max = val;
         if( val < min )
