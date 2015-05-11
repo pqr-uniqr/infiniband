@@ -360,6 +360,9 @@ static int resources_create(struct resources *res)
     config.threads = MAX(config.threads, config_other->threads);
     threads = (pthread_t *) malloc(sizeof(pthread_t) * config.threads);
 
+
+    /* INITIALIZE DATA STRUCTURES FOR MEASUREMENT */
+
     tposted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
     tcompleted = (struct timeval *) malloc(sizeof(struct timeval) * config.threads);
 
@@ -367,12 +370,16 @@ static int resources_create(struct resources *res)
     pend = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pstart_server = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
     pend_server = (struct pstat *) malloc(sizeof(struct pstat) * config.threads);
+
+    iterations = (int *) malloc(sizeof(int) * config.threads);
+
     memset(pstart, config.threads, sizeof(struct pstat));
     memset(pend, config.threads, sizeof(struct pstat));
     memset(pstart_server, config.threads, sizeof(struct pstat));
     memset(pend_server, config.threads, sizeof(struct pstat));
 
-    iterations = (int *) malloc(sizeof(int) * config.threads);
+    /* SET UP PCM */
+    pcm_setup_generic();
 
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
@@ -637,8 +644,8 @@ static void print_report( void )
         get_stats(scpu_server, config.threads, &scpu_stats_server);
 
         int default_size = 100;
-        char *restrict line1 = malloc(default_size);
-        char *restrict line2 = malloc(default_size);
+        char *line1 = malloc(default_size);
+        char *line2 = malloc(default_size);
 
         sprintf(line1, MTHREAD_RPT_PT1, config.threads, power, config.iter);
         sprintf(line2, MTHREAD_RPT_PT2, bw_stats.average, lat_stats.average,

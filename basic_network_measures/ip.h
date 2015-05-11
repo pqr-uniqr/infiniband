@@ -27,6 +27,7 @@
 #endif
 
 #include "getusage.c"
+#include "header.h"
 
 #define NRM  "\x1B[0m"
 #define RED  "\x1B[31m"
@@ -62,7 +63,6 @@
     { if((var = (type*)malloc(sizeof(type)*(size))) == NULL)     \
         { fprintf(stderr," Cannot Allocate\n"); exit(1);}}
 
-
 struct config_t {
     char *server_name;
     u_int32_t tcp_port;
@@ -91,7 +91,6 @@ struct stats
     double average;
     double median;
 };
-
 
 
 static int run_iter(void *param);

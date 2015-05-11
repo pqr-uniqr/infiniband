@@ -178,35 +178,33 @@ def get_exp_type(filename):
         return '_'.join(filename.split('_')[:2])
 
 def plotdata(datafile_name, outfile_name):
-    print "plotdata here"
-    outfile_name = "rdma_r_cpu"
+
     with open(plotscript_name, 'a') as p:
         p.write('set terminal png\n')
         p.write('set autoscale\n')
-        
-        if "lat" in outfile_name:
-            # thread, # byte, # iter, latency (us)
-            p.write('set logscale\n')
-            p.write('set xlabel ' + '"buffer size (bytes)"\n')
-            p.write('set ylabel ' + '"latency (us)"\n')
-            p.write('set output "plots/' + outfile_name + '"\n')
-            p.write('plot "' + datafile_name + '" using 2:4 notitle with linespoints\n')
-        elif "bw" in outfile_name:
-            p.write('set logscale\n')
-            p.write('set xlabel ' + '"buffer size (bytes)"\n')
-            p.write('set ylabel ' + '"bandwidth (MB/s)"\n')
-            p.write('set output "plots/' + outfile_name + '"\n')
-            p.write('plot "' + datafile_name + '" using 2:4 notitle with linespoints\n')
-        elif "cpu" in outfile_name: # TODO what if it fails?
-            p.write('set logscale x\n')
-            p.write('set yrange[0:110];')
-            p.write('set xlabel ' + '"buffer size (bytes)"\n')
-            p.write('set ylabel ' + '"cpu usage (%)"\n')
-            p.write('set output "plots/' + outfile_name + '"\n')
-            p.write('plot "' + datafile_name + '" using 2:5 title "client-user" with linespoints,')
-            p.write('"' + datafile_name + '" using 2:6 title "client-system" with linespoints,')
-            p.write('"' + datafile_name + '" using 2:7 title "server-user" with linespoints,')
-            p.write('"' + datafile_name + '" using 2:8 title "server-system" with linespoints\n')
+
+        p.write('set output "plots/' + outfile_name + '"\n')
+
+        if 'mthread' in outfile_name:
+            p.write('set xlabel "threads"\n')
+            x_index = '1'
+        else:
+            p.write('set xlable "buffer size (2^x)"')
+            x_index = '2'
+
+        if 'bw' in outfile_name:
+            p.write('set ylabel "bandwidth (MB/s)"\n')
+            p.write('plot "'+datafile_name+'" using '+x_index+':4 notitle with linespoints\n')
+        elif 'lat' in outfile_name:
+            p.write('set ylabel "latency (us)"\n')
+            p.write('plot "'+datafile_name+'" using '+x_index+':5 notitle with linespoints\n')
+        elif 'cpu' in outfile_name:
+            p.write('set ylabel "cpu usage(%)"\n')
+            p.write('set yrange[0:110]\n')
+            p.write('plot "' + datafile_name + '" using '+x_index+':6 title "client-user" with linespoints,')
+            p.write('"' + datafile_name + '" using '+x_index+':7 title "client-system" with linespoints,')
+            p.write('"' + datafile_name + '" using '+x_index+':8 title "server-user" with linespoints,')
+            p.write('"' + datafile_name + '" using '+x_index+':9 title "server-system" with linespoints\n')
 
     os.system('gnuplot ' + plotscript_name)
     os.remove(plotscript_name)
@@ -319,10 +317,14 @@ if __name__ == "__main__":
         plot_files = dict()
         for datafile_name in ready_plot:
             exp_type = get_exp_type(datafile_name)
-
-            plot_files[datafile_name] = [exp_type + '.png']
-            if "bw" in exp_type:
-                plot_files[datafile_name].append( exp_type.replace('bw','cpu') + '.png' )
+            if "mthread" in exp_type:
+                plot_files[datafile_name] = [exp_type + '_bw.png']
+                plot_files[datafile_name].append(exp_type + '_lat.png')
+                plot_files[datafile_name].append(exp_type + '_cpu.png')
+            else:
+                plot_files[datafile_name] = [exp_type + '.png']
+                if "bw" in exp_type:
+                    plot_files[datafile_name].append( exp_type.replace('bw','cpu') + '.png' )
 
         # SHOW PLOTTING PLANS
         for datafile_name in plot_files:
@@ -339,6 +341,3 @@ if __name__ == "__main__":
 
     else:
         print "no op"
-
-
-
