@@ -33,7 +33,7 @@ ip_slab: ip.c ip.h wrapper.cpp
 ip_dbg: ip.c ip.h wrapper.cpp
 	${CC} ${CFLAGS} -m64 -c ip.c -DDEBUG -DNUMA
 	${CPPC} -c wrapper.cpp
-	g++ ip.o ${LIB_SLAB} ${CPPLIB} wrapper.o -o ip_dbg
+	g++ ip.o ${LIB} ${CPPLIB} wrapper.o -o ip_dbg
 
 clean:
 	rm -f *.o main test ip ip_dbg rdma rdma_dbg
