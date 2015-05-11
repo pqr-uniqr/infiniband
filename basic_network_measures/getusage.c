@@ -94,9 +94,9 @@ void calc_cpu_usage_pct(const struct pstat* cur_usage,
     const long unsigned int total_time_diff = cur_usage->cpu_total_time -
                                               last_usage->cpu_total_time;
 
-    *ucpu_usage = 100 * (((cur_usage->utime_ticks + cur_usage->cutime_ticks)
-                    - (last_usage->utime_ticks + last_usage->cutime_ticks))
-                    / (double) total_time_diff);
+    *ucpu_usage = 100 * ((((cur_usage->utime_ticks + cur_usage->cutime_ticks)
+                    - (last_usage->utime_ticks + last_usage->cutime_ticks))) /
+                    (double) total_time_diff );
 
     *scpu_usage = 100 * ((((cur_usage->stime_ticks + cur_usage->cstime_ticks)
                     - (last_usage->stime_ticks + last_usage->cstime_ticks))) /
