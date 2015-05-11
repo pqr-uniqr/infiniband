@@ -386,12 +386,12 @@ static int resources_create(struct resources *res)
     memset(pend_server, config.threads, sizeof(struct pstat));
 
     /* SET UP PCM */
-    if (config.server_name)
+    if (config.server_name) {
         pcm_setup_generic();
+    }
 
     DEBUG_PRINT((stdout, "buffer %zd bytes, %d iterations on %d threads\n", 
                 config.xfer_unit, config.iter, config.threads));
-
 
     /* SET UP TCP CONNECTION AND BUFFER FOR EACH THREAD */
 
