@@ -696,6 +696,11 @@ static void get_stats(double *data, int size, struct stats *stats)
     double max = 0., min = DBL_MAX, average = 0., median;
     int i;
 
+    for(i=0;i < size; i++) {
+        double val = data[i];
+        printf("%f\n", val);
+    }
+
     qsort(data, size, sizeof(double), compare_doubles);
     if( size % 2 ) {
         median = data[(int) floor(size/2)];
@@ -705,7 +710,6 @@ static void get_stats(double *data, int size, struct stats *stats)
 
     for(i=0; i < size; i++){
         double val = data[i];
-        printf("%f\n", val);
         if( val > max )
             max = val;
         if( val < min )
