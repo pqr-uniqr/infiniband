@@ -31,7 +31,6 @@ extern "C" void pcm_lap(int isBefore){
 }
 
 extern "C" double pcm_measure(){
-  m->cleanup();
   return getCycles(before, after);
 }
 
